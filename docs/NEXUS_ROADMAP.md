@@ -23,8 +23,8 @@ Bluetooth directo desde el iPhone, porque iOS no lo permite (ver
 - [x] Projects (CRUD, hitos, detalle con tareas)
 - [x] Areas (CRUD, sin hardcodear, con set sugerido opcional)
 - [x] Calendar (eventos, agenda agrupada por día)
-- [x] Inbox + Quick Capture (texto; el botón de voz existe pero está
-      deshabilitado hasta Fase 2)
+- [x] Inbox + Quick Capture (texto; desde Fase 2 el botón abre modo voz
+      donde el navegador lo soporta, con el texto como fallback automático)
 - [x] Preferencias sincronizadas por cuenta (`preferences`, no
       `localStorage`) — primer uso real: recordar si ya se vio el
       onboarding, entre dispositivos
@@ -57,18 +57,49 @@ Bluetooth directo desde el iPhone, porque iOS no lo permite (ver
 no porque se haya olvidado): Memory, Command Center (Ctrl+K), vistas de
 semana/mes del calendario, módulos de vida (Finanzas/Salud/Viajes/Formación).
 
-## ⏳ Fase 2 — NEXUS Voice (prioridad inmediata)
+## ✅ Fase 2 — NEXUS Voice V1/V1.5 (implementada, con límites reales)
 
-- [ ] Speech-to-Text (Web Speech API + fallback server-side para Safari/iOS)
-- [ ] Text-to-Speech
-- [ ] Estados del Face conectados a audio real (`listening`, `thinking`,
-      `speaking` ya existen visualmente — la boca ya anima con
-      `animationDelay` por barra, falta la fuente de datos: nivel de
-      amplitud del audio real vía Web Audio API)
-- [ ] Push-to-talk (V1) → conversación continua con la app abierta (V1.5)
-      → wake word en foreground (V2)
-- [ ] Parser de lenguaje natural (todavía sin IA real — reglas + un
-      proveedor de IA simple para el primer intento)
+- [x] Text-to-Speech (`window.speechSynthesis`, hook `useSpeech.ts`) — Today
+      se puede escuchar ("🔊 Escuchar resumen") y el onboarding se narra solo
+- [x] Speech-to-Text (`SpeechRecognition`/`webkitSpeechRecognition`,
+      mismo hook) — funciona en Chrome/Edge desktop y Android
+- [x] **Conversación continua con la app abierta (V1.5)**: tocás el Face
+      (`VoiceSession.tsx`) y entra en loop escuchar → interpretar
+      (`voiceCommands.ts`) → hablar la respuesta → volver a escuchar, hasta
+      que decís "listo"/"gracias"/"chau" o cerrás
+- [x] Router de comandos por voz (`handleVoiceCommand`): navegación
+      ("llevame a inbox/calendario/proyectos/áreas"), resumen del día
+      hablado, y cualquier otra frase cae en Quick Capture por voz
+      (con cola offline si no hay señal, igual que el Quick Capture de texto)
+- [x] Deep link `?listen=1` + entrada en el manifest PWA (`shortcuts`) para
+      abrir directo en modo voz desde la pantalla de inicio o un Siri
+      Shortcut — ver límite de "abrir hablando" más abajo
+- [ ] Estados del Face conectados a nivel de amplitud de audio real (Web
+      Audio API) — hoy la boca anima con un patrón fijo, no con la señal
+- [ ] Wake word en foreground (V2, app abierta pero sin tocar nada)
+- [ ] Parser de lenguaje natural real (hoy `voiceCommands.ts` es reglas +
+      regex, no pasa por `NexusAIProvider` todavía — eso es Fase 3)
+
+**Límites reales de la plataforma (no son bugs, son restricciones de iOS/Safari — WebKit no implementa estas APIs en ningún navegador de iPhone, ni Chrome ni Firefox, porque todos corren sobre WebKit ahí):**
+
+- **Sin STT en iPhone**: `SpeechRecognition` no existe en iOS Safari. La app
+  lo detecta (`sttSupported`) y cae automáticamente al Quick Capture de
+  texto — nunca se rompe, pero en iPhone hoy **no hay** "hablale y te
+  escucha" dentro de la PWA. Es la limitación más grande respecto de lo que
+  pediste ("no quiero escribir ni una palabra") y no tiene solución dentro
+  de una PWA — ver Fase 7 (cliente nativo) como único camino real.
+- **TTS sí funciona en iPhone** (Safari soporta `speechSynthesis`), así que
+  el resumen hablado y la narración del onboarding sí se escuchan ahí.
+- **No existe "abrir la app hablándole al teléfono estando cerrada o con la
+  pantalla bloqueada"**: ninguna PWA puede escuchar en background en iOS.
+  El sustituto real es el deep link `?listen=1` + un **Siri Shortcut**
+  ("Oye Siri, hablar con Nexus" → abre la URL) — la app se abre y entra en
+  modo voz sola, pero *quien la abre es Siri*, no NEXUS escuchando de
+  fondo. El atajo de iOS todavía hay que crearlo a mano una vez
+  (Accesos Directos → nuevo atajo → "Abrir URL" → la URL de tu Nexus
+  desplegado + `/today?listen=1` → activarlo por voz con Siri).
+- **Gestos de cámara**: mencionado como posible, no arrancado — no forma
+  parte de V1/V1.5.
 
 ## ⏳ Fase 3 — NEXUS Brain
 

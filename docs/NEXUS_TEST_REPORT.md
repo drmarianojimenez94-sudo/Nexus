@@ -1,4 +1,4 @@
-# NEXUS — Test Report (Fase 1)
+# NEXUS — Test Report (Fase 1 + Voice V1)
 
 Última corrida: ver commits de este repositorio. Ejecutado contra Postgres
 16 local (`nexus_test` para tests, `nexus_dev` para build/smoke), Node 22.
@@ -80,11 +80,32 @@ tamaño de iPhone):
 Sin errores de JavaScript no manejados (`pageerror`) durante ninguno de
 los dos flujos.
 
+## Verificación manual de Voice V1 (Playwright, Chromium headless)
+
+Registro nuevo → onboarding narrado por voz omitido → `/today`:
+
+1. Botón "🔊 Escuchar resumen" visible y clickeable, sin errores ✅
+2. Tap en el Face abre `VoiceSession` en modo voz (Chromium headless
+   expone `SpeechRecognition`/`webkitSpeechRecognition`, a diferencia de
+   Safari/iOS real) — el Face 3D y el texto "Te escucho." renderizan sin
+   `pageerror` ✅
+3. Botón "Cerrar" presente y funcional ✅
+4. Deep link `/today?listen=1` abre directo en modo voz sin pasar por el
+   botón, confirmando el camino que usaría un Siri Shortcut ✅
+
+No se pudo verificar en este entorno el caso real de iPhone (Safari sin
+`SpeechRecognition`, cayendo a `QuickCaptureModal`) porque el sandbox no
+tiene WebKit — la caída a texto está cubierta por el código
+(`sttSupported` en `useSpeech.ts`) y por el mismo `QuickCaptureModal` ya
+verificado en Fase 1, pero no por un navegador WebKit real.
+
 ## Qué NO está cubierto todavía (a propósito, no por descuido)
 
-- Tests de componentes/UI de `apps/web` (Fase 1 priorizó backend + smoke
+- Tests de componentes/UI de `apps/web` (se prioriza backend + smoke
   manual; se agregan cuando haya lógica de cliente no trivial que
   justifique el costo).
 - Tests de carga/concurrencia.
-- Tests de los módulos de Fase 2+ (Voice, Brain, Connectors, Life
-  Modules) — no existen todavía, no hay nada que testear.
+- Verificación en un navegador WebKit/iOS real (el sandbox de desarrollo
+  no lo tiene) — pendiente de probar en el iPhone del usuario.
+- Tests de los módulos de Fase 3+ (Brain, Connectors, Life Modules) — no
+  existen todavía, no hay nada que testear.
