@@ -1,0 +1,605 @@
+// NEXUS — Database schema (spec §38)
+// Every domain table is scoped to a user via userId. Multi-user ready even
+// though the product currently has a single user.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Identity
+// ---------------------------------------------------------------------------
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  devices              Device[]
+  areas                Area[]
+  projects             Project[]
+  tasks                Task[]
+  events               Event[]
+  reminders            Reminder[]
+  notes                Note[]
+  inboxItems           InboxItem[]
+  contacts             Contact[]
+  entities             Entity[]
+  relationships        Relationship[]
+  memories             Memory[]
+  preferences          Preference[]
+  financialTransactions FinancialTransaction[]
+  debts                Debt[]
+  workouts             Workout[]
+  foodLogs             FoodLog[]
+  healthLogs           HealthLog[]
+  trips                Trip[]
+  attachments          Attachment[]
+  notifications        Notification[]
+  integrations         Integration[]
+  aiConversations      AiConversation[]
+  aiActions            AiAction[]
+  auditLogs            AuditLog[]
+  refreshTokens        RefreshToken[]
+
+  @@map("users")
+}
+
+model Device {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String
+  platform   String // "ios" | "windows" | "android" | "mac" | "web"
+  lastSeenAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@map("devices")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+// ---------------------------------------------------------------------------
+// Areas & Projects
+// ---------------------------------------------------------------------------
+
+model Area {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  icon      String?
+  color     String?
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  projects Project[]
+  tasks    Task[]
+  events   Event[]
+
+  @@unique([userId, name])
+  @@index([userId])
+  @@map("areas")
+}
+
+enum ProjectStatus {
+  IDEA
+  PLANNED
+  ACTIVE
+  WAITING
+  COMPLETED
+  ARCHIVED
+}
+
+model Project {
+  id        String        @id @default(uuid())
+  userId    String
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  areaId    String?
+  area      Area?         @relation(fields: [areaId], references: [id], onDelete: SetNull)
+  name      String
+  goal      String?
+  status    ProjectStatus @default(ACTIVE)
+  progress  Int           @default(0)
+  deadline  DateTime?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  milestones ProjectMilestone[]
+  tasks      Task[]
+  events     Event[]
+  notes      Note[]
+  attachments Attachment[]
+
+  @@index([userId])
+  @@index([areaId])
+  @@map("projects")
+}
+
+model ProjectMilestone {
+  id          String    @id @default(uuid())
+  projectId   String
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title       String
+  dueDate     DateTime?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([projectId])
+  @@map("project_milestones")
+}
+
+// ---------------------------------------------------------------------------
+// Tasks
+// ---------------------------------------------------------------------------
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+  CANCELLED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+model Task {
+  id               String       @id @default(uuid())
+  userId           String
+  user             User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projectId        String?
+  project          Project?     @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  areaId           String?
+  area             Area?        @relation(fields: [areaId], references: [id], onDelete: SetNull)
+  title            String
+  description      String?
+  priority         TaskPriority @default(MEDIUM)
+  status           TaskStatus   @default(TODO)
+  startDate        DateTime?
+  deadline         DateTime?
+  estimatedMinutes Int?
+  recurrenceRule   String?
+  completedAt      DateTime?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  subtasks  Subtask[]
+  reminders Reminder[]
+
+  @@index([userId])
+  @@index([projectId])
+  @@index([areaId])
+  @@index([userId, status, deadline])
+  @@map("tasks")
+}
+
+model Subtask {
+  id        String   @id @default(uuid())
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  title     String
+  done      Boolean  @default(false)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([taskId])
+  @@map("subtasks")
+}
+
+// ---------------------------------------------------------------------------
+// Calendar
+// ---------------------------------------------------------------------------
+
+model Event {
+  id             String    @id @default(uuid())
+  userId         String
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projectId      String?
+  project        Project?  @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  areaId         String?
+  area           Area?     @relation(fields: [areaId], references: [id], onDelete: SetNull)
+  title          String
+  description    String?
+  location       String?
+  startAt        DateTime
+  endAt          DateTime?
+  allDay         Boolean   @default(false)
+  externalSource String? // "google_calendar" | null
+  externalId     String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([userId, startAt])
+  @@index([projectId])
+  @@map("events")
+}
+
+model Reminder {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  taskId    String?
+  task      Task?     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  title     String
+  remindAt  DateTime
+  fired     Boolean   @default(false)
+  createdAt DateTime  @default(now())
+
+  @@index([userId, remindAt])
+  @@map("reminders")
+}
+
+// ---------------------------------------------------------------------------
+// Notes & Inbox
+// ---------------------------------------------------------------------------
+
+model Note {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projectId String?
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  title     String?
+  body      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([projectId])
+  @@map("notes")
+}
+
+enum InboxItemStatus {
+  PENDING
+  CLASSIFIED
+  DISMISSED
+}
+
+enum InboxItemSource {
+  TEXT
+  VOICE
+}
+
+model InboxItem {
+  id               String            @id @default(uuid())
+  userId           String
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rawText          String
+  source           InboxItemSource   @default(TEXT)
+  status           InboxItemStatus   @default(PENDING)
+  classifiedAsType String?
+  classifiedAsId   String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  @@index([userId, status])
+  @@map("inbox_items")
+}
+
+// ---------------------------------------------------------------------------
+// People & Memory (NexusMemory, spec §6)
+// ---------------------------------------------------------------------------
+
+model Contact {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  email       String?
+  phone       String?
+  externalSource String? // "google_contacts" | null
+  externalId  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@map("contacts")
+}
+
+/** A person, place, or thing NEXUS knows about beyond a raw contact card. */
+model Entity {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String // "person" | "place" | "organization" | "thing"
+  name      String
+  data      Json     @default("{}")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  relationshipsFrom Relationship[] @relation("relationship_from")
+  relationshipsTo   Relationship[] @relation("relationship_to")
+
+  @@index([userId, type])
+  @@map("entities")
+}
+
+/** e.g. "Pedro" --[jefe en]--> "Hospital" (spec §6 example). */
+model Relationship {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fromEntityId String
+  fromEntity   Entity   @relation("relationship_from", fields: [fromEntityId], references: [id], onDelete: Cascade)
+  toEntityId   String
+  toEntity     Entity   @relation("relationship_to", fields: [toEntityId], references: [id], onDelete: Cascade)
+  label        String // "jefe en", "vive en", "trabaja con", ...
+  createdAt    DateTime @default(now())
+
+  @@index([userId])
+  @@map("relationships")
+}
+
+/** Freeform, user-visible/editable/searchable memory (spec §6 — never a black box). */
+model Memory {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content   String
+  source    String // "user_explicit" | "inferred_from_conversation"
+  entityId  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@map("memories")
+}
+
+model Preference {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  key       String
+  value     Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, key])
+  @@map("preferences")
+}
+
+// ---------------------------------------------------------------------------
+// Finances
+// ---------------------------------------------------------------------------
+
+enum FinancialTransactionType {
+  INCOME
+  EXPENSE
+}
+
+model FinancialTransaction {
+  id          String                    @id @default(uuid())
+  userId      String
+  user        User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        FinancialTransactionType
+  amount      Decimal                   @db.Decimal(14, 2)
+  currency    String                    @default("ARS")
+  category    String?
+  description String?
+  occurredAt  DateTime                  @default(now())
+  createdAt   DateTime                  @default(now())
+
+  @@index([userId, occurredAt])
+  @@map("financial_transactions")
+}
+
+model Debt {
+  id            String    @id @default(uuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name          String
+  totalAmount   Decimal   @db.Decimal(14, 2)
+  remaining     Decimal   @db.Decimal(14, 2)
+  dueDate       DateTime?
+  isRecurring   Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("debts")
+}
+
+// ---------------------------------------------------------------------------
+// Health
+// ---------------------------------------------------------------------------
+
+model Workout {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type         String // "running" | "gym" | ...
+  durationMin  Int?
+  distanceKm   Decimal? @db.Decimal(6, 2)
+  notes        String?
+  occurredAt   DateTime @default(now())
+  createdAt    DateTime @default(now())
+
+  @@index([userId, occurredAt])
+  @@map("workouts")
+}
+
+model FoodLog {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  description String
+  occurredAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  @@index([userId, occurredAt])
+  @@map("food_logs")
+}
+
+model HealthLog {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  metric     String // "weight_kg" | "sleep_hours" | ...
+  value      Decimal  @db.Decimal(8, 2)
+  occurredAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  @@index([userId, metric, occurredAt])
+  @@map("health_logs")
+}
+
+// ---------------------------------------------------------------------------
+// Travel
+// ---------------------------------------------------------------------------
+
+model Trip {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  startDate DateTime?
+  endDate   DateTime?
+  budget    Decimal?  @db.Decimal(14, 2)
+  checklist Json      @default("[]")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("trips")
+}
+
+// ---------------------------------------------------------------------------
+// Attachments, Notifications, Integrations
+// ---------------------------------------------------------------------------
+
+model Attachment {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projectId  String?
+  project    Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  fileName   String
+  url        String
+  mimeType   String?
+  sizeBytes  Int?
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([projectId])
+  @@map("attachments")
+}
+
+model Notification {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  body      String?
+  type      String // "reminder" | "deadline" | "followup" | "system"
+  scheduledFor DateTime?
+  sentAt    DateTime?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, scheduledFor])
+  @@map("notifications")
+}
+
+enum IntegrationStatus {
+  NOT_CONNECTED
+  CONNECTED
+  ERROR
+}
+
+model Integration {
+  id           String            @id @default(uuid())
+  userId       String
+  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider     String // "google_calendar" | "gmail" | "google_contacts" | "google_drive"
+  status       IntegrationStatus @default(NOT_CONNECTED)
+  accessToken  String?
+  refreshToken String?
+  expiresAt    DateTime?
+  scopes       String?
+  errorMessage String?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  @@unique([userId, provider])
+  @@map("integrations")
+}
+
+// ---------------------------------------------------------------------------
+// AI (NexusBrain, spec §5/§42)
+// ---------------------------------------------------------------------------
+
+model AiConversation {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transcript Json    @default("[]")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  actions AiAction[]
+
+  @@index([userId])
+  @@map("ai_conversations")
+}
+
+model AiAction {
+  id             String          @id @default(uuid())
+  userId         String
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  conversationId String?
+  conversation   AiConversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  tool           String
+  input          Json
+  output         Json?
+  permissionLevel Int
+  status         String // "planned" | "confirmed" | "executed" | "failed" | "undone"
+  errorMessage   String?
+  createdAt      DateTime        @default(now())
+
+  @@index([userId])
+  @@index([conversationId])
+  @@map("ai_actions")
+}
+
+// ---------------------------------------------------------------------------
+// Audit
+// ---------------------------------------------------------------------------
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action     String
+  entityType String?
+  entityId   String?
+  metadata   Json     @default("{}")
+  createdAt  DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@map("audit_log")
+}
