@@ -50,6 +50,47 @@ nuevo no debería requerir tocar `NexusBrain` ni los conectores existentes.
   abrir documentos. `readDocument` es Nivel 1 (lectura); adjuntar un
   documento a un proyecto es Nivel 2 (reversible).
 
+## NEXUS Home (smart home / IoT) — no está en el brief original, agregado por dirección de producto
+
+El usuario quiere controlar dispositivos Bluetooth comprados a futuro
+desde NEXUS, corriendo en el iPhone. Antes de diseñar esto como un
+conector más, hay un hecho técnico que condiciona toda la arquitectura:
+
+**Web Bluetooth no existe en iOS, en ningún navegador, sin excepción.**
+Apple no lo implementa en WebKit, y todo navegador en iOS (Chrome,
+Firefox, lo que sea) está obligado a usar WebKit — así que ninguna PWA ni
+página web puede hablarle a un dispositivo Bluetooth directamente desde
+un iPhone. Esto no es un bug de NEXUS ni algo que se arregle con más
+código; es una decisión de plataforma vigente desde hace años.
+
+La solución no es esperar a la app nativa — es la arquitectura correcta
+de todas formas: los dispositivos Bluetooth se conectan a un **hub**
+(Home Assistant, HomeKit, SmartThings, o el hub del fabricante), y NEXUS
+le habla a ese hub por su API, exactamente con el mismo patrón que
+`NexusConnector` ya define para Google:
+
+```ts
+interface NexusConnector {
+  readonly provider: "google_calendar" | "gmail" | "google_contacts" | "google_drive" | "nexus_home";
+  // ...
+}
+```
+
+`nexus_home` (nombre de trabajo) hablaría con una instancia de **Home
+Assistant** self-hosted (gratis, soporta prácticamente cualquier marca de
+dispositivo Bluetooth/Zigbee/Wi-Fi vía sus integraciones) usando su API
+REST/WebSocket local — no necesita que el teléfono tenga Bluetooth
+prendido ni esté cerca de nada. Tools que expondría: `listDevices()`,
+`getDeviceState(id)`, `setDeviceState(id, state)` — mismo patrón de
+permisos que el resto (encender una luz es Nivel 2, reversible; algo como
+abrir una cerradura sería Nivel 4, crítico).
+
+Esto entra al roadmap como parte de la Fase 4 (Connect), en paralelo a
+Google — no bloquea nada de lo que ya existe, y significa que cuando el
+usuario compre los dispositivos, el paso es "instalar Home Assistant en
+algo de la casa (una Raspberry Pi alcanza) y emparejarlos ahí", no
+"esperar una app nativa de NEXUS".
+
 ## OAuth y seguridad
 
 - Nunca se guarda una contraseña de Google — solo `accessToken` /

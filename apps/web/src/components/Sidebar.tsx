@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
-import { NexusOrb } from "./NexusOrb";
+import { NexusFace } from "./NexusFace";
 
 const LINKS = [
   { href: "/today", label: "Today" },
@@ -22,7 +22,7 @@ export function Sidebar({ onOrbClick }: { onOrbClick: () => void }) {
     <aside className="glass-panel sticky top-4 hidden h-[calc(100vh-2rem)] w-60 flex-col justify-between p-4 sm:flex">
       <div>
         <div className="mb-6 flex items-center gap-3 px-1">
-          <NexusOrb size={40} onClick={onOrbClick} />
+          <NexusFace size={40} onClick={onOrbClick} />
           <span className="text-lg font-semibold tracking-wide">NEXUS</span>
         </div>
         <nav className="flex flex-col gap-1">

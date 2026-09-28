@@ -19,10 +19,12 @@ the full product/technical answer this project was designed against.
 
 **Phase 1 — NEXUS Core** is implemented and tested end-to-end: accounts,
 areas, projects, tasks, calendar events, reminders, inbox / quick capture,
-and the Today screen, all persisted in Postgres and reachable from a
-mobile-first PWA. See [`docs/NEXUS_ROADMAP.md`](docs/NEXUS_ROADMAP.md) for
-what's built vs. what's next (Voice, Brain, Connectors, Life Modules,
-Intelligence, Native).
+the Today screen (redesigned as a HUD console around the **Nexus Face**),
+synced preferences, and a first-run onboarding tour — all persisted in
+Postgres and reachable from a mobile-first PWA. See
+[`docs/NEXUS_ROADMAP.md`](docs/NEXUS_ROADMAP.md) for what's built vs.
+what's next (Voice is next up, then Brain, Connectors — including a
+NEXUS Home smart-home connector — Life Modules, Intelligence, Native).
 
 ## Architecture
 

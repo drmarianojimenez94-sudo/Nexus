@@ -1,6 +1,7 @@
 "use client";
 
 import type { Event, Task } from "@nexus/shared";
+import { NexusFace, type FaceState } from "@/components/NexusFace";
 import { useAuth } from "@/lib/auth-context";
 import { useApiData } from "@/lib/useApiData";
 
@@ -23,25 +24,41 @@ function greeting() {
   return "Buenas noches";
 }
 
+/** Staggered entrance so panels feel like they "deploy" around the Face
+ * instead of just appearing (spec: layout tipo JARVIS). */
+function deployStyle(index: number): React.CSSProperties {
+  return { animationDelay: `${index * 60}ms` };
+}
+
 export default function TodayPage() {
   const { user } = useAuth();
   const { data, loading, error } = useApiData<TodayResponse>("/today");
 
+  const faceState: FaceState = data && data.attention.length > 0 ? "action-required" : "idle";
+
   return (
-    <div className="flex flex-col gap-4">
-      <header>
-        <h1 className="text-2xl font-semibold">
-          {greeting()}
-          {user ? `, ${user.name.split(" ")[0]}` : ""}.
-        </h1>
+    <div className="flex flex-col gap-5">
+      <header className="flex flex-col items-center gap-3 py-2 text-center sm:flex-row sm:justify-center sm:text-left">
+        <NexusFace state={faceState} size={72} />
+        <div>
+          <h1 className="text-2xl font-semibold">
+            {greeting()}
+            {user ? `, ${user.name.split(" ")[0]}` : ""}.
+          </h1>
+          {data?.now && (
+            <p className="text-sm text-nexus-muted">
+              Próximo: <span className="text-nexus-cyan">{formatTime(data.now.startAt)}</span> — {data.now.title}
+            </p>
+          )}
+        </div>
       </header>
 
-      {loading && <p className="text-nexus-muted">Cargando…</p>}
-      {error && <p className="text-nexus-danger">{error}</p>}
+      {loading && <p className="text-center text-nexus-muted">Cargando…</p>}
+      {error && <p className="text-center text-nexus-danger">{error}</p>}
 
       {data && (
-        <>
-          <section className="glass-panel p-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <section className="glass-panel animate-panel-deploy p-4" style={deployStyle(0)}>
             <h2 className="mb-1 text-xs font-medium tracking-widest text-nexus-muted">NOW</h2>
             {data.now ? (
               <p className="text-lg">
@@ -52,7 +69,7 @@ export default function TodayPage() {
             )}
           </section>
 
-          <section className="glass-panel p-4">
+          <section className="glass-panel animate-panel-deploy p-4" style={deployStyle(1)}>
             <h2 className="mb-2 text-xs font-medium tracking-widest text-nexus-muted">PRIORIDADES</h2>
             {data.priorities.length === 0 ? (
               <p className="text-nexus-muted">Sin prioridades pendientes.</p>
@@ -68,7 +85,7 @@ export default function TodayPage() {
             )}
           </section>
 
-          <section className="glass-panel p-4">
+          <section className="glass-panel animate-panel-deploy p-4 sm:col-span-2" style={deployStyle(2)}>
             <h2 className="mb-2 text-xs font-medium tracking-widest text-nexus-muted">TIMELINE</h2>
             {data.timeline.length === 0 ? (
               <p className="text-nexus-muted">Sin eventos para hoy.</p>
@@ -85,7 +102,10 @@ export default function TodayPage() {
           </section>
 
           {data.attention.length > 0 && (
-            <section className="glass-panel border-nexus-amber/30 p-4">
+            <section
+              className="glass-panel animate-panel-deploy border-nexus-amber/30 p-4"
+              style={deployStyle(3)}
+            >
               <h2 className="mb-2 text-xs font-medium tracking-widest text-nexus-amber">ATTENTION</h2>
               <ul className="flex flex-col gap-1 text-sm">
                 {data.attention.map((item, i) => (
@@ -96,12 +116,15 @@ export default function TodayPage() {
           )}
 
           {data.insight && (
-            <section className="glass-panel border-nexus-violet/30 p-4">
+            <section
+              className="glass-panel animate-panel-deploy border-nexus-violet/30 p-4"
+              style={deployStyle(4)}
+            >
               <h2 className="mb-1 text-xs font-medium tracking-widest text-nexus-violet">NEXUS INSIGHT</h2>
               <p className="text-sm">{data.insight}</p>
             </section>
           )}
-        </>
+        </div>
       )}
     </div>
   );

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { NexusOrb } from "./NexusOrb";
+import { NexusFace } from "./NexusFace";
 
 const LINKS = [
   { href: "/today", label: "Today", icon: "◎" },
@@ -35,7 +35,7 @@ export function BottomNav({ onOrbClick }: { onOrbClick: () => void }) {
         </Link>
       ))}
       <div className="-mt-8">
-        <NexusOrb size={56} onClick={onOrbClick} aria-label="Hablar con NEXUS" />
+        <NexusFace size={56} onClick={onOrbClick} aria-label="Hablar con NEXUS" />
       </div>
       {RIGHT_LINKS.map((link) => (
         <Link

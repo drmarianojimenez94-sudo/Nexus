@@ -77,7 +77,7 @@ seguimiento), cada una con su propio nivel de permiso.
 
 ```
 Micrófono → Web Speech API / motor STT → NexusBrain.parse() → NexusAIProvider
-  → acciones → NexusBrain.generateResponse() → TTS → NEXUS Orb (estado "speaking")
+  → acciones → NexusBrain.generateResponse() → TTS → NEXUS Face (estado "speaking")
 ```
 
 Por etapas, tal como pide el brief:
@@ -130,15 +130,22 @@ y tokens OAuth — nunca contraseñas de Google. Cada conector es un módulo
 independiente en `packages/nexus-connectors/` (Fase 4); agregar uno nuevo
 no debería requerir tocar `NexusBrain`, solo registrar sus tools.
 
+Se suma **NEXUS Home** a esta fase (no estaba en el brief original,
+agregado por dirección de producto): dispositivos smart-home/Bluetooth se
+controlan vía un hub (Home Assistant) usando el mismo patrón de
+conector, no vía Bluetooth directo desde el teléfono — ver el porqué en
+la sección 13 y el detalle en
+[`NEXUS_CONNECTORS.md`](NEXUS_CONNECTORS.md).
+
 ## 9. Estrategia específica para iPhone
 
 - **PWA instalable** (`display: standalone`, iconos, manifest) — ya
   funciona: `apps/web/public/manifest.webmanifest`.
-- Layout mobile-first real (no desktop encogido): bottom nav con el Orb
+- Layout mobile-first real (no desktop encogido): bottom nav con el Face
   destacado en el centro (`BottomNav.tsx`), `safe-area-inset` respetado en
   el nav y en modales (`env(safe-area-inset-bottom)`).
 - Un solo pulgar: navegación inferior, Quick Capture accesible desde
-  cualquier pantalla vía el Orb.
+  cualquier pantalla vía el Face.
 - Reconocimiento de voz vía Web Speech API en Fase 2 (limitaciones de iOS
   Safari se documentan en la sección 13).
 - App nativa (Fase 7) queda como camino de escape para lo que iOS no
@@ -148,7 +155,7 @@ no debería requerir tocar `NexusBrain`, solo registrar sus tools.
 
 Mismo cliente Next.js, breakpoint de escritorio con layout de tres
 columnas: sidebar fija (`Sidebar.tsx`, ya implementado) + contenido +
-panel contextual de NEXUS (pendiente de Fase 3, hoy el Orb en el sidebar
+panel contextual de NEXUS (pendiente de Fase 3, hoy el Face en el sidebar
 abre Quick Capture). `Ctrl/Cmd+K` para un Command Center global queda
 como tarea de pulido post-Fase 1 (no bloqueante para el milestone
 funcional). No se duplica código de UI entre iPhone y Windows: son los
@@ -159,12 +166,12 @@ mismos componentes React con clases responsive de Tailwind
 
 Identidad propia (no una copia de ninguna franquicia): fondo casi negro
 con gradiente radial sutil, paneles translúcidos con blur
-(`.glass-panel`), acentos cian/violeta, el **Nexus Orb** como elemento
+(`.glass-panel`), acentos cian/violeta, el **Nexus Face** como elemento
 central animado (`NexusOrb.tsx`). Reglas aplicadas:
-- Cinemático en reposo (el Orb "respira"), práctico mientras se trabaja
+- Cinemático en reposo (el Face "respira"), práctico mientras se trabaja
   (paneles planos y legibles en Today/Projects/Inbox).
 - `prefers-reduced-motion` respetado globalmente en `globals.css`.
-- Estados del Orb ya modelados (`idle`, `listening`, `thinking`,
+- Estados del Face ya modelados (`idle`, `listening`, `thinking`,
   `speaking`, `action-required`, `offline`) aunque solo `idle` está
   conectado a datos reales hasta que exista Voice (Fase 2).
 
@@ -190,6 +197,12 @@ módulos de vida (Finanzas/Salud/Viajes, Fase 5).
 
 ## 13. Riesgos y limitaciones técnicas
 
+- **Web Bluetooth no existe en iOS** (ningún navegador — todos usan
+  WebKit por mandato de Apple). Ninguna PWA puede hablarle a un
+  dispositivo Bluetooth directamente desde un iPhone, sin excepción y sin
+  workaround. Por eso NEXUS Home (§8) se diseña contra un hub smart-home
+  en vez de contra Bluetooth directo — es la arquitectura correcta de
+  todas formas, no un parche por la limitación.
 - **Safari/iOS y Web Speech API**: el soporte de reconocimiento de voz en
   Safari es más limitado que en Chrome; Voice (Fase 2) probablemente
   necesite un fallback a un proveedor STT en el servidor (subir audio,

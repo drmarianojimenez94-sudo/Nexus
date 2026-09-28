@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { NexusOrb } from "@/components/NexusOrb";
+import { NexusFace } from "@/components/NexusFace";
 import { ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 
@@ -33,7 +33,7 @@ export default function RegisterPage() {
   return (
     <div>
       <div className="mb-6 flex flex-col items-center gap-3">
-        <NexusOrb size={56} />
+        <NexusFace size={56} />
         <h1 className="text-xl font-semibold">Soy NEXUS</h1>
         <p className="text-center text-sm text-nexus-muted">
           Puedo ayudarte a organizar tareas, proyectos, agenda y otras áreas de tu vida.

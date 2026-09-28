@@ -23,9 +23,12 @@
 ✓ src/tests/today.test.ts (2 tests)
   ✓ today > returns an empty-but-valid shape with no data
   ✓ today > surfaces overdue tasks under attention
+✓ src/tests/preferences.test.ts (2 tests)
+  ✓ preferences > starts empty and round-trips a value
+  ✓ preferences > upserts on repeated writes instead of erroring
 
-Test Files  4 passed (4)
-     Tests  14 passed (14)
+Test Files  5 passed (5)
+     Tests  16 passed (16)
 ```
 
 Cobertura deliberada: autenticación completa (registro, duplicados, login
@@ -49,22 +52,33 @@ por terminada, no se dejó como flaky conocido.
 ```
 pnpm lint       → 0 errores, 0 warnings (api, web, shared)
 pnpm typecheck  → 0 errores (api, web, shared)
-pnpm build      → api: esbuild bundle 28.8kb; web: 13 rutas, build de producción OK
+pnpm build      → api: esbuild bundle ~30kb; web: 13 rutas, build de producción OK
 ```
 
 ## Verificación manual en navegador real (Playwright, Chromium)
 
-Camino dorado completo simulado contra `apps/api` + `apps/web` corriendo
-en local (viewport 390×844, tamaño de iPhone):
+Dos corridas contra `apps/api` + `apps/web` en local (viewport 390×844,
+tamaño de iPhone):
 
+**Camino dorado original:**
 1. `POST /register` vía formulario → redirige a `/today`, saluda por
    nombre ("Buenas tardes, Mariano.") ✅
-2. Tap en el Orb → modal de Quick Capture → guardar texto libre → el
+2. Tap en el Face → modal de Quick Capture → guardar texto libre → el
    texto aparece en `/inbox` ✅
 3. Crear un proyecto ("La Horda") desde `/projects` → aparece en la
    grilla sin recargar manualmente ✅
 
-Sin errores de JavaScript no manejados (`pageerror`) durante el flujo.
+**Face + onboarding (verificación del rediseño):**
+1. Registro nuevo → el tour de onboarding aparece automáticamente ✅
+2. Recorrido completo de los 6 pasos, Face cambiando de estado en cada
+   uno (capturado en screenshots) ✅
+3. Today renderiza como grilla HUD con el Face arriba, paneles con
+   entrada escalonada (`animate-panel-deploy`) ✅
+4. Recarga de página: el onboarding **no** vuelve a aparecer — el flag
+   quedó en `preferences` server-side, no en `localStorage` ✅
+
+Sin errores de JavaScript no manejados (`pageerror`) durante ninguno de
+los dos flujos.
 
 ## Qué NO está cubierto todavía (a propósito, no por descuido)
 

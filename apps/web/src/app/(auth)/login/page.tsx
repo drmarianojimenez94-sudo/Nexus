@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { NexusOrb } from "@/components/NexusOrb";
+import { NexusFace } from "@/components/NexusFace";
 import { ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 
@@ -32,7 +32,7 @@ export default function LoginPage() {
   return (
     <div>
       <div className="mb-6 flex flex-col items-center gap-3">
-        <NexusOrb size={56} />
+        <NexusFace size={56} />
         <h1 className="text-xl font-semibold">Bienvenido a NEXUS</h1>
       </div>
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
