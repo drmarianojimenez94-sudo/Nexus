@@ -1,13 +1,31 @@
-# NEXUS — AI Architecture (Fase 3+)
+# NEXUS — AI Architecture
 
-No implementado todavía (Fase 1 es NEXUS Core, sin IA). Este documento fija
-el diseño para que Fase 2/3 se construyan sobre un contrato estable, no
-sobre lo que sea más fácil en el momento.
+## ✅ Ya implementado: la primera pieza real de `NexusAIProvider`
 
-## `NexusAIProvider` — abstracción de proveedor
+`apps/api/src/lib/ai.ts` — `generateDailyInsight()`. Es el primer método
+de la interfaz completa (abajo) conectado a un proveedor real
+(Anthropic, `claude-haiku-4-5` — rápido y barato, apropiado para generar
+una sola oración). Reemplaza el "Insight" de Today, que hasta ahora era
+100% reglas fijas, por una sugerencia generada a partir de los datos
+reales del día (tareas atrasadas, prioridades abiertas, deadlines
+próximos) — nunca inventa datos que no se le pasaron explícitamente.
+
+**Nunca bloquea ni rompe nada si no está configurado**: sin `AI_API_KEY`
+en `.env`, `isAiConfigured` es `false` y Today usa exactamente el mismo
+mensaje basado en reglas que tenía en la Fase 1 — comportamiento
+idéntico, cero riesgo. Con la key puesta, cualquier falla de red, rate
+limit o error del proveedor cae al mismo fallback (`try/catch` alrededor
+de toda la llamada) — el endpoint `/today` nunca puede fallar por culpa
+de la IA. Verificado en este entorno que la conectividad saliente a
+`api.anthropic.com` funciona (se confirmó con una key inválida: HTTP 401,
+es decir, se llega al servidor); falta que quien lo despliegue ponga una
+key real en `AI_API_KEY` — ver [`NEXUS_SETUP.md`](NEXUS_SETUP.md).
+
+## `NexusAIProvider` — abstracción de proveedor (Fase 3 la completa)
 
 ```ts
 interface NexusAIProvider {
+  generateDailyInsight(context: DailyInsightContext): Promise<string | null>; // ✅ implementado
   parseNaturalLanguage(input: string, context: NexusContext): Promise<ParsedIntent>;
   detectIntent(input: string): Promise<Intent>;
   extractEntities(input: string): Promise<ExtractedEntity[]>;

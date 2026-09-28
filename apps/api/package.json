@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "tsc --noEmit && esbuild src/server.ts --bundle --platform=node --format=esm --outfile=dist/server.js --external:@prisma/client --external:bcryptjs --external:cookie-parser --external:cors --external:dotenv --external:express --external:express-rate-limit --external:helmet --external:jsonwebtoken --external:zod",
+    "build": "tsc --noEmit && esbuild src/server.ts --bundle --platform=node --format=esm --outfile=dist/server.js --external:@anthropic-ai/sdk --external:@prisma/client --external:bcryptjs --external:cookie-parser --external:cors --external:dotenv --external:express --external:express-rate-limit --external:helmet --external:jsonwebtoken --external:zod",
     "start": "node dist/server.js",
     "lint": "eslint src --ext .ts",
     "typecheck": "tsc --noEmit",
@@ -16,6 +16,7 @@
     "db:studio": "prisma studio"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.32.1",
     "@nexus/shared": "workspace:*",
     "@prisma/client": "^6.19.3",
     "bcryptjs": "^2.4.3",

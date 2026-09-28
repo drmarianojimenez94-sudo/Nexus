@@ -37,6 +37,10 @@ Bluetooth directo desde el iPhone, porque iOS no lo permite (ver
 - [x] **Captura offline**: Quick Capture nunca pierde un pensamiento por
       falta de señal — se guarda en el teléfono (`localStorage`) y se
       sincroniza solo apenas vuelve la conexión
+- [x] **Primera pieza real de IA**: el Insight de Today ahora lo puede
+      generar Claude (Anthropic, vía `NexusAIProvider`) en vez de una
+      regla fija, con fallback automático si no hay `AI_API_KEY` o si
+      falla la llamada — ver [`NEXUS_AI_ARCHITECTURE.md`](NEXUS_AI_ARCHITECTURE.md)
 - [x] PWA instalable (manifest, iconos, layout mobile-first)
 - [x] Audit log en toda escritura
 - [x] Tests automatizados del backend (16 tests, ver

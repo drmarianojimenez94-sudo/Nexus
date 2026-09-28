@@ -18,4 +18,8 @@ export const env = {
     .split(",")
     .map((origin) => origin.trim()),
   nodeEnv: process.env.NODE_ENV ?? "development",
+  // Optional: Phase 1 works fully without these (Today's insight falls
+  // back to the rule-based version). Never required.
+  aiApiKey: process.env.AI_API_KEY,
+  aiModel: process.env.AI_MODEL ?? "claude-haiku-4-5",
 };
