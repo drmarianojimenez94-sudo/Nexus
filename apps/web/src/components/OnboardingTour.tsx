@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { NexusFace, type FaceState } from "./NexusFace";
+import { useSpeech } from "@/lib/useSpeech";
 
 interface Step {
   face: FaceState;
@@ -18,7 +19,7 @@ const STEPS: Step[] = [
   {
     face: "listening",
     title: "Tocá mi cara para hablarme",
-    body: "En cualquier pantalla, tocá el Face (abajo en el celular, arriba en la barra lateral) para abrir Captura Rápida. Escribí lo que se te ocurra, sin pensar dónde va — yo lo guardo.",
+    body: "En cualquier pantalla, tocá el Face y te escucho. Decime lo que se te ocurra, sin pensar dónde va — yo lo guardo o te llevo a donde haga falta.",
   },
   {
     face: "idle",
@@ -38,7 +39,7 @@ const STEPS: Step[] = [
   {
     face: "thinking",
     title: "Esto recién empieza",
-    body: "Hoy podés escribir; hablar en voz alta y que NEXUS te entienda, recuerde y actúe por vos viene en la próxima etapa.",
+    body: "Recordar contexto entre conversaciones y conectarme con tu calendario y correo real viene en las próximas etapas.",
   },
 ];
 
@@ -46,6 +47,11 @@ export function OnboardingTour({ onFinish }: { onFinish: () => void }) {
   const [index, setIndex] = useState(0);
   const step = STEPS[index]!;
   const isLast = index === STEPS.length - 1;
+  const { speak, ttsSupported } = useSpeech();
+
+  useEffect(() => {
+    if (ttsSupported) void speak(step.body);
+  }, [index]);
 
   return (
     <div className="fixed inset-0 z-[60] flex flex-col items-center justify-center gap-6 bg-nexus-bg px-6 text-center">

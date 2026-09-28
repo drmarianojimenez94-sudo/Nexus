@@ -4,6 +4,7 @@ import type { Event, Task } from "@nexus/shared";
 import { NexusFace, type FaceState } from "@/components/NexusFace";
 import { useAuth } from "@/lib/auth-context";
 import { useApiData } from "@/lib/useApiData";
+import { useSpeech } from "@/lib/useSpeech";
 
 interface TodayResponse {
   now: Event | null;
@@ -30,11 +31,29 @@ function deployStyle(index: number): React.CSSProperties {
   return { animationDelay: `${index * 60}ms` };
 }
 
+function buildSpokenSummary(data: TodayResponse): string {
+  const parts: string[] = [];
+  parts.push(
+    data.now
+      ? `Lo próximo es "${data.now.title}" a las ${formatTime(data.now.startAt)}.`
+      : "No tenés nada agendado próximamente."
+  );
+  if (data.priorities.length > 0) {
+    parts.push(`Tus prioridades: ${data.priorities.map((t) => t.title).join(", ")}.`);
+  }
+  if (data.attention.length > 0) {
+    parts.push(`Atención: ${data.attention.join(". ")}.`);
+  }
+  if (data.insight) parts.push(data.insight);
+  return parts.join(" ");
+}
+
 export default function TodayPage() {
   const { user } = useAuth();
   const { data, loading, error } = useApiData<TodayResponse>("/today");
+  const { speak, speaking, ttsSupported } = useSpeech();
 
-  const faceState: FaceState = data && data.attention.length > 0 ? "action-required" : "idle";
+  const faceState: FaceState = speaking ? "speaking" : data && data.attention.length > 0 ? "action-required" : "idle";
 
   return (
     <div className="flex flex-col gap-5">
@@ -51,6 +70,15 @@ export default function TodayPage() {
             </p>
           )}
         </div>
+        {ttsSupported && data && (
+          <button
+            onClick={() => void speak(buildSpokenSummary(data))}
+            disabled={speaking}
+            className="ml-0 flex items-center gap-1.5 rounded-full border border-nexus-border px-3 py-1.5 text-xs text-nexus-muted disabled:opacity-50 sm:ml-auto"
+          >
+            {speaking ? "🔊 Hablando…" : "🔊 Escuchar resumen"}
+          </button>
+        )}
       </header>
 
       {loading && <p className="text-center text-nexus-muted">Cargando…</p>}
