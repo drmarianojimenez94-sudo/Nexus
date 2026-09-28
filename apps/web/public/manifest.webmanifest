@@ -1,0 +1,15 @@
+{
+  "name": "NEXUS — Personal AI Operating System",
+  "short_name": "NEXUS",
+  "description": "Un sistema central para organizar y operar tu vida.",
+  "start_url": "/today",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#05070c",
+  "theme_color": "#05070c",
+  "orientation": "portrait-primary",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}

@@ -1,0 +1,43 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+html,
+body {
+  background: radial-gradient(ellipse at top, #0a1020 0%, #05070c 60%);
+  color: #e7ecf7;
+  min-height: 100%;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Cinematic when idle, practical when working (spec §28): keep motion
+   subtle by default, and remove it entirely when the OS asks us to. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@layer components {
+  .glass-panel {
+    @apply rounded-2xl border border-nexus-border bg-nexus-panel/70 backdrop-blur-xl;
+  }
+
+  .nexus-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(148, 197, 255, 0.25) transparent;
+  }
+}
