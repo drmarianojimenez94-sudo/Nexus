@@ -26,11 +26,12 @@ services:
     name: nexus
     env: node
     plan: free
+    # No `corepack enable` — Render's Node build image ships pnpm already,
+    # and corepack's self-install step fails there (EROFS: /usr/bin is
+    # read-only in that image).
     buildCommand: >-
-      corepack enable &&
       pnpm install --frozen-lockfile &&
       pnpm db:generate &&
-      pnpm db:deploy &&
       pnpm --filter @nexus/api build &&
       pnpm --filter @nexus/web build
     startCommand: bash scripts/render-start.sh
