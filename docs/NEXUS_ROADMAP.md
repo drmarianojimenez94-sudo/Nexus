@@ -162,10 +162,24 @@ semana/mes del calendario, módulos de vida (Finanzas/Salud/Viajes/Formación).
 
 ## ⏳ Fase 6 — Intelligence
 
-- [ ] Morning Brief / Evening Review / Weekly Review generados
-- [ ] Detección de conflictos de calendario, proyectos abandonados,
-      sobrecarga diaria
-- [ ] Proactividad calibrada (calidad sobre cantidad — nunca spam)
+- [x] **Detección proactiva en Today/ATTENTION** (`apps/api/src/lib/proactivity.ts`,
+      con 10 tests unitarios propios): conflictos de calendario (dos
+      eventos que se superponen, detectados con un sweep sobre el día, no
+      solo pares consecutivos), sobrecarga diaria (6+ eventos), y proyecto
+      más abandonado (ACTIVE, con más de 14 días de vida y 21+ días sin
+      una tarea tocada) — a propósito **como máximo una línea por chequeo**,
+      nunca una lista, para no convertirse en spam.
+- [x] **Morning Brief / Evening Review**: el mismo Insight de Today ahora
+      cambia de enfoque según la hora — de mañana mira hacia adelante (qué
+      se viene, qué priorizar), de noche mira hacia atrás (qué quedó
+      pendiente, qué se puede soltar por hoy) en vez de listar lo ya
+      pasado. Requiere `AI_API_KEY`, igual que el resto del Insight; sin
+      key, sigue el mensaje fijo de siempre.
+- [ ] Weekly Review generado
+- [ ] Notificaciones push reales (con la app cerrada) — necesita un
+      service worker + claves VAPID, decisión de infraestructura propia
+      que todavía no se tomó; hoy la proactividad es "la próxima vez que
+      abrís Today o le hablás a NEXUS", no una notificación que te busca
 
 ## ⏳ Fase 7 — Native
 

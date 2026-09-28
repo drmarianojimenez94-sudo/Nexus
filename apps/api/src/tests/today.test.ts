@@ -29,4 +29,24 @@ describe("today", () => {
     const res = await agent.get("/today");
     expect(res.body.attention.some((a: string) => a.includes("atrasada"))).toBe(true);
   });
+
+  it("proactively flags two overlapping events today", async () => {
+    const start = new Date();
+    start.setHours(10, 0, 0, 0);
+    const overlapStart = new Date(start.getTime() + 30 * 60 * 1000);
+    const end = new Date(start.getTime() + 60 * 60 * 1000);
+    const overlapEnd = new Date(overlapStart.getTime() + 60 * 60 * 1000);
+
+    await agent
+      .post("/events")
+      .send({ title: "Reunión A", startAt: start.toISOString(), endAt: end.toISOString() });
+    await agent
+      .post("/events")
+      .send({ title: "Reunión B", startAt: overlapStart.toISOString(), endAt: overlapEnd.toISOString() });
+
+    const res = await agent.get("/today");
+    expect(res.body.attention.some((a: string) => a.includes("Reunión A") && a.includes("se superponen"))).toBe(
+      true
+    );
+  });
 });

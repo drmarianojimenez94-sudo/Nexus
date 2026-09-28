@@ -20,6 +20,8 @@ export interface DailyInsightContext {
   eventsToday: number;
   /** Freeform memories (spec §6) the user asked NEXUS to remember, most recent first. */
   recentMemories: string[];
+  /** Morning Brief vs. Evening Review framing (spec Fase 6) — same call, different lens. */
+  timeOfDay: "morning" | "afternoon" | "evening";
 }
 
 const client = env.aiApiKey ? new Anthropic({ apiKey: env.aiApiKey }) : null;
@@ -38,6 +40,9 @@ class AnthropicProvider implements NexusAIProvider {
             "Sos NEXUS, un asistente personal. Generás UNA sola oración breve (máximo 220 caracteres), " +
             "en español rioplatense, tono directo y tranquilo, sin emojis, sin saludos, sin explicar que sos una IA. " +
             "Es una sugerencia u observación útil sobre el día de la persona, basada solo en los datos que te paso. " +
+            "Si es de mañana, es un Morning Brief: mirá hacia adelante (qué se viene, qué conviene priorizar). " +
+            "Si es de noche, es un Evening Review: mirá hacia atrás (qué quedó pendiente, qué se puede soltar por " +
+            "hoy) en vez de listar lo que ya pasó. A la tarde, cualquiera de los dos enfoques sirve. " +
             "Si te paso 'Cosas que recordás sobre esta persona', son datos reales que guardó antes — podés usarlos " +
             "para que la sugerencia se sienta personal (ej. mencionar a alguien por nombre), pero solo si son " +
             "relevantes al día de hoy; ignoralos si no aportan. Nunca inventes tareas, personas o datos que no te di.",
@@ -57,8 +62,15 @@ class AnthropicProvider implements NexusAIProvider {
   }
 }
 
+const TIME_OF_DAY_LABEL: Record<DailyInsightContext["timeOfDay"], string> = {
+  morning: "mañana",
+  afternoon: "tarde",
+  evening: "noche",
+};
+
 function buildInsightPrompt(context: DailyInsightContext): string {
   const lines = [
+    `Momento del día: ${TIME_OF_DAY_LABEL[context.timeOfDay]}`,
     `Usuario: ${context.userName}`,
     `Tareas atrasadas: ${context.overdueTaskCount}`,
     `Tareas abiertas: ${context.openTaskTitles.length ? context.openTaskTitles.join("; ") : "ninguna"}`,

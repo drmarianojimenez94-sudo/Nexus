@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { aiProvider, isAiConfigured } from "../lib/ai.js";
 import { prisma } from "../lib/prisma.js";
+import { detectCalendarConflicts, detectOverload, findMostAbandonedProject } from "../lib/proactivity.js";
 import { asyncHandler } from "../middleware/asyncHandler.js";
 import { authenticate } from "../middleware/authenticate.js";
 
@@ -37,7 +38,7 @@ todayRouter.get(
     endOfDay.setHours(23, 59, 59, 999);
     const in48h = new Date(now.getTime() + 48 * 60 * 60 * 1000);
 
-    const [user, nextEvent, todaysEvents, openTasks, overdueTasks, upcomingDeadlines, recentMemories] =
+    const [user, nextEvent, todaysEvents, openTasks, overdueTasks, upcomingDeadlines, recentMemories, activeProjects] =
       await Promise.all([
         prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { name: true } }),
         prisma.event.findFirst({
@@ -71,6 +72,14 @@ todayRouter.get(
           take: 8,
           select: { content: true },
         }),
+        prisma.project.findMany({
+          where: { userId, status: "ACTIVE" },
+          select: {
+            name: true,
+            createdAt: true,
+            tasks: { orderBy: { updatedAt: "desc" }, take: 1, select: { updatedAt: true } },
+          },
+        }),
       ]);
 
     const attention: string[] = [];
@@ -80,6 +89,22 @@ todayRouter.get(
     for (const task of upcomingDeadlines) {
       attention.push(`"${task.title}" vence pronto`);
     }
+
+    // Proactividad (spec Fase 6): NEXUS surfaces these on its own, no need
+    // to notice them yourself — calibrated to at most one line per check,
+    // never a list, so ATTENTION stays worth reading.
+    attention.push(...detectCalendarConflicts(todaysEvents));
+    const overload = detectOverload(todaysEvents.length);
+    if (overload) attention.push(overload);
+    const abandonedProject = findMostAbandonedProject(
+      activeProjects.map((p) => ({
+        name: p.name,
+        createdAt: p.createdAt,
+        lastTaskActivity: p.tasks[0]?.updatedAt ?? null,
+      })),
+      now
+    );
+    if (abandonedProject) attention.push(abandonedProject);
 
     const fallbackInsight = ruleBasedInsight(overdueTasks, openTasks.length, todaysEvents.length);
     let insight = fallbackInsight;
@@ -95,6 +120,7 @@ todayRouter.get(
         })),
         eventsToday: todaysEvents.length,
         recentMemories: recentMemories.map((m) => m.content),
+        timeOfDay: now.getHours() < 12 ? "morning" : now.getHours() < 19 ? "afternoon" : "evening",
       });
       if (generated) insight = generated;
     }
