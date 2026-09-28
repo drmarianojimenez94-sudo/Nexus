@@ -132,13 +132,25 @@ semana/mes del calendario, módulos de vida (Finanzas/Salud/Viajes/Formación).
 
 ## ⏳ Fase 4 — NEXUS Connect (incluye NEXUS Home)
 
-- [ ] Google Calendar, Gmail, Google Contacts, Google Drive
-      (`NexusConnector`, ver [`NEXUS_CONNECTORS.md`](NEXUS_CONNECTORS.md))
+- [x] **Google Calendar** (primer conector real): OAuth 2.0 completo
+      (`apps/api/src/routes/connectors.ts` + `lib/googleCalendar.ts`) —
+      conectar, desconectar, y sincronizar manualmente ("Sincronizar
+      ahora"), importando eventos a la tabla `events` local con
+      `externalSource: "google_calendar"` para que Today/Calendar los
+      traten igual que los nativos, nunca "dos calendarios en paralelo".
+      Sin `GOOGLE_CLIENT_ID`/`SECRET` configurados, Settings lo explica en
+      vez de mostrar un botón roto — mismo patrón que `AI_API_KEY`.
+- [x] **Cifrado de tokens OAuth en reposo**: `lib/tokenCrypto.ts`
+      (AES-256-GCM, clave derivada de `AUTH_SECRET` — sin pedir otra
+      variable de entorno más). Nunca se guarda un token en texto plano.
+- [x] Pantalla Settings → Integrations funcional (antes era un stub fijo)
+- [ ] Gmail, Google Contacts, Google Drive — mismo patrón que Calendar,
+      reusan las mismas credenciales OAuth (solo agregan scopes)
+- [ ] Sync automático (hoy es manual, "Sincronizar ahora" — a propósito,
+      para que las llamadas a la API de Google sean predecibles)
 - [ ] **NEXUS Home**: conector hacia un hub smart-home (Home Assistant)
       para dispositivos Bluetooth/Zigbee/Wi-Fi — no Bluetooth directo
       desde el iPhone, iOS no lo permite en ningún navegador
-- [ ] Pantalla Settings → Integrations funcional (hoy es un stub)
-- [ ] Cifrado de tokens OAuth en reposo
 
 ## ⏳ Fase 5 — Life Modules
 

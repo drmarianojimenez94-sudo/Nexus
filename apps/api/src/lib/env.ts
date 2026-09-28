@@ -24,4 +24,10 @@ export const env = {
   // back to the rule-based version). Never required.
   aiApiKey: process.env.AI_API_KEY,
   aiModel: process.env.AI_MODEL ?? "claude-haiku-4-5",
+  // Optional: Google connectors (Phase 4) are simply unavailable —
+  // Settings shows "not configured" instead of a broken connect button —
+  // until these are set. The rest of NEXUS never depends on them.
+  googleClientId: process.env.GOOGLE_CLIENT_ID,
+  googleClientSecret: process.env.GOOGLE_CLIENT_SECRET,
+  googleRedirectUri: process.env.GOOGLE_REDIRECT_URI,
 };

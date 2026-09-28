@@ -1,9 +1,32 @@
 # NEXUS — Connectors (Fase 4)
 
-No implementado todavía. La tabla `integrations` y el enum
-`IntegrationStatus` (`NOT_CONNECTED` / `CONNECTED` / `ERROR`) ya existen en
-el schema para que la pantalla Settings → Integrations tenga dónde leer
-estado desde el día en que se construya.
+**Google Calendar está implementado** (`apps/api/src/routes/connectors.ts`,
+`lib/googleCalendar.ts`, `lib/tokenCrypto.ts`, panel en Settings). Gmail,
+Contacts y Drive todavía no — siguen el mismo patrón descrito abajo, y
+reusan las mismas credenciales OAuth (solo agregan scopes nuevos). La
+tabla `integrations` y el enum `IntegrationStatus`
+(`NOT_CONNECTED` / `CONNECTED` / `ERROR`) existen desde Fase 1 para que
+Settings → Integrations tenga dónde leer estado.
+
+## Cómo activar Google Calendar (paso a paso)
+
+1. Andá a [console.cloud.google.com/apis/credentials](https://console.cloud.google.com/apis/credentials)
+   (creá un proyecto nuevo ahí si no tenés uno — es gratis).
+2. "Enable APIs and services" → buscá **Google Calendar API** → Enable.
+3. "Create Credentials" → **OAuth client ID** → tipo **Web application**.
+4. En "Authorized redirect URIs" agregá exactamente:
+   `https://<tu-dominio-de-Nexus>/api/connectors/google/callback`
+   (con tu app corriendo local: `http://localhost:3000/api/connectors/google/callback`).
+5. Copiá el **Client ID** y el **Client Secret** que te da Google.
+6. En Render (o tu `.env` local): cargá `GOOGLE_CLIENT_ID`,
+   `GOOGLE_CLIENT_SECRET` y `GOOGLE_REDIRECT_URI` (la misma URL del paso 4)
+   como variables de entorno del servicio.
+7. Recargá Settings en la app → el panel de Integrations ya no dice "no
+   configurado" → botón **Conectar**.
+
+Nada de esto es obligatorio — sin estas tres variables, Settings explica
+que falta configurarlo y el resto de NEXUS sigue funcionando exactamente
+igual, mismo principio que `AI_API_KEY`.
 
 ## `NexusConnector` — interfaz común
 
@@ -94,12 +117,12 @@ algo de la casa (una Raspberry Pi alcanza) y emparejarlos ahí", no
 ## OAuth y seguridad
 
 - Nunca se guarda una contraseña de Google — solo `accessToken` /
-  `refreshToken` de OAuth 2.0, cifrados en reposo (ver
-  [`NEXUS_SECURITY.md`](NEXUS_SECURITY.md)).
+  `refreshToken` de OAuth 2.0, **cifrados en reposo** (AES-256-GCM,
+  `lib/tokenCrypto.ts` — implementado, ver [`NEXUS_SECURITY.md`](NEXUS_SECURITY.md)).
 - Si un token vence o el proveedor revoca acceso, `Integration.status`
   pasa a `ERROR` con `errorMessage`, y la pantalla de Settings lo muestra
   en vez de fallar en silencio la próxima vez que NexusBrain intente usar
-  esa tool.
+  esa tool. Implementado para Google Calendar en el flujo de sync.
 - El producto nunca depende completamente de una integración externa: si
   Google Calendar está desconectado, el calendario nativo de NEXUS sigue
   funcionando igual.

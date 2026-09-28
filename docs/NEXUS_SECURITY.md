@@ -36,13 +36,18 @@
   nombres de variables sin valores reales; no hay ninguna API key ni
   connection string real committeada en el repositorio.
 
-## Pendiente / diseñado para fases posteriores
+## Implementado en Fase 4 (Connectors)
 
 - **Cifrado de tokens OAuth en reposo** (`integrations.accessToken` /
-  `refreshToken`): estas columnas existen desde Fase 1 pero no se usan
-  hasta Fase 4 (Connectors); antes de guardar el primer token real hay
-  que agregar cifrado a nivel de aplicación (no solo TLS + disco cifrado
-  del proveedor de base de datos).
+  `refreshToken`): AES-256-GCM, `apps/api/src/lib/tokenCrypto.ts`, clave
+  derivada de `AUTH_SECRET` (sin pedir otra variable de entorno). Nunca se
+  guarda un `accessToken`/`refreshToken` de Google en texto plano.
+- **CSRF en el flujo OAuth**: `state` aleatorio de 24 bytes, guardado en
+  una cookie `httpOnly` de 10 minutos y verificado byte a byte contra el
+  que vuelve en el callback antes de intercambiar el `code` por tokens.
+
+## Pendiente / diseñado para fases posteriores
+
 - **2FA**: no implementado en Fase 1; el modelo de `devices` está pensado
   para eventualmente distinguir dispositivos de confianza.
 - **Backups**: dependen del proveedor de Postgres elegido (Neon hace

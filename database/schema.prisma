@@ -234,6 +234,7 @@ model Event {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
+  @@unique([userId, externalSource, externalId])
   @@index([userId, startAt])
   @@index([projectId])
   @@map("events")

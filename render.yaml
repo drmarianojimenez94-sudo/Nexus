@@ -56,3 +56,13 @@ services:
         sync: false
       - key: AI_MODEL
         value: claude-haiku-4-5
+      # Optional, same pattern as AI_API_KEY — Settings just shows "not
+      # configured" without these. See .env.example for how to get them
+      # and why GOOGLE_REDIRECT_URI has to be set by hand (it depends on
+      # this service's own URL, which Render only assigns after deploy).
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_REDIRECT_URI
+        sync: false

@@ -7,6 +7,7 @@ import { env } from "./lib/env.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { areasRouter } from "./routes/areas.js";
 import { authRouter } from "./routes/auth.js";
+import { connectorsRouter } from "./routes/connectors.js";
 import { eventsRouter } from "./routes/events.js";
 import { inboxRouter, quickCaptureRouter } from "./routes/inbox.js";
 import { memoryRouter } from "./routes/memory.js";
@@ -47,6 +48,7 @@ export function createApp() {
   app.use("/today", todayRouter);
   app.use("/preferences", preferencesRouter);
   app.use("/memories", memoryRouter);
+  app.use("/connectors", connectorsRouter);
 
   app.use(errorHandler);
 
