@@ -32,7 +32,11 @@ Bluetooth directo desde el iPhone, porque iOS no lo permite (ver
       recorre Face/Quick Capture, Today, Inbox, Calendar, Projects/Areas
 - [x] **Nexus Face**: reemplaza al Orb original — rostro abstracto (ojos
       + boca tipo ecualizador), seis estados, listo para que Voice lo
-      alimente con audio real
+      alimente con audio real, con un shell 3D real (CSS `preserve-3d` +
+      `perspective`) rotando alrededor
+- [x] **Captura offline**: Quick Capture nunca pierde un pensamiento por
+      falta de señal — se guarda en el teléfono (`localStorage`) y se
+      sincroniza solo apenas vuelve la conexión
 - [x] PWA instalable (manifest, iconos, layout mobile-first)
 - [x] Audit log en toda escritura
 - [x] Tests automatizados del backend (16 tests, ver

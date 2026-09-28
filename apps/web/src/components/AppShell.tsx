@@ -4,6 +4,7 @@ import { PREFERENCE_KEYS } from "@nexus/shared";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { flushOfflineQueue } from "@/lib/offlineQueue";
 import { usePreferences } from "@/lib/usePreferences";
 import { BottomNav } from "./BottomNav";
 import { NexusFace } from "./NexusFace";
@@ -22,6 +23,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       router.replace("/login");
     }
   }, [loading, user, router]);
+
+  // Anything captured while offline (spec §51) gets flushed the moment
+  // there's a session and connectivity — on load, and whenever the
+  // browser tells us we came back online.
+  useEffect(() => {
+    if (!user) return;
+    void flushOfflineQueue();
+    const onOnline = () => void flushOfflineQueue();
+    window.addEventListener("online", onOnline);
+    return () => window.removeEventListener("online", onOnline);
+  }, [user]);
 
   if (loading || !user) {
     return (

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
+import { queueCapture } from "@/lib/offlineQueue";
 
 interface QuickCaptureModalProps {
   onClose: () => void;
@@ -11,25 +12,52 @@ interface QuickCaptureModalProps {
 /**
  * Always-reachable capture (spec §11): dump a thought without classifying
  * it. Voice capture is stubbed until Nexus Voice (Phase 2) lands; text
- * works end to end today.
+ * works end to end today, online or offline (spec §51).
  */
 export function QuickCaptureModal({ onClose, onCaptured }: QuickCaptureModalProps) {
   const [text, setText] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [queuedNotice, setQueuedNotice] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!text.trim()) return;
+    const rawText = text.trim();
+    if (!rawText) return;
     setSubmitting(true);
     setError(null);
+
+    if (!navigator.onLine) {
+      queueCapture(rawText);
+      setText("");
+      setQueuedNotice(true);
+      setSubmitting(false);
+      setTimeout(() => {
+        onCaptured?.();
+        onClose();
+      }, 900);
+      return;
+    }
+
     try {
-      await api.post("/quick-capture", { rawText: text.trim(), source: "TEXT" });
+      await api.post("/quick-capture", { rawText, source: "TEXT" });
       setText("");
       onCaptured?.();
       onClose();
-    } catch {
-      setError("No se pudo guardar. Probá de nuevo.");
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError("No se pudo guardar. Probá de nuevo.");
+      } else {
+        // Network failure even though navigator.onLine said we're up —
+        // treat it the same as offline rather than lose the thought.
+        queueCapture(rawText);
+        setText("");
+        setQueuedNotice(true);
+        setTimeout(() => {
+          onCaptured?.();
+          onClose();
+        }, 900);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -61,6 +89,11 @@ export function QuickCaptureModal({ onClose, onCaptured }: QuickCaptureModalProp
           className="w-full resize-none rounded-xl border border-nexus-border bg-black/30 p-3 text-nexus-text placeholder:text-nexus-muted focus:border-nexus-cyan focus:outline-none"
         />
         {error && <p className="mt-2 text-sm text-nexus-danger">{error}</p>}
+        {queuedNotice && (
+          <p className="mt-2 text-sm text-nexus-amber">
+            Sin conexión — lo guardé en el teléfono y lo sincronizo apenas vuelva internet.
+          </p>
+        )}
         <div className="mt-3 flex items-center justify-between">
           <button
             type="button"
