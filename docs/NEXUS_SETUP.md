@@ -37,10 +37,10 @@ cp .env.example .env
 | `DATABASE_URL` | Connection string de Postgres (`postgresql://user:pass@host:5432/db`) |
 | `AUTH_SECRET` | String aleatorio largo para firmar los JWT. Generalo con `openssl rand -hex 32` |
 | `AUTH_ACCESS_TOKEN_TTL` / `AUTH_REFRESH_TOKEN_TTL` | Duración de sesión (`15m`, `30d` por defecto) |
-| `API_PORT` | Puerto del backend (4000 por defecto) |
-| `API_CORS_ORIGINS` | Orígenes permitidos a llamar a la API (la URL del frontend) |
-| `NEXT_PUBLIC_API_URL` | URL de la API que usa el frontend (debe ser accesible desde el navegador) |
-| `AI_PROVIDER` / `AI_API_KEY` | Fase 3+, no se usan todavía |
+| `API_PORT` | Puerto del backend (4000 por defecto; en producción algunos hosts lo pisan con `PORT`) |
+| `API_CORS_ORIGINS` | Orígenes permitidos a llamar a la API directamente (no lo usa el flujo normal del frontend, ver abajo) |
+| `BACKEND_INTERNAL_URL` | Server-side only, la usa `apps/web/next.config.mjs` para proxyear `/api/*` a la API real. Local: `http://localhost:4000` (default si no lo seteás). El navegador nunca llama a la API directo — ver `src/lib/api.ts` |
+| `AI_API_KEY` / `AI_MODEL` | Opcional. Sin key, el Insight de Today usa el fallback basado en reglas — ver [`NEXUS_AI_ARCHITECTURE.md`](NEXUS_AI_ARCHITECTURE.md) |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` / `GOOGLE_REDIRECT_URI` | Fase 4+, no se usan todavía |
 
 ## 4. Generar el cliente de Prisma y migrar
@@ -79,3 +79,9 @@ secretos reales, y nunca tocan `nexus_dev`.
 ```bash
 pnpm db:studio
 ```
+
+## Deploy para probarlo (no local)
+
+Ver la sección **Deployment** del [`README`](../README.md) — hay un
+Render Blueprint (`render.yaml`) que levanta todo (API + web + Postgres)
+desde un solo click, sin tener que conectar varios servicios a mano.

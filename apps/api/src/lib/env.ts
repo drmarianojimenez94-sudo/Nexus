@@ -13,7 +13,9 @@ export const env = {
   authSecret: required("AUTH_SECRET"),
   accessTokenTtl: process.env.AUTH_ACCESS_TOKEN_TTL ?? "15m",
   refreshTokenTtl: process.env.AUTH_REFRESH_TOKEN_TTL ?? "30d",
-  port: Number(process.env.API_PORT ?? 4000),
+  // Most PaaS hosts (Render included) assign the port via `PORT` and
+  // require the process to bind to it; API_PORT is the local-dev override.
+  port: Number(process.env.PORT ?? process.env.API_PORT ?? 4000),
   corsOrigins: (process.env.API_CORS_ORIGINS ?? "http://localhost:3000")
     .split(",")
     .map((origin) => origin.trim()),

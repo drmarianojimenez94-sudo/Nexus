@@ -115,13 +115,58 @@ All four run in CI on every push (see `.github/workflows/ci.yml`).
 
 ## Deployment
 
-Not yet wired to a hosting provider — the repo is structured so that
-`apps/api` and `apps/web` can each be deployed independently (Render/Fly/Railway
-for the API, Vercel or the same host for the Next.js app), with `DATABASE_URL`
-pointing at a managed Postgres (Neon). CI currently runs install → lint →
-typecheck → test → build and stops there; wiring an actual deploy step is a
-deliberate next step once a hosting provider is chosen (spec §56: never
-auto-deploy before a deployment target is configured).
+**GitHub Pages can't run this** — it only serves static files, and NEXUS
+needs a live Node process (the API) and a real database. There's no way
+around that; it's not a configuration issue.
+
+### One-click deploy (Render)
+
+[`render.yaml`](render.yaml) is a Render Blueprint that provisions
+everything from one account: a free Postgres database and one web service
+running both the API and the Next.js app together (see
+[`scripts/render-start.sh`](scripts/render-start.sh) for why they're one
+process — it also sidesteps a real footgun: api and web on two different
+subdomains of a shared platform domain, e.g. `*.onrender.com`, are
+different *sites* for cookie purposes on most PaaS providers, which
+silently breaks cookie-based login).
+
+1. Push this repo to your own GitHub account (already done if you're
+   reading this from your fork/copy).
+2. On [render.com](https://render.com), **New +** → **Blueprint** → pick
+   the repo. Render reads `render.yaml` and creates the database and the
+   service by itself — nothing to wire by hand.
+3. Open the new service once it's up, click through to its URL. That's
+   the whole app, live.
+4. Optional: in the service's Environment tab, set `AI_API_KEY` (an
+   Anthropic key from [console.anthropic.com](https://console.anthropic.com))
+   for the AI-generated Today insight — works fine without it too.
+
+Free tier: the service sleeps after 15 minutes idle (~30-60s to wake on
+the next request), and the free Postgres database expires after 90 days.
+Fine for trying it out; move to a paid plan for anything longer-lived.
+
+*(I built and verified this Blueprint's logic by running the exact same
+build and start commands locally against a throwaway database — including
+the cookie/proxy behavior end-to-end in a real browser — but couldn't
+click through an actual Render deploy from this session, since this
+environment's network policy blocks render.com outright. If Render's
+blueprint UI flags a field when you deploy it, paste me the error and
+I'll fix it immediately.)*
+
+### Other hosts
+
+`apps/api` and `apps/web` can also be deployed as two independent
+services on any Node host (Fly, Railway, etc.) with a managed Postgres
+(Neon is the preferred provider) — set `DATABASE_URL` on the API and
+`BACKEND_INTERNAL_URL` on the web app to the API's URL. Doing that across
+two different domains (not subdomains of one PaaS domain) avoids the
+cookie issue above, since two unrelated domains are already "cross-site"
+in a way your auth flow would need to handle explicitly (or you'd add a
+proper cross-site cookie configuration) — the single-service Render setup
+above remains the simplest path.
+
+CI runs install → lint → typecheck → test → build on every push (see
+`.github/workflows/ci.yml`); it doesn't deploy automatically yet.
 
 ## Documentation
 

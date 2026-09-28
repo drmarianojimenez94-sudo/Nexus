@@ -1,5 +1,3 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
-
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -9,8 +7,18 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Always same-origin: the browser calls /api/*, and the Next.js server
+ * rewrites it to the real backend (next.config.mjs, BACKEND_INTERNAL_URL).
+ * This matters beyond convenience — if api and web were ever deployed on
+ * different subdomains of a shared PaaS domain (onrender.com, vercel.app,
+ * etc.), those subdomains are "different sites" for cookie purposes on
+ * most such platforms, and the sameSite=lax session cookie would never
+ * reach a cross-site fetch. Routing everything through one origin avoids
+ * that failure mode entirely, in dev and in production alike.
+ */
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, {
+  const res = await fetch(`/api${path}`, {
     ...options,
     credentials: "include",
     headers: {
