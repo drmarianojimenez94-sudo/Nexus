@@ -31,18 +31,6 @@ export default {
         "glow-violet": "0 0 24px rgba(139, 123, 255, 0.35)",
       },
       keyframes: {
-        "orb-idle": {
-          "0%, 100%": { transform: "scale(1)", opacity: "0.9" },
-          "50%": { transform: "scale(1.04)", opacity: "1" },
-        },
-        "orb-listen": {
-          "0%, 100%": { transform: "scale(1)" },
-          "50%": { transform: "scale(1.12)" },
-        },
-        "orb-think": {
-          "0%": { transform: "rotate(0deg)" },
-          "100%": { transform: "rotate(360deg)" },
-        },
         "fade-in": {
           from: { opacity: "0", transform: "translateY(4px)" },
           to: { opacity: "1", transform: "translateY(0)" },
@@ -83,11 +71,15 @@ export default {
           from: { opacity: "0", transform: "translateY(8px) scale(0.98)" },
           to: { opacity: "1", transform: "translateY(0) scale(1)" },
         },
+        // Nexus Face crystal shell — real 3D rotation (rotateY) composed
+        // through a preserve-3d parent, not a flat illusion.
+        "face-spin": {
+          "0%": { transform: "rotateY(0deg) rotateX(-4deg)" },
+          "50%": { transform: "rotateY(180deg) rotateX(4deg)" },
+          "100%": { transform: "rotateY(360deg) rotateX(-4deg)" },
+        },
       },
       animation: {
-        "orb-idle": "orb-idle 4s ease-in-out infinite",
-        "orb-listen": "orb-listen 1.1s ease-in-out infinite",
-        "orb-think": "orb-think 1.6s linear infinite",
         "fade-in": "fade-in 0.2s ease-out",
         "eye-blink": "eye-blink 6s ease-in-out infinite",
         "eye-alert": "eye-alert 1s ease-in-out infinite",
@@ -96,6 +88,7 @@ export default {
         "mouth-speak": "mouth-speak 0.45s ease-in-out infinite",
         "face-scan": "face-scan 2.4s linear infinite",
         "panel-deploy": "panel-deploy 0.35s ease-out backwards",
+        "face-spin": "face-spin 16s linear infinite",
       },
     },
   },
