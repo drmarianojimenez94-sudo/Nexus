@@ -1,3 +1,5 @@
+import { BluetoothPanel } from "@/components/BluetoothPanel";
+
 export default function SettingsPage() {
   return (
     <div className="flex flex-col gap-4">
@@ -10,6 +12,7 @@ export default function SettingsPage() {
           Google Calendar, Gmail, Contacts y Drive se conectan acá a partir de la Fase 4 (Nexus Connect).
         </p>
       </section>
+      <BluetoothPanel />
     </div>
   );
 }

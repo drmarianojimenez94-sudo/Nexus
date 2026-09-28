@@ -41,6 +41,9 @@ Bluetooth directo desde el iPhone, porque iOS no lo permite (ver
       generar Claude (Anthropic, vía `NexusAIProvider`) en vez de una
       regla fija, con fallback automático si no hay `AI_API_KEY` o si
       falla la llamada — ver [`NEXUS_AI_ARCHITECTURE.md`](NEXUS_AI_ARCHITECTURE.md)
+- [x] **Panel de Bluetooth "mejor esfuerzo"** en Settings: emparejamiento
+      directo donde el navegador lo soporta (Chrome/Edge desktop o
+      Android — nunca iPhone, feature-detectado, no fingido)
 - [x] PWA instalable (manifest, iconos, layout mobile-first)
 - [x] Audit log en toda escritura
 - [x] Tests automatizados del backend (16 tests, ver
