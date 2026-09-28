@@ -6,3 +6,4 @@ export * from "./tasks";
 export * from "./calendar";
 export * from "./inbox";
 export * from "./preferences";
+export * from "./memory";

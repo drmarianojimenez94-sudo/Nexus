@@ -9,6 +9,7 @@ import { areasRouter } from "./routes/areas.js";
 import { authRouter } from "./routes/auth.js";
 import { eventsRouter } from "./routes/events.js";
 import { inboxRouter, quickCaptureRouter } from "./routes/inbox.js";
+import { memoryRouter } from "./routes/memory.js";
 import { preferencesRouter } from "./routes/preferences.js";
 import { projectsRouter } from "./routes/projects.js";
 import { remindersRouter } from "./routes/reminders.js";
@@ -45,6 +46,7 @@ export function createApp() {
   app.use("/quick-capture", quickCaptureRouter);
   app.use("/today", todayRouter);
   app.use("/preferences", preferencesRouter);
+  app.use("/memories", memoryRouter);
 
   app.use(errorHandler);
 

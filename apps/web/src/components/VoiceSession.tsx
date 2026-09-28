@@ -2,7 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { NexusFace, type FaceState } from "./NexusFace";
+import { ConceptMap } from "./ConceptMap";
+import { type FaceState } from "./NexusFace";
 import { QuickCaptureModal } from "./QuickCaptureModal";
 import { useSpeech } from "@/lib/useSpeech";
 import { handleVoiceCommand } from "@/lib/voiceCommands";
@@ -10,6 +11,9 @@ import { handleVoiceCommand } from "@/lib/voiceCommands";
 interface VoiceSessionProps {
   onClose: () => void;
 }
+
+/** How long the Face "travels" across the conceptual map before the real navigation happens. */
+const MAP_TRANSIT_MS = 900;
 
 /**
  * Nexus Voice V1.5 (spec §4/§5): tap the Face, then it's fully hands-free
@@ -25,6 +29,7 @@ export function VoiceSession({ onClose }: VoiceSessionProps) {
     useSpeech();
   const [lastHeard, setLastHeard] = useState("");
   const [lastSpoken, setLastSpoken] = useState("Te escucho.");
+  const [mapTarget, setMapTarget] = useState<string | null>(null);
   const closingRef = useRef(false);
 
   const faceState: FaceState = speaking ? "speaking" : listening ? "listening" : "thinking";
@@ -32,9 +37,21 @@ export function VoiceSession({ onClose }: VoiceSessionProps) {
   async function handleResult(text: string) {
     setLastHeard(text);
     const result = await handleVoiceCommand(text);
-    if (result.navigateTo) router.push(result.navigateTo);
     setLastSpoken(result.speak);
-    await speak(result.speak);
+
+    if (result.navigateTo) {
+      // Show the conceptual map with the destination lit up while NEXUS
+      // speaks, so navigating by voice feels like being taken somewhere,
+      // not a flat page cut — then actually navigate once the beat lands.
+      setMapTarget(result.navigateTo);
+      await speak(result.speak);
+      await new Promise((resolve) => setTimeout(resolve, MAP_TRANSIT_MS));
+      setMapTarget(null);
+      router.push(result.navigateTo);
+    } else {
+      await speak(result.speak);
+    }
+
     if (result.close || closingRef.current) {
       onClose();
       return;
@@ -70,7 +87,7 @@ export function VoiceSession({ onClose }: VoiceSessionProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-6 bg-nexus-bg px-6 text-center">
-      <NexusFace state={faceState} size={96} />
+      <ConceptMap target={mapTarget} faceState={faceState} />
 
       <div className="max-w-sm">
         <p className="text-lg">{lastSpoken}</p>

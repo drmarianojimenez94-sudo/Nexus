@@ -18,6 +18,8 @@ export interface DailyInsightContext {
   openTaskTitles: string[];
   upcomingDeadlines: { title: string; dueInHours: number }[];
   eventsToday: number;
+  /** Freeform memories (spec §6) the user asked NEXUS to remember, most recent first. */
+  recentMemories: string[];
 }
 
 const client = env.aiApiKey ? new Anthropic({ apiKey: env.aiApiKey }) : null;
@@ -36,7 +38,9 @@ class AnthropicProvider implements NexusAIProvider {
             "Sos NEXUS, un asistente personal. Generás UNA sola oración breve (máximo 220 caracteres), " +
             "en español rioplatense, tono directo y tranquilo, sin emojis, sin saludos, sin explicar que sos una IA. " +
             "Es una sugerencia u observación útil sobre el día de la persona, basada solo en los datos que te paso. " +
-            "Nunca inventes tareas, personas o datos que no te di.",
+            "Si te paso 'Cosas que recordás sobre esta persona', son datos reales que guardó antes — podés usarlos " +
+            "para que la sugerencia se sienta personal (ej. mencionar a alguien por nombre), pero solo si son " +
+            "relevantes al día de hoy; ignoralos si no aportan. Nunca inventes tareas, personas o datos que no te di.",
           messages: [{ role: "user", content: prompt }],
         },
         { timeout: 6000 }
@@ -63,6 +67,9 @@ function buildInsightPrompt(context: DailyInsightContext): string {
       ? `Vencen pronto: ${context.upcomingDeadlines.map((d) => `"${d.title}" en ${d.dueInHours}h`).join("; ")}`
       : "Sin deadlines próximos",
   ];
+  if (context.recentMemories.length > 0) {
+    lines.push(`Cosas que recordás sobre esta persona: ${context.recentMemories.join("; ")}`);
+  }
   return lines.join("\n");
 }
 

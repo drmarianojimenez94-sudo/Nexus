@@ -1,4 +1,4 @@
-import type { Event, Task } from "@nexus/shared";
+import type { Event, Memory, Task } from "@nexus/shared";
 import { api, ApiError } from "./api";
 import { queueCapture } from "./offlineQueue";
 
@@ -23,11 +23,17 @@ const NAV_COMMANDS: { patterns: RegExp; path: string; label: string }[] = [
   { patterns: /\b(calendario|agenda)\b/i, path: "/calendar", label: "tu calendario" },
   { patterns: /\b(proyectos?)\b/i, path: "/projects", label: "tus proyectos" },
   { patterns: /\b(áreas?|areas?)\b/i, path: "/areas", label: "tus áreas" },
+  { patterns: /\bmemoria\b/i, path: "/memory", label: "tu memoria" },
 ];
 
 const CLOSE_PATTERN = /\b(listo|gracias|cerrar|terminar|chau|nada más|nada mas)\b/i;
 const TODAY_PATTERN = /\b(hoy|today|resumen|qu[eé] tengo)\b/i;
 const HELP_PATTERN = /\b(ayuda|qu[eé] pod[eé]s hacer|qu[eé] hac[eé]s)\b/i;
+
+/** "Recordá que mi hijo se llama Tomás" → guarda el contenido en Memory (spec §6). */
+const REMEMBER_PATTERN = /\b(?:record[aá]|acord[aá]te|no te olvides)\s+que\s+(.+)/i;
+/** "Qué sabés/recordás sobre X" → busca en Memory y lo dice en voz alta. */
+const RECALL_PATTERN = /\bqu[eé]\s+(?:sab[eé]s|record[aá]s)\s+(?:sobre|de)\s+(.+)/i;
 
 function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
@@ -63,9 +69,33 @@ export async function handleVoiceCommand(rawText: string): Promise<VoiceCommandR
   if (HELP_PATTERN.test(text)) {
     return {
       speak:
-        'Podés decir "qué tengo hoy", "abrí el inbox", "abrí el calendario", "abrí proyectos" o "abrí áreas". ' +
-        "Cualquier otra cosa que digas la anoto en tu inbox.",
+        'Podés decir "qué tengo hoy", "abrí el inbox", "abrí el calendario", "abrí proyectos", "abrí áreas" o ' +
+        '"abrí memoria". También "recordá que…" para que guarde algo, o "qué sabés sobre…" para preguntarte lo ' +
+        "que ya te dije. Cualquier otra cosa que digas la anoto en tu inbox.",
     };
+  }
+
+  const remember = text.match(REMEMBER_PATTERN);
+  if (remember?.[1]) {
+    try {
+      await api.post("/memories", { content: remember[1].trim() });
+      return { speak: "Listo, lo voy a recordar." };
+    } catch {
+      return { speak: "No pude guardarlo en tu memoria. Probá de nuevo." };
+    }
+  }
+
+  const recall = text.match(RECALL_PATTERN);
+  if (recall?.[1]) {
+    try {
+      const { memories } = await api.get<{ memories: Memory[] }>(
+        `/memories?q=${encodeURIComponent(recall[1].trim())}`
+      );
+      if (memories.length === 0) return { speak: "No tengo nada guardado sobre eso." };
+      return { speak: memories.slice(0, 3).map((m) => m.content).join(". ") };
+    } catch {
+      return { speak: "No pude buscar en tu memoria. Probá de nuevo." };
+    }
   }
 
   if (TODAY_PATTERN.test(text)) {

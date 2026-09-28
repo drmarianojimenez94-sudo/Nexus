@@ -103,10 +103,28 @@ semana/mes del calendario, módulos de vida (Finanzas/Salud/Viajes/Formación).
 
 ## ⏳ Fase 3 — NEXUS Brain
 
-- [ ] `NexusAIProvider` (interfaz ya documentada en
-      [`NEXUS_AI_ARCHITECTURE.md`](NEXUS_AI_ARCHITECTURE.md))
-- [ ] Context Engine (resolución de persona/proyecto/área/fecha/confianza)
-- [ ] Memory visible/editable/buscable (`/memory`)
+- [x] **Memory V1**: visible/editable/buscable en `/memory`, CRUD completo
+      (`apps/api/src/routes/memory.ts`), y accesible por voz — "recordá
+      que…" guarda, "qué sabés/recordás sobre…" busca y lo dice en voz alta
+      (`voiceCommands.ts`). Nunca una caja negra: todo lo que NEXUS
+      recuerda se puede leer, editar y borrar desde la app.
+- [x] Memory conectada al Insight de Today: `NexusAIProvider` recibe los
+      últimos recuerdos como contexto y puede usarlos si son relevantes
+      (`ai.ts`, `DailyInsightContext.recentMemories`) — solo cuando hay
+      `AI_API_KEY` configurada, igual que el resto del Insight.
+- [x] **Mapa conceptual 3D**: al navegar por voz, el Face ya no corta a la
+      pantalla siguiente en seco — `ConceptMap.tsx` dibuja un anillo de
+      "salas" (Hoy/Inbox/Calendario/Proyectos/Áreas/Memoria) alrededor
+      del Face con profundidad real (`translateZ` + perspective), y la
+      sala destino se ilumina mientras NEXUS habla, antes de navegar. Es
+      la primera pieza de la idea de "avatar que te lleva por un mapa".
+- [ ] `NexusAIProvider`: falta el resto de la interfaz (interfaz base ya
+      documentada en [`NEXUS_AI_ARCHITECTURE.md`](NEXUS_AI_ARCHITECTURE.md))
+- [ ] Context Engine real (resolución de persona/proyecto/área/fecha/confianza
+      con IA, hoy `voiceCommands.ts` es reglas + regex, no NLU)
+- [ ] Mapa conceptual con nodos dinámicos (Proyectos/Áreas reales del
+      usuario en vez de las seis salas fijas) — V2 natural sobre lo ya
+      construido
 - [ ] Tools envolviendo los handlers REST existentes con permisos y
       confirmación
 - [ ] Comandos multi-acción con plan explícito y manejo de fallos

@@ -37,34 +37,41 @@ todayRouter.get(
     endOfDay.setHours(23, 59, 59, 999);
     const in48h = new Date(now.getTime() + 48 * 60 * 60 * 1000);
 
-    const [user, nextEvent, todaysEvents, openTasks, overdueTasks, upcomingDeadlines] = await Promise.all([
-      prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { name: true } }),
-      prisma.event.findFirst({
-        where: { userId, startAt: { gte: now } },
-        orderBy: { startAt: "asc" },
-      }),
-      prisma.event.findMany({
-        where: { userId, startAt: { gte: startOfDay, lte: endOfDay } },
-        orderBy: { startAt: "asc" },
-      }),
-      prisma.task.findMany({
-        where: { userId, status: { in: ["TODO", "IN_PROGRESS"] } },
-        orderBy: [{ priority: "desc" }, { deadline: "asc" }],
-        take: 3,
-      }),
-      prisma.task.count({
-        where: { userId, status: { in: ["TODO", "IN_PROGRESS"] }, deadline: { lt: startOfDay } },
-      }),
-      prisma.task.findMany({
-        where: {
-          userId,
-          status: { in: ["TODO", "IN_PROGRESS"] },
-          deadline: { gte: now, lte: in48h },
-        },
-        orderBy: { deadline: "asc" },
-        take: 5,
-      }),
-    ]);
+    const [user, nextEvent, todaysEvents, openTasks, overdueTasks, upcomingDeadlines, recentMemories] =
+      await Promise.all([
+        prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { name: true } }),
+        prisma.event.findFirst({
+          where: { userId, startAt: { gte: now } },
+          orderBy: { startAt: "asc" },
+        }),
+        prisma.event.findMany({
+          where: { userId, startAt: { gte: startOfDay, lte: endOfDay } },
+          orderBy: { startAt: "asc" },
+        }),
+        prisma.task.findMany({
+          where: { userId, status: { in: ["TODO", "IN_PROGRESS"] } },
+          orderBy: [{ priority: "desc" }, { deadline: "asc" }],
+          take: 3,
+        }),
+        prisma.task.count({
+          where: { userId, status: { in: ["TODO", "IN_PROGRESS"] }, deadline: { lt: startOfDay } },
+        }),
+        prisma.task.findMany({
+          where: {
+            userId,
+            status: { in: ["TODO", "IN_PROGRESS"] },
+            deadline: { gte: now, lte: in48h },
+          },
+          orderBy: { deadline: "asc" },
+          take: 5,
+        }),
+        prisma.memory.findMany({
+          where: { userId },
+          orderBy: { createdAt: "desc" },
+          take: 8,
+          select: { content: true },
+        }),
+      ]);
 
     const attention: string[] = [];
     if (overdueTasks > 0) {
@@ -87,6 +94,7 @@ todayRouter.get(
           dueInHours: t.deadline ? Math.max(1, Math.round((t.deadline.getTime() - now.getTime()) / 3_600_000)) : 0,
         })),
         eventsToday: todaysEvents.length,
+        recentMemories: recentMemories.map((m) => m.content),
       });
       if (generated) insight = generated;
     }
