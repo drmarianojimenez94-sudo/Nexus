@@ -11,7 +11,7 @@
     "test": "echo \"no tests in @nexus/shared\" && exit 0"
   },
   "devDependencies": {
-    "typescript": "^5.7.2"
+    "typescript": "~6.0.3"
   },
   "dependencies": {
     "zod": "^3.24.1"
