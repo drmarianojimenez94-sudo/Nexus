@@ -56,12 +56,48 @@ export async function speakTodaySummary(): Promise<string> {
   return parts.join(" ");
 }
 
+interface InterpretResponse {
+  speak: string;
+  navigateTo?: string;
+  target?: "today" | "inbox" | "calendar" | "projects" | "areas" | "memory";
+}
+
 /**
- * Rule-based voice command router (Nexus Voice V1). Deliberately not an
- * LLM call: zero latency, zero cost, works with no AI_API_KEY configured
- * at all — the same "never depends on a key being present" principle as
- * the rest of Phase 1. Phase 3 (NexusBrain) is where free-form natural
- * language planning replaces this with real intent detection.
+ * NexusBrain (spec Fase 3): real understanding via NexusAIProvider —
+ * "anotame en el calendario que tengo turno el martes" comes back as an
+ * actual calendar event, not a page navigation. Server-side only (needs
+ * AI_API_KEY, which the client must never see). Returns null when NEXUS
+ * has no AI configured (501) or the call fails for any reason, so the
+ * caller can fall through to the always-available rule-based router —
+ * this is an enhancement, never a hard dependency.
+ */
+async function tryBrain(text: string): Promise<VoiceCommandResult | null> {
+  try {
+    const result = await api.post<InterpretResponse>("/assistant/interpret", { text });
+    if (result.target === "today") {
+      // The brain's spokenReply is a generic transition line; Today has a
+      // richer, already-working spoken summary with live NOW/priorities/
+      // attention data — use that instead for this one case.
+      try {
+        return { speak: await speakTodaySummary(), navigateTo: "/today" };
+      } catch {
+        return { speak: result.speak, navigateTo: result.navigateTo };
+      }
+    }
+    return { speak: result.speak, navigateTo: result.navigateTo };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Voice command router (Nexus Voice V1/V1.5). CLOSE/HELP/REMEMBER/RECALL/
+ * TODAY stay rule-based on purpose — zero latency, zero cost, unambiguous
+ * phrasing, work with no AI_API_KEY at all. Everything else tries
+ * NexusBrain first (real understanding, not keyword matching) when AI is
+ * configured, falling back to the old rule-based nav-or-capture chain
+ * when it isn't — so NEXUS is smarter with a key and still fully
+ * functional without one.
  */
 export async function handleVoiceCommand(rawText: string): Promise<VoiceCommandResult> {
   const text = rawText.trim();
@@ -75,7 +111,8 @@ export async function handleVoiceCommand(rawText: string): Promise<VoiceCommandR
       speak:
         'Podés decir "qué tengo hoy", "abrí el inbox", "abrí el calendario", "abrí proyectos", "abrí áreas" o ' +
         '"abrí memoria". También "recordá que…" para que guarde algo, o "qué sabés sobre…" para preguntarte lo ' +
-        "que ya te dije. Cualquier otra cosa que digas la anoto en tu inbox.",
+        "que ya te dije. Cualquier otra cosa la interpreto — pedime que agende algo, cree una tarea o te avise " +
+        "en un momento y lo hago de verdad.",
     };
   }
 
@@ -102,15 +139,6 @@ export async function handleVoiceCommand(rawText: string): Promise<VoiceCommandR
     }
   }
 
-  // Checked before TODAY_PATTERN on purpose: an explicit section name in the
-  // sentence ("anotá en el calendario que...") is a stronger, more specific
-  // signal than the loose "what do I have" heuristic below, and should win
-  // regardless of what else is in the sentence.
-  const nav = NAV_COMMANDS.find((c) => c.patterns.test(text));
-  if (nav) {
-    return { speak: `Listo, te muestro ${nav.label}.`, navigateTo: nav.path };
-  }
-
   if (TODAY_PATTERN.test(text)) {
     try {
       const summary = await speakTodaySummary();
@@ -118,6 +146,16 @@ export async function handleVoiceCommand(rawText: string): Promise<VoiceCommandR
     } catch {
       return { speak: "No pude leer tu resumen de hoy. Probá de nuevo.", navigateTo: "/today" };
     }
+  }
+
+  const brainResult = await tryBrain(text);
+  if (brainResult) return brainResult;
+
+  // No AI configured, or the brain call failed — same rule-based fallback
+  // as before, so voice never goes silent just because a key is missing.
+  const nav = NAV_COMMANDS.find((c) => c.patterns.test(text));
+  if (nav) {
+    return { speak: `Listo, te muestro ${nav.label}.`, navigateTo: nav.path };
   }
 
   // Nothing matched a command — treat it as a thought to capture, exactly

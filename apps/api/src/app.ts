@@ -6,10 +6,12 @@ import helmet from "helmet";
 import { env } from "./lib/env.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { areasRouter } from "./routes/areas.js";
+import { assistantRouter } from "./routes/assistant.js";
 import { authRouter } from "./routes/auth.js";
 import { connectorsRouter } from "./routes/connectors.js";
 import { eventsRouter } from "./routes/events.js";
 import { inboxRouter, quickCaptureRouter } from "./routes/inbox.js";
+import { internalRouter } from "./routes/internal.js";
 import { memoryRouter } from "./routes/memory.js";
 import { preferencesRouter } from "./routes/preferences.js";
 import { projectsRouter } from "./routes/projects.js";
@@ -49,6 +51,8 @@ export function createApp() {
   app.use("/preferences", preferencesRouter);
   app.use("/memories", memoryRouter);
   app.use("/connectors", connectorsRouter);
+  app.use("/assistant", assistantRouter);
+  app.use("/internal", internalRouter);
 
   app.use(errorHandler);
 

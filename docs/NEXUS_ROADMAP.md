@@ -118,15 +118,40 @@ semana/mes del calendario, módulos de vida (Finanzas/Salud/Viajes/Formación).
       del Face con profundidad real (`translateZ` + perspective), y la
       sala destino se ilumina mientras NEXUS habla, antes de navegar. Es
       la primera pieza de la idea de "avatar que te lleva por un mapa".
+- [x] **NexusBrain V1 — comprensión real, no keyword matching**:
+      `POST /assistant/interpret` (`apps/api/src/lib/ai.ts` —
+      `interpretUtterance`, tool-use con `tool_choice` forzado para
+      estructura garantizada) convierte una frase en una acción real:
+      `create_event`, `create_task`, `create_reminder`, `remember`,
+      `navigate` o `note`. Arreglado explícitamente a pedido del usuario:
+      "anotame en el calendario que tengo turno el martes" antes solo
+      reconocía la palabra "calendario" y navegaba ahí sin crear nada —
+      ahora resuelve la fecha relativa contra la hora del servidor y crea
+      el evento de verdad. `voiceCommands.ts` lo prueba primero para todo
+      lo que no sea cerrar/ayuda/recordá/qué sabés/qué tengo hoy (esos
+      siguen por regex, instantáneos y sin costo), y cae al enrutador
+      viejo basado en reglas si no hay `AI_API_KEY` o la llamada falla —
+      nunca una dependencia dura.
+- [x] **Notificaciones por email para recordatorios**: `Reminder.remindAt`
+      vencido ahora dispara un mail de verdad, vía Resend
+      (`apps/api/src/lib/email.ts`) + un workflow de GitHub Actions propio
+      del repo (`dispatch-reminders.yml`, cada 5 minutos) que le hace ping
+      a `POST /internal/dispatch-reminders` — sustituye al cron que Render
+      free tier no tiene, y de paso despierta el servicio si estaba
+      dormido. Setup completo en
+      [`NEXUS_NOTIFICATIONS.md`](NEXUS_NOTIFICATIONS.md); sin configurar,
+      los recordatorios se siguen creando normalmente, solo no mandan mail.
 - [ ] `NexusAIProvider`: falta el resto de la interfaz (interfaz base ya
       documentada en [`NEXUS_AI_ARCHITECTURE.md`](NEXUS_AI_ARCHITECTURE.md))
-- [ ] Context Engine real (resolución de persona/proyecto/área/fecha/confianza
-      con IA, hoy `voiceCommands.ts` es reglas + regex, no NLU)
+- [ ] Context Engine real (resolución de persona/proyecto/área con IA —
+      NexusBrain V1 ya resuelve fecha/intent, falta asociar a un
+      proyecto/área existente en vez de crear siempre suelto)
 - [ ] Mapa conceptual con nodos dinámicos (Proyectos/Áreas reales del
       usuario en vez de las seis salas fijas) — V2 natural sobre lo ya
       construido
 - [ ] Tools envolviendo los handlers REST existentes con permisos y
-      confirmación
+      confirmación explícita por nivel (NexusBrain V1 ejecuta directo,
+      sin ese paso de confirmación todavía)
 - [ ] Comandos multi-acción con plan explícito y manejo de fallos
 - [ ] Deshacer acciones (usa `AiAction`, ya en el schema)
 

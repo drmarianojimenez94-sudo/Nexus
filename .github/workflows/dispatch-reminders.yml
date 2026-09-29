@@ -1,0 +1,33 @@
+# NEXUS — Reminder email dispatch
+#
+# Render's free tier has no built-in cron and sleeps the app after 15
+# minutes idle, so this repo's own GitHub Actions schedule is the cron:
+# it pings the deployed app every 5 minutes, which both wakes it up (if
+# asleep) and triggers /internal/dispatch-reminders to send any due
+# reminder emails. Needs two repo secrets to do anything (see
+# docs/NEXUS_NOTIFICATIONS.md for how to set them) — without them this
+# workflow just runs and does nothing, it's not required for the rest of
+# NEXUS to work.
+name: Dispatch reminder emails
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping dispatch endpoint
+        run: |
+          if [ -z "${{ secrets.NEXUS_APP_URL }}" ] || [ -z "${{ secrets.INTERNAL_DISPATCH_SECRET }}" ]; then
+            echo "NEXUS_APP_URL or INTERNAL_DISPATCH_SECRET not set — skipping (see docs/NEXUS_NOTIFICATIONS.md)."
+            exit 0
+          fi
+          curl -sS -X POST "${{ secrets.NEXUS_APP_URL }}/api/internal/dispatch-reminders" \
+            -H "X-Internal-Secret: ${{ secrets.INTERNAL_DISPATCH_SECRET }}" \
+            --max-time 25 \
+            --retry 2 \
+            --retry-delay 5 \
+            --fail-with-body

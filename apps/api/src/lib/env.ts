@@ -30,4 +30,15 @@ export const env = {
   googleClientId: process.env.GOOGLE_CLIENT_ID,
   googleClientSecret: process.env.GOOGLE_CLIENT_SECRET,
   googleRedirectUri: process.env.GOOGLE_REDIRECT_URI,
+  // Optional: email reminders (spec §6, Reminder.remindAt) are simply
+  // never dispatched — no crash, no broken feature — until this is set.
+  resendApiKey: process.env.RESEND_API_KEY,
+  // Resend's own sandbox sender, usable with zero setup (delivers to any
+  // address) until a custom domain is verified — real domains eventually
+  // replace this, but nothing here requires it up front.
+  resendFromEmail: process.env.RESEND_FROM_EMAIL ?? "NEXUS <onboarding@resend.dev>",
+  // Shared secret for POST /internal/dispatch-reminders — required only
+  // when RESEND_API_KEY is also set, since that's the only thing this
+  // guards. Never guessable via a default value.
+  internalDispatchSecret: process.env.INTERNAL_DISPATCH_SECRET,
 };

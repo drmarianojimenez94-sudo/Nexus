@@ -66,3 +66,12 @@ services:
         sync: false
       - key: GOOGLE_REDIRECT_URI
         sync: false
+      # Optional: email reminders. See docs/NEXUS_NOTIFICATIONS.md for the
+      # full setup (a free Resend account + a repo secret on GitHub so the
+      # scheduled dispatch workflow can reach this service).
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM_EMAIL
+        sync: false
+      - key: INTERNAL_DISPATCH_SECRET
+        sync: false
