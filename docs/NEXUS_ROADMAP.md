@@ -183,10 +183,28 @@ semana/mes del calendario, módulos de vida (Finanzas/Salud/Viajes/Formación).
 
 ## ⏳ Fase 7 — Native
 
-- [ ] Evaluación de cliente nativo iPhone (React Native/Expo, comparte
-      `packages/shared` con la PWA)
+- [x] **`apps/mobile` V1**: Expo/React Native, comparte `packages/shared`
+      con la PWA (mismos tipos y schemas Zod). Auth completo (Bearer
+      tokens en vez de cookies — ver `apps/mobile/README.md` para el
+      porqué), y una pantalla Today que NEXUS narra en voz alta apenas
+      abre, sin tocar nada — el pedido explícito de que se sienta "como
+      un secretario conectado al teléfono", no como una app con botones
+      y tarjetas. Probado extremo a extremo (registro → auth → Today con
+      datos reales → TTS) vía el target `--web` de Expo + navegador real,
+      ya que este entorno no tiene Xcode/simulador.
+- [ ] **Speech-to-text real** (el paso que de verdad resuelve voz de
+      entrada en iPhone) — necesita un *development build* de Expo
+      (`eas build --profile development`, gratis, no requiere cuenta de
+      Apple Developer para probar en tu propio teléfono), Expo Go no trae
+      un módulo nativo de reconocimiento de voz.
+- [ ] Face 3D nativo (hoy es una versión plana simplificada — el shell de
+      cristal rotando de la web no tiene equivalente directo sin una
+      dependencia 3D/Skia)
 - [ ] Wake word en background (dentro de lo que permita iOS, sin hacks)
-- [ ] Widgets, Siri Shortcuts, integraciones más profundas de SO
+- [ ] Widgets, Siri Shortcuts / App Intents, Live Activities — también
+      necesitan un development build, no Expo Go puro
+- [ ] Resto de las pantallas (Inbox, Calendar, Projects, Areas, Memory) —
+      hoy `apps/mobile` solo tiene Today
 - [ ] Único camino real a Bluetooth *directo* desde el teléfono (si algún
       día hace falta más allá de lo que cubre NEXUS Home vía hub)
 

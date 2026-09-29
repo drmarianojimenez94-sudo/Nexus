@@ -34,7 +34,15 @@ function toPublicUser(user: { id: string; name: string; email: string; createdAt
   };
 }
 
-async function issueSession(res: Response, userId: string) {
+/**
+ * Sets the same httpOnly cookies the web app has always used, and always
+ * returns the raw tokens too — the native app (apps/mobile) has no browser
+ * cookie jar, so it reads them from the response body and stores them
+ * itself in expo-secure-store, sending the access token back as
+ * `Authorization: Bearer` and the refresh token in the /auth/refresh body.
+ * Returning them costs the web client nothing; it just never reads them.
+ */
+async function issueSession(res: Response, userId: string): Promise<{ accessToken: string; refreshToken: string }> {
   const accessToken = signAccessToken(userId);
   const refreshToken = generateRefreshToken();
   const refreshTokenHash = hashRefreshToken(refreshToken);
@@ -52,6 +60,20 @@ async function issueSession(res: Response, userId: string) {
     ...baseCookieOptions,
     maxAge: parseDurationMs(env.refreshTokenTtl),
   });
+
+  return { accessToken, refreshToken };
+}
+
+/**
+ * True only for the native app, which sends this on every auth call since
+ * it has no cookie jar. Gated behind an explicit header (never guessed from
+ * User-Agent) so the web client's login/register responses never carry a
+ * JS-readable token — the whole point of httpOnly cookies is that page JS,
+ * including anything an XSS bug might inject, can't read the access token;
+ * unconditionally echoing it back in the JSON body would quietly undo that.
+ */
+function isMobileClient(req: { get(name: string): string | undefined }): boolean {
+  return req.get("x-nexus-client") === "mobile";
 }
 
 authRouter.post(
@@ -69,8 +91,8 @@ authRouter.post(
     });
 
     await recordAudit({ userId: user.id, action: "auth.register", entityType: "user", entityId: user.id });
-    await issueSession(res, user.id);
-    res.status(201).json({ user: toPublicUser(user) });
+    const tokens = await issueSession(res, user.id);
+    res.status(201).json({ user: toPublicUser(user), ...(isMobileClient(req) ? tokens : {}) });
   })
 );
 
@@ -84,15 +106,17 @@ authRouter.post(
     }
 
     await recordAudit({ userId: user.id, action: "auth.login", entityType: "user", entityId: user.id });
-    await issueSession(res, user.id);
-    res.json({ user: toPublicUser(user) });
+    const tokens = await issueSession(res, user.id);
+    res.json({ user: toPublicUser(user), ...(isMobileClient(req) ? tokens : {}) });
   })
 );
 
 authRouter.post(
   "/logout",
   asyncHandler(async (req, res) => {
-    const refreshToken = req.cookies?.nexus_refresh_token as string | undefined;
+    const refreshToken =
+      (req.cookies?.nexus_refresh_token as string | undefined) ??
+      (typeof req.body?.refreshToken === "string" ? req.body.refreshToken : undefined);
     if (refreshToken) {
       await prisma.refreshToken
         .updateMany({
@@ -110,7 +134,11 @@ authRouter.post(
 authRouter.post(
   "/refresh",
   asyncHandler(async (req, res) => {
-    const refreshToken = req.cookies?.nexus_refresh_token as string | undefined;
+    // Mobile has no cookie jar — it sends the refresh token it stored in
+    // expo-secure-store back explicitly in the body instead.
+    const refreshToken =
+      (req.cookies?.nexus_refresh_token as string | undefined) ??
+      (typeof req.body?.refreshToken === "string" ? req.body.refreshToken : undefined);
     if (!refreshToken) {
       throw new HttpError(401, "Missing refresh token");
     }
@@ -121,8 +149,12 @@ authRouter.post(
     }
 
     await prisma.refreshToken.update({ where: { id: stored.id }, data: { revokedAt: new Date() } });
-    await issueSession(res, stored.userId);
-    res.status(204).send();
+    const tokens = await issueSession(res, stored.userId);
+    if (isMobileClient(req)) {
+      res.json(tokens);
+    } else {
+      res.status(204).send();
+    }
   })
 );
 
