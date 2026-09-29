@@ -27,7 +27,11 @@ const NAV_COMMANDS: { patterns: RegExp; path: string; label: string }[] = [
 ];
 
 const CLOSE_PATTERN = /\b(listo|gracias|cerrar|terminar|chau|nada más|nada mas)\b/i;
-const TODAY_PATTERN = /\b(hoy|today|resumen|qu[eé] tengo)\b/i;
+// Anchored to an explicit "today"/"pending" framing — bare "qué tengo" alone
+// used to match ANY sentence containing that extremely common phrase (e.g.
+// "anotá en el calendario que tengo turno mañana"), hijacking navigation to
+// /today before the NAV_COMMANDS check below ever saw the word "calendario".
+const TODAY_PATTERN = /\b(hoy|today|resumen)\b|\bqu[eé] tengo (hoy|para hoy|pendiente|ahora)\b/i;
 const HELP_PATTERN = /\b(ayuda|qu[eé] pod[eé]s hacer|qu[eé] hac[eé]s)\b/i;
 
 /** "Recordá que mi hijo se llama Tomás" → guarda el contenido en Memory (spec §6). */
@@ -98,6 +102,15 @@ export async function handleVoiceCommand(rawText: string): Promise<VoiceCommandR
     }
   }
 
+  // Checked before TODAY_PATTERN on purpose: an explicit section name in the
+  // sentence ("anotá en el calendario que...") is a stronger, more specific
+  // signal than the loose "what do I have" heuristic below, and should win
+  // regardless of what else is in the sentence.
+  const nav = NAV_COMMANDS.find((c) => c.patterns.test(text));
+  if (nav) {
+    return { speak: `Listo, te muestro ${nav.label}.`, navigateTo: nav.path };
+  }
+
   if (TODAY_PATTERN.test(text)) {
     try {
       const summary = await speakTodaySummary();
@@ -107,16 +120,13 @@ export async function handleVoiceCommand(rawText: string): Promise<VoiceCommandR
     }
   }
 
-  const nav = NAV_COMMANDS.find((c) => c.patterns.test(text));
-  if (nav) {
-    return { speak: `Listo, te muestro ${nav.label}.`, navigateTo: nav.path };
-  }
-
   // Nothing matched a command — treat it as a thought to capture, exactly
-  // like typed Quick Capture (spec §11).
+  // like typed Quick Capture (spec §11). Always navigate to Inbox afterward
+  // so the capture is visibly confirmed instead of vanishing silently —
+  // every voice interaction should end up "deploying" a real screen.
   try {
     await api.post("/quick-capture", { rawText: text, source: "VOICE" });
-    return { speak: "Listo, lo anoté." };
+    return { speak: "Listo, lo anoté en tu inbox.", navigateTo: "/inbox" };
   } catch (err) {
     if (err instanceof ApiError) {
       return { speak: "No pude guardarlo. Probá de nuevo." };
