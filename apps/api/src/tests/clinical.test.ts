@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { createApp } from "../app.js";
 import { prisma } from "../lib/prisma.js";
 import { randomUUID } from "node:crypto";
+import { encryptClinical } from "../lib/clinicalCrypto.js";
 
 const app = createApp();
 let owner: ReturnType<typeof request.agent>,
@@ -98,14 +99,22 @@ describe("clinical workspace", () => {
   });
   it("paginates all followups and preserves owner isolation", async () => {
     const p = await patient();
-    for (let i = 0; i < 51; i++)
-      await owner
-        .post("/clinical/followups")
-        .send({
+    const userId = (await owner.get("/auth/me")).body.user.id;
+    await prisma.clinicalFollowup.createMany({
+      data: Array.from({ length: 51 }, (_, i) => {
+        const id = randomUUID();
+        return {
+          id,
+          userId,
           patientId: p.id,
-          title: `Pendiente ${i}`,
-          dueAt: new Date(Date.now() + i * 1000).toISOString(),
-        });
+          dueAt: new Date(Date.now() + i * 1000),
+          recordEncrypted: encryptClinical(
+            { title: `Pendiente ${i}`, kind: "CONTROL" },
+            `${userId}:followup:${id}`,
+          ),
+        };
+      }),
+    });
     const first = await owner.get("/clinical/followups?page=1"),
       second = await owner.get("/clinical/followups?page=2");
     expect(first.body.total).toBe(51);
