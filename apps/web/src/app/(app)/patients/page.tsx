@@ -14,7 +14,7 @@ import {
 export default function PatientsPage() {
   const [q, setQ] = useState(""),
     [page, setPage] = useState(1),
-    [archived, setArchived] = useState(false),
+    [archived, setArchived] = useState("false"),
     [data, setData] = useState<{ patients: Patient[]; total: number } | null>(
       null,
     ),
@@ -64,16 +64,21 @@ export default function PatientsPage() {
           Nuevo paciente
         </Link>
       </section>
-      <label className="flex items-center gap-2 text-sm">
-        <input
-          type="checkbox"
-          checked={archived}
+      <label className="text-sm">
+        Estado de fichas
+        <select
+          aria-label="Estado de fichas"
+          className={`${clinicalInput} mt-2`}
+          value={archived}
           onChange={(e) => {
-            setArchived(e.target.checked);
+            setArchived(e.target.value);
             setPage(1);
           }}
-        />
-        Mostrar fichas archivadas
+        >
+          <option value="false">Activas</option>
+          <option value="true">Archivadas</option>
+          <option value="all">Todas</option>
+        </select>
       </label>
       <ClinicalError message={error} />
       {!data && !error && <p role="status">Cargando fichas…</p>}
@@ -89,7 +94,10 @@ export default function PatientsPage() {
                 href={`/patients/${p.id}`}
                 className="glass-panel p-4"
               >
-                <h2 className="font-semibold">{p.name}</h2>
+                <h2 className="font-semibold">
+                  {p.name}
+                  {p.archived ? " · Archivada" : ""}
+                </h2>
                 <p className="mt-1 text-sm text-nexus-muted">
                   {p.document
                     ? `Documento: ${p.document}`

@@ -18,7 +18,11 @@ interface StatusResponse {
 }
 
 /** Reads the ?connected=/?google= params the OAuth callback redirects back with, then clears them from the URL. */
-function OAuthResultBanner({ onResult }: { onResult: (message: string, isError: boolean) => void }) {
+function OAuthResultBanner({
+  onResult,
+}: {
+  onResult: (message: string, isError: boolean) => void;
+}) {
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -41,21 +45,32 @@ function OAuthResultBanner({ onResult }: { onResult: (message: string, isError: 
 }
 
 export function IntegrationsPanel() {
-  const { data, loading, reload } = useApiData<StatusResponse>("/connectors/status");
-  const [banner, setBanner] = useState<{ message: string; isError: boolean } | null>(null);
+  const { data, loading, reload } =
+    useApiData<StatusResponse>("/connectors/status");
+  const [banner, setBanner] = useState<{
+    message: string;
+    isError: boolean;
+  } | null>(null);
   const [busy, setBusy] = useState(false);
   const [syncResult, setSyncResult] = useState<string | null>(null);
 
-  const google = data?.integrations.find((i) => i.provider === "google_calendar");
+  const google = data?.integrations.find(
+    (i) => i.provider === "google_calendar",
+  );
 
   async function connect() {
     setBusy(true);
     try {
-      const { authUrl } = await api.get<{ authUrl: string }>("/connectors/google/authorize");
+      const { authUrl } = await api.get<{ authUrl: string }>(
+        "/connectors/google/authorize",
+      );
       window.location.href = authUrl;
     } catch (err) {
       setBanner({
-        message: err instanceof ApiError && err.status === 501 ? "Google no está configurado en el servidor." : "No se pudo iniciar la conexión.",
+        message:
+          err instanceof ApiError && err.status === 501
+            ? "Google no está configurado en el servidor."
+            : "No se pudo iniciar la conexión.",
         isError: true,
       });
       setBusy(false);
@@ -64,17 +79,29 @@ export function IntegrationsPanel() {
 
   async function disconnect() {
     setBusy(true);
-    await api.post("/connectors/google_calendar/disconnect").catch(() => {});
-    await reload();
-    setBusy(false);
+    try {
+      await api.post("/connectors/google_calendar/disconnect");
+      await reload();
+    } catch {
+      setBanner({
+        message: "No se pudo desconectar Google. Probá nuevamente.",
+        isError: true,
+      });
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function sync() {
     setBusy(true);
     setSyncResult(null);
     try {
-      const res = await api.post<{ imported: number }>("/connectors/google/sync");
-      setSyncResult(`${res.imported} evento${res.imported === 1 ? "" : "s"} sincronizado${res.imported === 1 ? "" : "s"}.`);
+      const res = await api.post<{ imported: number }>(
+        "/connectors/google/sync",
+      );
+      setSyncResult(
+        `${res.imported} evento${res.imported === 1 ? "" : "s"} sincronizado${res.imported === 1 ? "" : "s"}.`,
+      );
       await reload();
     } catch {
       setSyncResult("No se pudo sincronizar. Puede que haya que reconectar.");
@@ -86,24 +113,33 @@ export function IntegrationsPanel() {
   return (
     <section className="glass-panel p-4">
       <Suspense fallback={null}>
-        <OAuthResultBanner onResult={(message, isError) => setBanner({ message, isError })} />
+        <OAuthResultBanner
+          onResult={(message, isError) => setBanner({ message, isError })}
+        />
       </Suspense>
 
-      <h2 className="mb-2 text-xs font-medium tracking-widest text-nexus-muted">INTEGRATIONS</h2>
+      <h2 className="mb-2 text-xs font-medium tracking-widest text-nexus-muted">
+        INTEGRATIONS
+      </h2>
 
       {banner && (
-        <p className={`mb-3 text-sm ${banner.isError ? "text-nexus-danger" : "text-nexus-cyan"}`}>{banner.message}</p>
+        <p
+          className={`mb-3 text-sm ${banner.isError ? "text-nexus-danger" : "text-nexus-cyan"}`}
+        >
+          {banner.message}
+        </p>
       )}
 
       {loading && <p className="text-sm text-nexus-muted">Cargando…</p>}
 
       {data && !data.googleConfigured && (
         <p className="text-sm text-nexus-muted">
-          Google Calendar todavía no está configurado en este servidor — hace falta cargar
+          Google Calendar todavía no está configurado en este servidor — hace
+          falta cargar
           <span className="text-nexus-cyan"> GOOGLE_CLIENT_ID</span>,
           <span className="text-nexus-cyan"> GOOGLE_CLIENT_SECRET</span> y
-          <span className="text-nexus-cyan"> GOOGLE_REDIRECT_URI</span> como variables de entorno. Gmail, Contacts y
-          Drive quedan para más adelante.
+          <span className="text-nexus-cyan"> GOOGLE_REDIRECT_URI</span> como
+          variables de entorno.
         </p>
       )}
 
@@ -112,11 +148,17 @@ export function IntegrationsPanel() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm">Google Calendar</p>
-              {google?.status === "CONNECTED" && <p className="text-xs text-nexus-cyan">Conectado</p>}
-              {google?.status === "ERROR" && (
-                <p className="text-xs text-nexus-danger">{google.errorMessage ?? "Hubo un error"}</p>
+              {google?.status === "CONNECTED" && (
+                <p className="text-xs text-nexus-cyan">Conectado</p>
               )}
-              {!google && <p className="text-xs text-nexus-muted">No conectado</p>}
+              {google?.status === "ERROR" && (
+                <p className="text-xs text-nexus-danger">
+                  {google.errorMessage ?? "Hubo un error"}
+                </p>
+              )}
+              {!google && (
+                <p className="text-xs text-nexus-muted">No conectado</p>
+              )}
             </div>
             {google ? (
               <div className="flex gap-2">
@@ -145,7 +187,9 @@ export function IntegrationsPanel() {
               </button>
             )}
           </div>
-          {syncResult && <p className="text-xs text-nexus-muted">{syncResult}</p>}
+          {syncResult && (
+            <p className="text-xs text-nexus-muted">{syncResult}</p>
+          )}
         </div>
       )}
     </section>

@@ -23,36 +23,36 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  devices              Device[]
-  areas                Area[]
-  projects             Project[]
-  tasks                Task[]
-  events               Event[]
-  reminders            Reminder[]
-  notes                Note[]
-  inboxItems           InboxItem[]
-  contacts             Contact[]
-  entities             Entity[]
-  relationships        Relationship[]
-  memories             Memory[]
-  preferences          Preference[]
+  devices               Device[]
+  areas                 Area[]
+  projects              Project[]
+  tasks                 Task[]
+  events                Event[]
+  reminders             Reminder[]
+  notes                 Note[]
+  inboxItems            InboxItem[]
+  contacts              Contact[]
+  entities              Entity[]
+  relationships         Relationship[]
+  memories              Memory[]
+  preferences           Preference[]
   financialTransactions FinancialTransaction[]
-  debts                Debt[]
-  workouts             Workout[]
-  foodLogs             FoodLog[]
-  healthLogs           HealthLog[]
-  trips                Trip[]
-  attachments          Attachment[]
-  notifications        Notification[]
-  integrations         Integration[]
-  aiConversations      AiConversation[]
-  aiActions            AiAction[]
-  auditLogs            AuditLog[]
-  refreshTokens        RefreshToken[]
-  patients             Patient[]
-  clinicalEncounters   ClinicalEncounter[]
-  clinicalFollowups    ClinicalFollowup[]
-  clinicalTemplates    ClinicalTemplate[]
+  debts                 Debt[]
+  workouts              Workout[]
+  foodLogs              FoodLog[]
+  healthLogs            HealthLog[]
+  trips                 Trip[]
+  attachments           Attachment[]
+  notifications         Notification[]
+  integrations          Integration[]
+  aiConversations       AiConversation[]
+  aiActions             AiAction[]
+  auditLogs             AuditLog[]
+  refreshTokens         RefreshToken[]
+  patients              Patient[]
+  clinicalEncounters    ClinicalEncounter[]
+  clinicalFollowups     ClinicalFollowup[]
+  clinicalTemplates     ClinicalTemplate[]
 
   @@map("users")
 }
@@ -71,13 +71,13 @@ model Device {
 }
 
 model RefreshToken {
-  id        String   @id @default(uuid())
+  id        String    @id @default(uuid())
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tokenHash String   @unique
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
   expiresAt DateTime
   revokedAt DateTime?
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
 
   @@index([userId])
   @@map("refresh_tokens")
@@ -118,6 +118,7 @@ enum ProjectStatus {
 
 model Project {
   id        String        @id @default(uuid())
+  clientId  String?
   userId    String
   user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   areaId    String?
@@ -130,12 +131,13 @@ model Project {
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
 
-  milestones ProjectMilestone[]
-  tasks      Task[]
-  events     Event[]
-  notes      Note[]
+  milestones  ProjectMilestone[]
+  tasks       Task[]
+  events      Event[]
+  notes       Note[]
   attachments Attachment[]
 
+  @@unique([userId, clientId])
   @@index([userId])
   @@index([areaId])
   @@map("projects")
@@ -245,20 +247,20 @@ model Event {
 }
 
 model Reminder {
-  id        String    @id @default(uuid())
-  userId    String
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  taskId    String?
-  task      Task?     @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  title     String
-  remindAt  DateTime
-  fired     Boolean   @default(false)
-  deliveryStatus String @default("PENDING")
-  deliveryAttempts Int @default(0)
-  claimedUntil DateTime?
-  nextAttemptAt DateTime?
-  sentAt DateTime?
-  createdAt DateTime  @default(now())
+  id               String    @id @default(uuid())
+  userId           String
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  taskId           String?
+  task             Task?     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  title            String
+  remindAt         DateTime
+  fired            Boolean   @default(false)
+  deliveryStatus   String    @default("PENDING")
+  deliveryAttempts Int       @default(0)
+  claimedUntil     DateTime?
+  nextAttemptAt    DateTime?
+  sentAt           DateTime?
+  createdAt        DateTime  @default(now())
 
   @@index([userId, remindAt])
   @@map("reminders")
@@ -296,20 +298,20 @@ enum InboxItemSource {
 }
 
 model InboxItem {
-  id               String            @id @default(uuid())
+  id               String          @id @default(uuid())
   userId           String
-  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user             User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   captureId        String?
   rawText          String
-  source           InboxItemSource   @default(TEXT)
-  status           InboxItemStatus   @default(PENDING)
+  source           InboxItemSource @default(TEXT)
+  status           InboxItemStatus @default(PENDING)
   classifiedAsType String?
   classifiedAsId   String?
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
 
-  @@index([userId, status])
   @@unique([userId, captureId])
+  @@index([userId, status])
   @@map("inbox_items")
 }
 
@@ -318,22 +320,24 @@ model InboxItem {
 // ---------------------------------------------------------------------------
 
 model Contact {
-  id          String   @id @default(uuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name        String
-  email       String?
-  phone       String?
+  id             String   @id @default(uuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name           String
+  email          String?
+  phone          String?
   externalSource String? // "google_contacts" | null
-  externalId  String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  externalId     String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   @@index([userId])
   @@map("contacts")
 }
 
-/** A person, place, or thing NEXUS knows about beyond a raw contact card. */
+/**
+ * A person, place, or thing NEXUS knows about beyond a raw contact card.
+ */
 model Entity {
   id        String   @id @default(uuid())
   userId    String
@@ -351,7 +355,9 @@ model Entity {
   @@map("entities")
 }
 
-/** e.g. "Pedro" --[jefe en]--> "Hospital" (spec §6 example). */
+/**
+ * e.g. "Pedro" --[jefe en]--> "Hospital" (spec §6 example).
+ */
 model Relationship {
   id           String   @id @default(uuid())
   userId       String
@@ -367,7 +373,9 @@ model Relationship {
   @@map("relationships")
 }
 
-/** Freeform, user-visible/editable/searchable memory (spec §6 — never a black box). */
+/**
+ * Freeform, user-visible/editable/searchable memory (spec §6 — never a black box).
+ */
 model Memory {
   id        String   @id @default(uuid())
   userId    String
@@ -405,32 +413,32 @@ enum FinancialTransactionType {
 }
 
 model FinancialTransaction {
-  id          String                    @id @default(uuid())
+  id          String                   @id @default(uuid())
   userId      String
-  user        User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
   type        FinancialTransactionType
-  amount      Decimal                   @db.Decimal(14, 2)
-  currency    String                    @default("ARS")
+  amount      Decimal                  @db.Decimal(14, 2)
+  currency    String                   @default("ARS")
   category    String?
   description String?
-  occurredAt  DateTime                  @default(now())
-  createdAt   DateTime                  @default(now())
+  occurredAt  DateTime                 @default(now())
+  createdAt   DateTime                 @default(now())
 
   @@index([userId, occurredAt])
   @@map("financial_transactions")
 }
 
 model Debt {
-  id            String    @id @default(uuid())
-  userId        String
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name          String
-  totalAmount   Decimal   @db.Decimal(14, 2)
-  remaining     Decimal   @db.Decimal(14, 2)
-  dueDate       DateTime?
-  isRecurring   Boolean   @default(false)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  totalAmount Decimal   @db.Decimal(14, 2)
+  remaining   Decimal   @db.Decimal(14, 2)
+  dueDate     DateTime?
+  isRecurring Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   @@index([userId])
   @@map("debts")
@@ -441,27 +449,27 @@ model Debt {
 // ---------------------------------------------------------------------------
 
 model Workout {
-  id           String   @id @default(uuid())
-  userId       String
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type         String // "running" | "gym" | ...
-  durationMin  Int?
-  distanceKm   Decimal? @db.Decimal(6, 2)
-  notes        String?
-  occurredAt   DateTime @default(now())
-  createdAt    DateTime @default(now())
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        String // "running" | "gym" | ...
+  durationMin Int?
+  distanceKm  Decimal? @db.Decimal(6, 2)
+  notes       String?
+  occurredAt  DateTime @default(now())
+  createdAt   DateTime @default(now())
 
   @@index([userId, occurredAt])
   @@map("workouts")
 }
 
 model FoodLog {
-  id         String   @id @default(uuid())
-  userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   description String
-  occurredAt DateTime @default(now())
-  createdAt  DateTime @default(now())
+  occurredAt  DateTime @default(now())
+  createdAt   DateTime @default(now())
 
   @@index([userId, occurredAt])
   @@map("food_logs")
@@ -505,16 +513,16 @@ model Trip {
 // ---------------------------------------------------------------------------
 
 model Attachment {
-  id         String   @id @default(uuid())
-  userId     String
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  projectId  String?
-  project    Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
-  fileName   String
-  url        String
-  mimeType   String?
-  sizeBytes  Int?
-  createdAt  DateTime @default(now())
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projectId String?
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  fileName  String
+  url       String
+  mimeType  String?
+  sizeBytes Int?
+  createdAt DateTime @default(now())
 
   @@index([userId])
   @@index([projectId])
@@ -522,16 +530,16 @@ model Attachment {
 }
 
 model Notification {
-  id        String    @id @default(uuid())
-  userId    String
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  title     String
-  body      String?
-  type      String // "reminder" | "deadline" | "followup" | "system"
+  id           String    @id @default(uuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title        String
+  body         String?
+  type         String // "reminder" | "deadline" | "followup" | "system"
   scheduledFor DateTime?
-  sentAt    DateTime?
-  readAt    DateTime?
-  createdAt DateTime  @default(now())
+  sentAt       DateTime?
+  readAt       DateTime?
+  createdAt    DateTime  @default(now())
 
   @@index([userId, scheduledFor])
   @@map("notifications")
@@ -566,12 +574,12 @@ model Integration {
 // ---------------------------------------------------------------------------
 
 model AiConversation {
-  id        String   @id @default(uuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  transcript Json    @default("[]")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transcript Json     @default("[]")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   actions AiAction[]
 
@@ -580,18 +588,18 @@ model AiConversation {
 }
 
 model AiAction {
-  id             String          @id @default(uuid())
-  userId         String
-  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  conversationId String?
-  conversation   AiConversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
-  tool           String
-  input          Json
-  output         Json?
+  id              String          @id @default(uuid())
+  userId          String
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  conversationId  String?
+  conversation    AiConversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  tool            String
+  input           Json
+  output          Json?
   permissionLevel Int
-  status         String // "planned" | "confirmed" | "executed" | "failed" | "undone"
-  errorMessage   String?
-  createdAt      DateTime        @default(now())
+  status          String // "planned" | "confirmed" | "executed" | "failed" | "undone"
+  errorMessage    String?
+  createdAt       DateTime        @default(now())
 
   @@index([userId])
   @@index([conversationId])
@@ -616,68 +624,85 @@ model AuditLog {
   @@map("audit_log")
 }
 
-
 // Clinical records are isolated from personal Memory/Inbox/AI context.
 model Patient {
-  id String @id @default(uuid())
-  userId String
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id              String              @id @default(uuid())
+  clientId        String?
+  userId          String
+  user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   recordEncrypted String
-  searchTokens String[]
-  documentHash String?
-  version Int @default(1)
-  archived Boolean @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  encounters ClinicalEncounter[]
-  followups ClinicalFollowup[]
+  searchTokens    String[]
+  documentHash    String?
+  version         Int                 @default(1)
+  archived        Boolean             @default(false)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  encounters      ClinicalEncounter[]
+  followups       ClinicalFollowup[]
+
   @@unique([userId, documentHash])
+  @@unique([userId, clientId])
   @@index([userId, archived, updatedAt])
   @@index([searchTokens], type: Gin)
   @@map("clinical_patients")
 }
 
 model ClinicalEncounter {
-  id String @id @default(uuid())
-  userId String
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  patientId String
-  patient Patient @relation(fields: [patientId], references: [id], onDelete: Restrict)
-  clientId String
+  id              String    @id @default(uuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  patientId       String
+  patient         Patient   @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  clientId        String
   recordEncrypted String
-  status String @default("DRAFT")
-  version Int @default(1)
-  occurredAt DateTime
-  finalizedAt DateTime?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  status          String    @default("DRAFT")
+  version         Int       @default(1)
+  occurredAt      DateTime
+  finalizedAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
   @@unique([userId, clientId])
   @@index([userId, patientId, occurredAt])
   @@map("clinical_encounters")
 }
 
 model ClinicalFollowup {
-  id String @id @default(uuid())
-  userId String
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  patientId String
-  patient Patient @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  id              String   @id @default(uuid())
+  clientId        String?
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  patientId       String
+  patient         Patient  @relation(fields: [patientId], references: [id], onDelete: Restrict)
   recordEncrypted String
-  dueAt DateTime
-  status String @default("PENDING")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  dueAt           DateTime
+  version         Int      @default(1)
+  status          String   @default("PENDING")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([userId, clientId])
   @@index([userId, status, dueAt])
   @@map("clinical_followups")
 }
 
 model ClinicalTemplate {
-  id String @id @default(uuid())
-  userId String
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  recordEncrypted String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                String   @id @default(uuid())
+  clientId          String?
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  archived          Boolean  @default(false)
+  favorite          Boolean  @default(false)
+  version           Int      @default(1)
+  lineageId         String?
+  previousVersionId String?
+  builtinId         String?
+  recordEncrypted   String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([userId, builtinId])
+  @@unique([userId, clientId])
   @@index([userId])
   @@map("clinical_templates")
 }

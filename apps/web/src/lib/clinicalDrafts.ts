@@ -119,3 +119,60 @@ export async function readClinicalDraft<T>(
 }
 export const removeClinicalDraft = (userId: string, slot: string) =>
   put(`draft:${userId}:${slot}`, undefined, true);
+
+/** Enumerate only this account's encrypted records, decrypting metadata locally. */
+export async function listClinicalDrafts<T>(userId: string, patientId: string) {
+  const db = await openDb();
+  let keys: IDBValidKey[];
+  try {
+    keys = await new Promise<IDBValidKey[]>((resolve, reject) => {
+      const req = db
+        .transaction("records", "readonly")
+        .objectStore("records")
+        .getAllKeys();
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  } finally {
+    db.close();
+  }
+  const prefix = `draft:${userId}:${patientId}:`;
+  const rows = [];
+  for (const key of keys) {
+    if (typeof key !== "string" || !key.startsWith(prefix)) continue;
+    const slot = key.slice(`draft:${userId}:`.length);
+    const value = await readClinicalDraft<T>(userId, slot);
+    if (value) rows.push({ slot, value });
+  }
+  return rows;
+}
+
+/** Hold the browser lock until the editor unmounts. Never steal an active lock. */
+export async function acquireClinicalDraftLock(
+  userId: string,
+  slot: string,
+): Promise<{
+  writable: boolean;
+  release: () => void;
+}> {
+  if (!navigator.locks) return { writable: false, release: () => {} };
+  let release = () => {};
+  return new Promise((resolve, reject) => {
+    navigator.locks
+      .request(
+        `nexus-clinical:${userId}:${slot}`,
+        { mode: "exclusive", ifAvailable: true },
+        async (lock) => {
+          if (!lock) {
+            resolve({ writable: false, release });
+            return;
+          }
+          await new Promise<void>((done) => {
+            release = done;
+            resolve({ writable: true, release });
+          });
+        },
+      )
+      .catch(reject);
+  });
+}

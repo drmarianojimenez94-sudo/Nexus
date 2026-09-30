@@ -62,3 +62,18 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+      - name: Verify encrypted backup and isolated restore
+        env:
+          NEXUS_BACKUP_KEY: ci-backup-key-never-use-for-real-data-0123456789
+          RESTORE_DATABASE_URL: postgresql://nexus:nexus_ci_password@localhost:5432/nexus_restore_ci
+          PGHOST: localhost
+          PGUSER: nexus
+          PGPASSWORD: nexus_ci_password
+        run: |
+          pnpm --filter @nexus/api exec tsx src/tests/backupFixture.ts seed
+          node scripts/backup.mjs backup /tmp/nexus-ci.nexusbak
+          createdb nexus_restore_ci
+          node scripts/backup.mjs restore /tmp/nexus-ci.nexusbak
+          DATABASE_URL="$RESTORE_DATABASE_URL" pnpm --filter @nexus/api exec tsx src/tests/backupFixture.ts verify
+          rm /tmp/nexus-ci.nexusbak

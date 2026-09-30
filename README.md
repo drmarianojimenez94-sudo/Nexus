@@ -200,3 +200,7 @@ CI runs install → lint → typecheck → test → build on every push (see
 - [`docs/NEXUS_ROADMAP.md`](docs/NEXUS_ROADMAP.md)
 - [`docs/NEXUS_SETUP.md`](docs/NEXUS_SETUP.md)
 - [`docs/NEXUS_TEST_REPORT.md`](docs/NEXUS_TEST_REPORT.md)
+
+## Consolidación web y proyectos por voz
+
+La rama de revisión incorpora borradores independientes, gestión de plantillas, historial y proyectos con descripción y pendientes revisables por voz. Consulte [la entrega web](docs/NEXUS_WEB_RELEASE.md) para integraciones Google, copias cifradas, restauración y preparación del cliente nativo.

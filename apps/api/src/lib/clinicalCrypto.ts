@@ -62,7 +62,9 @@ export function searchTokens(
   userId: string,
 ): string[] {
   const tokens = new Set<string>();
-  for (const word of normalize(`${name} ${document}`).split(" ")) {
+  for (const word of normalize(
+    `${name} ${document} ${normalizeDocument(document)}`,
+  ).split(" ")) {
     for (let length = 2; length <= word.length; length++)
       tokens.add(clinicalHash(word.slice(0, length), userId));
   }
@@ -74,3 +76,9 @@ export function queryTokens(query: string, userId: string): string[] {
     .filter((v) => v.length >= 2)
     .map((v) => clinicalHash(v, userId));
 }
+
+export const normalizeDocument = (value: string) =>
+  value
+    .normalize("NFKC")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]/gu, "");

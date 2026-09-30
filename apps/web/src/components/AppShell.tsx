@@ -34,7 +34,9 @@ function ListenParam({ onListen }: { onListen: () => void }) {
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const clinical = (usePathname() || "").startsWith("/patients");
+  const path = usePathname() || "";
+  const clinical = path.startsWith("/patients");
+  const focusedDictation = clinical || path.startsWith("/projects");
   const [clinicalVoiceNotice, setClinicalVoiceNotice] = useState(false);
   const [captureOpen, setCaptureOpen] = useState(false);
   const [voiceDocked, setVoiceDocked] = useState(false);
@@ -45,28 +47,29 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   } = usePreferences();
   const voiceOpened = useRef(false);
   const openVoice = useCallback(() => {
-    if (clinical) {
+    if (focusedDictation) {
       setClinicalVoiceNotice(true);
       return;
     }
     setCaptureOpen(true);
-  }, [clinical]);
+  }, [focusedDictation]);
   const closeVoice = useCallback(() => {
     setCaptureOpen(false);
     setVoiceDocked(false);
   }, []);
 
   useEffect(() => {
-    if (!user || preferencesLoading || voiceOpened.current || clinical) return;
+    if (!user || preferencesLoading || voiceOpened.current || focusedDictation)
+      return;
     voiceOpened.current = true;
     if (preferences?.[PREFERENCE_KEYS.VOICE_AUTO_START] !== false)
       setCaptureOpen(true);
-  }, [user, preferencesLoading, preferences, clinical]);
+  }, [user, preferencesLoading, preferences, focusedDictation]);
 
   useEffect(() => {
-    if (clinical) closeVoice();
+    if (focusedDictation) closeVoice();
     else setClinicalVoiceNotice(false);
-  }, [clinical, closeVoice]);
+  }, [focusedDictation, closeVoice]);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -113,8 +116,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             role="status"
             className="mb-3 rounded-xl border border-nexus-border p-3 text-sm"
           >
-            Para registrar una consulta, usá el dictado dentro de su plantilla.
-            El asistente personal está separado de las fichas.
+            {clinical
+              ? "Para registrar una consulta, usá el dictado dentro de su plantilla."
+              : "Para explicar un proyecto, usá el dictado dentro de Proyectos."}
           </p>
         )}
         {children}

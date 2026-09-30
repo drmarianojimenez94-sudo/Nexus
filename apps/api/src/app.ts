@@ -18,7 +18,11 @@ import { projectsRouter } from "./routes/projects.js";
 import { remindersRouter } from "./routes/reminders.js";
 import { tasksRouter } from "./routes/tasks.js";
 import { todayRouter } from "./routes/today.js";
+import { googleWorkspaceRouter } from "./routes/googleWorkspace.js";
 import { clinicalRouter } from "./routes/clinical.js";
+
+import { authenticate } from "./middleware/authenticate.js";
+import { expectedOwner } from "./middleware/expectedOwner.js";
 
 export function createApp() {
   const app = express();
@@ -52,6 +56,7 @@ export function createApp() {
 
   app.use("/auth", authRouter);
   app.use("/areas", areasRouter);
+  app.use(["/projects", "/tasks"], authenticate, expectedOwner);
   app.use("/projects", projectsRouter);
   app.use("/tasks", tasksRouter);
   app.use("/events", eventsRouter);
@@ -60,6 +65,7 @@ export function createApp() {
   app.use("/quick-capture", quickCaptureRouter);
   app.use("/today", todayRouter);
   app.use("/clinical", clinicalRouter);
+  app.use("/google-workspace", googleWorkspaceRouter);
   app.use("/preferences", preferencesRouter);
   app.use("/memories", memoryRouter);
   app.use("/connectors", connectorsRouter);

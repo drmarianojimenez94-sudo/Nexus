@@ -43,22 +43,37 @@ connectorsRouter.get(
   asyncHandler(async (req, res) => {
     const integrations = await prisma.integration.findMany({
       where: { userId: req.userId },
-      select: { provider: true, status: true, errorMessage: true, updatedAt: true },
+      select: {
+        provider: true,
+        status: true,
+        errorMessage: true,
+        updatedAt: true,
+        scopes: true,
+      },
     });
     res.json({ googleConfigured: isGoogleConfigured, integrations });
-  })
+  }),
 );
 
 connectorsRouter.get(
   "/google/authorize",
   asyncHandler(async (req, res) => {
     if (!isGoogleConfigured) {
-      throw new HttpError(501, "Google no está configurado en este servidor todavía.");
+      throw new HttpError(
+        501,
+        "Google no está configurado en este servidor todavía.",
+      );
     }
     const state = crypto.randomBytes(24).toString("hex");
-    res.cookie(OAUTH_STATE_COOKIE, state, stateCookieOptions);
-    res.json({ authUrl: buildGoogleAuthUrl(state) });
-  })
+    res.cookie(
+      OAUTH_STATE_COOKIE,
+      `${req.userId}:${state}`,
+      stateCookieOptions,
+    );
+    res.json({
+      authUrl: buildGoogleAuthUrl(state, req.query.workspace === "true"),
+    });
+  }),
 );
 
 /**
@@ -70,15 +85,26 @@ connectorsRouter.get(
 connectorsRouter.get(
   "/google/callback",
   asyncHandler(async (req, res) => {
-    const { code, state, error } = req.query as { code?: string; state?: string; error?: string };
-    const expectedState = req.cookies?.[OAUTH_STATE_COOKIE] as string | undefined;
+    const { code, state, error } = req.query as {
+      code?: string;
+      state?: string;
+      error?: string;
+    };
+    const expectedState = req.cookies?.[OAUTH_STATE_COOKIE] as
+      | string
+      | undefined;
     res.clearCookie(OAUTH_STATE_COOKIE, { path: "/" });
 
     if (error) {
       res.redirect(303, "/settings?google=denied");
       return;
     }
-    if (!code || !state || !expectedState || state !== expectedState) {
+    if (
+      !code ||
+      !state ||
+      !expectedState ||
+      `${req.userId}:${state}` !== expectedState
+    ) {
       res.redirect(303, "/settings?google=error");
       return;
     }
@@ -86,16 +112,22 @@ connectorsRouter.get(
     try {
       const tokens = await exchangeGoogleCode(code);
       const existing = await prisma.integration.findUnique({
-        where: { userId_provider: { userId: req.userId!, provider: "google_calendar" } },
+        where: {
+          userId_provider: { userId: req.userId!, provider: "google_calendar" },
+        },
       });
       await prisma.integration.upsert({
-        where: { userId_provider: { userId: req.userId!, provider: "google_calendar" } },
+        where: {
+          userId_provider: { userId: req.userId!, provider: "google_calendar" },
+        },
         create: {
           userId: req.userId!,
           provider: "google_calendar",
           status: "CONNECTED",
           accessToken: encryptToken(tokens.access_token),
-          refreshToken: tokens.refresh_token ? encryptToken(tokens.refresh_token) : null,
+          refreshToken: tokens.refresh_token
+            ? encryptToken(tokens.refresh_token)
+            : null,
           expiresAt: new Date(Date.now() + tokens.expires_in * 1000),
           scopes: tokens.scope,
           errorMessage: null,
@@ -106,7 +138,9 @@ connectorsRouter.get(
           // Google only returns a refresh_token on the very first consent
           // unless prompt=consent forces a fresh one each time (which we
           // pass) — but keep the old one as a fallback just in case.
-          refreshToken: tokens.refresh_token ? encryptToken(tokens.refresh_token) : existing?.refreshToken,
+          refreshToken: tokens.refresh_token
+            ? encryptToken(tokens.refresh_token)
+            : existing?.refreshToken,
           expiresAt: new Date(Date.now() + tokens.expires_in * 1000),
           scopes: tokens.scope,
           errorMessage: null,
@@ -119,11 +153,11 @@ connectorsRouter.get(
         entityId: "google_calendar",
       });
       res.redirect(303, "/settings?connected=google_calendar");
-    } catch (err) {
-      console.error("Google OAuth callback failed:", err);
+    } catch {
+      console.error("Google OAuth callback failed");
       res.redirect(303, "/settings?google=error");
     }
-  })
+  }),
 );
 
 connectorsRouter.post(
@@ -133,7 +167,11 @@ connectorsRouter.post(
     const existing = await prisma.integration.findUnique({
       where: { userId_provider: { userId: req.userId!, provider } },
     });
-    if (!existing) throw new HttpError(404, "No hay una integración conectada para desconectar.");
+    if (!existing)
+      throw new HttpError(
+        404,
+        "No hay una integración conectada para desconectar.",
+      );
 
     if (provider === "google_calendar" && existing.accessToken) {
       await revokeGoogleToken(decryptToken(existing.accessToken));
@@ -146,7 +184,7 @@ connectorsRouter.post(
       entityId: provider,
     });
     res.status(204).send();
-  })
+  }),
 );
 
 /**
@@ -159,17 +197,29 @@ connectorsRouter.post(
   "/google/sync",
   asyncHandler(async (req, res) => {
     const integration = await prisma.integration.findUnique({
-      where: { userId_provider: { userId: req.userId!, provider: "google_calendar" } },
+      where: {
+        userId_provider: { userId: req.userId!, provider: "google_calendar" },
+      },
     });
-    if (!integration || integration.status !== "CONNECTED" || !integration.accessToken) {
+    if (
+      !integration ||
+      integration.status !== "CONNECTED" ||
+      !integration.accessToken
+    ) {
       throw new HttpError(400, "Google Calendar no está conectado.");
     }
 
     let accessToken = decryptToken(integration.accessToken);
     try {
-      if (integration.expiresAt && integration.expiresAt.getTime() < Date.now() + 60_000) {
-        if (!integration.refreshToken) throw new Error("No refresh token stored");
-        const refreshed = await refreshGoogleAccessToken(decryptToken(integration.refreshToken));
+      if (
+        integration.expiresAt &&
+        integration.expiresAt.getTime() < Date.now() + 60_000
+      ) {
+        if (!integration.refreshToken)
+          throw new Error("No refresh token stored");
+        const refreshed = await refreshGoogleAccessToken(
+          decryptToken(integration.refreshToken),
+        );
         accessToken = refreshed.access_token;
         await prisma.integration.update({
           where: { id: integration.id },
@@ -184,8 +234,12 @@ connectorsRouter.post(
       let imported = 0;
       for (const ev of googleEvents) {
         const allDay = Boolean(ev.start.date && !ev.start.dateTime);
-        const startAt = new Date(ev.start.dateTime ?? `${ev.start.date}T00:00:00`);
-        const endRaw = ev.end?.dateTime ?? (ev.end?.date ? `${ev.end.date}T00:00:00` : undefined);
+        const startAt = new Date(
+          ev.start.dateTime ?? `${ev.start.date}T00:00:00`,
+        );
+        const endRaw =
+          ev.end?.dateTime ??
+          (ev.end?.date ? `${ev.end.date}T00:00:00` : undefined);
         await prisma.event.upsert({
           where: {
             userId_externalSource_externalId: {
@@ -228,9 +282,15 @@ connectorsRouter.post(
       console.error("Google Calendar sync failed:", err);
       await prisma.integration.update({
         where: { id: integration.id },
-        data: { status: "ERROR", errorMessage: err instanceof Error ? err.message : "Sync failed" },
+        data: {
+          status: "ERROR",
+          errorMessage: err instanceof Error ? err.message : "Sync failed",
+        },
       });
-      throw new HttpError(502, "No se pudo sincronizar con Google Calendar. Puede que haya que reconectar.");
+      throw new HttpError(
+        502,
+        "No se pudo sincronizar con Google Calendar. Puede que haya que reconectar.",
+      );
     }
-  })
+  }),
 );

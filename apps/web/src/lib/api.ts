@@ -41,7 +41,12 @@ async function request<T>(
   options: RequestInit = {},
   retried = false,
 ): Promise<T> {
-  if (path.startsWith("/clinical/") && !retried) {
+  if (
+    ["/clinical/", "/projects", "/tasks", "/google-workspace/"].some((prefix) =>
+      path.startsWith(prefix),
+    ) &&
+    !retried
+  ) {
     if (!sessionOwner)
       throw new ApiError(401, "Volvé a ingresar antes de abrir el consultorio");
     options = {
