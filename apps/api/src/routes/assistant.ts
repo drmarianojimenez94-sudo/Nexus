@@ -10,7 +10,12 @@ import { recordAudit } from "../lib/audit.js";
 export const assistantRouter = Router();
 assistantRouter.use(authenticate);
 
-const interpretSchema = z.object({ text: z.string().min(1).max(2000) });
+assistantRouter.get("/status", (_req, res) => res.json({ aiConfigured: isAiConfigured }));
+
+const interpretSchema = z.object({
+  text: z.string().trim().min(1).max(2000),
+  history: z.array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().min(1).max(2000) })).max(12).default([]),
+});
 
 const NAVIGATE_PATHS: Record<NavigateTarget, string> = {
   today: "/today",
@@ -40,10 +45,18 @@ assistantRouter.post(
     if (!isAiConfigured) {
       throw new HttpError(501, "NEXUS no tiene IA configurada todavía.");
     }
-    const { text } = interpretSchema.parse(req.body);
+    const { text, history } = interpretSchema.parse(req.body);
     const user = await prisma.user.findUniqueOrThrow({ where: { id: req.userId! }, select: { name: true } });
 
-    const parsed = await aiProvider.interpretUtterance(text, { userName: user.name, now: new Date() });
+    const [memories, tasks] = await Promise.all([
+      prisma.memory.findMany({ where: { userId: req.userId! }, orderBy: { updatedAt: "desc" }, take: 10, select: { content: true } }),
+      prisma.task.findMany({ where: { userId: req.userId!, status: { in: ["TODO", "IN_PROGRESS"] } }, orderBy: { updatedAt: "desc" }, take: 10, select: { title: true } }),
+    ]);
+    const parsed = await aiProvider.interpretUtterance(text, {
+      userName: user.name, now: new Date(), history,
+      memories: memories.map((m) => m.content.slice(0, 1000)),
+      tasks: tasks.map((t) => t.title.slice(0, 500)),
+    });
     if (!parsed) {
       throw new HttpError(502, "No pude interpretar eso. Probá de nuevo.");
     }
@@ -52,6 +65,10 @@ assistantRouter.post(
     const validWhen = when && !Number.isNaN(when.getTime()) ? when : null;
 
     switch (parsed.intent) {
+      case "conversation": {
+        res.json({ speak: parsed.spokenReply });
+        return;
+      }
       case "create_event": {
         if (!validWhen) {
           // The model was told to use "note" when it can't resolve a date —

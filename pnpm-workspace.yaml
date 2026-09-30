@@ -2,3 +2,14 @@ packages:
   - "apps/*"
   - "packages/*"
   - "database"
+
+# Use a stable release while newer shell-quote builds are inside the release-age gate.
+overrides:
+  shell-quote: "1.8.3"
+
+# Mirror the repository's package.json build allowlist for pnpm 11 runners.
+allowBuilds:
+  '@prisma/client': true
+  '@prisma/engines': true
+  esbuild: true
+  prisma: true

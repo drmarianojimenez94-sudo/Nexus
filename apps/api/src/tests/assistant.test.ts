@@ -29,6 +29,26 @@ beforeEach(async () => {
 });
 
 describe("assistant/interpret (NexusBrain)", () => {
+  it("answers conversation without saving it to inbox", async () => {
+    interpretUtterance.mockResolvedValue({ intent: "conversation", title: "", when: null, target: null, spokenReply: "¿A qué hora querés la reunión?" });
+    const res = await agent.post("/assistant/interpret").send({ text: "agendá una reunión", history: [{ role: "assistant", content: "¿Qué necesitás?" }] });
+    expect(res.status).toBe(200);
+    expect(res.body.navigateTo).toBeUndefined();
+    expect((await agent.get("/inbox")).body.items).toHaveLength(0);
+    expect(interpretUtterance.mock.calls[0]?.[1]).toMatchObject({ history: [{ role: "assistant", content: "¿Qué necesitás?" }] });
+  });
+
+  it("rejects oversized histories before calling the provider", async () => {
+    const res = await agent.post("/assistant/interpret").send({ text: "hola", history: Array.from({ length: 13 }, () => ({ role: "user", content: "hola" })) });
+    expect(res.status).toBe(400);
+    expect(interpretUtterance).not.toHaveBeenCalled();
+  });
+
+  it("requires authentication for AI status", async () => {
+    expect((await request(app).get("/assistant/status")).status).toBe(401);
+    expect((await agent.get("/assistant/status")).body.aiConfigured).toBe(true);
+  });
+
   it("creates a real calendar event instead of just navigating there", async () => {
     interpretUtterance.mockResolvedValue({
       intent: "create_event",
