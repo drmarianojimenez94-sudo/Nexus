@@ -29,7 +29,7 @@ export const env = {
   // back to the rule-based version). Never required.
   aiProvider,
   aiApiKey: aiProvider === "gemini" ? process.env.GEMINI_API_KEY : process.env.AI_API_KEY,
-  aiModel: process.env.AI_MODEL ?? (aiProvider === "gemini" ? "gemini-2.5-flash-lite" : "claude-haiku-4-5"),
+  aiModel: process.env.AI_MODEL ?? (aiProvider === "gemini" ? "gemini-3.5-flash-lite" : "claude-haiku-4-5"),
   // Optional: Google connectors (Phase 4) are simply unavailable —
   // Settings shows "not configured" instead of a broken connect button —
   // until these are set. The rest of NEXUS never depends on them.
