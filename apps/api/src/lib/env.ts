@@ -8,6 +8,11 @@ function required(name: string): string {
   return value;
 }
 
+const aiProvider = process.env.AI_PROVIDER ?? (process.env.GEMINI_API_KEY ? "gemini" : process.env.AI_API_KEY ? "anthropic" : "gemini");
+if (aiProvider !== "gemini" && aiProvider !== "anthropic") {
+  throw new Error("AI_PROVIDER must be gemini or anthropic");
+}
+
 export const env = {
   databaseUrl: required("DATABASE_URL"),
   authSecret: required("AUTH_SECRET"),
@@ -22,8 +27,9 @@ export const env = {
   nodeEnv: process.env.NODE_ENV ?? "development",
   // Optional: Phase 1 works fully without these (Today's insight falls
   // back to the rule-based version). Never required.
-  aiApiKey: process.env.AI_API_KEY,
-  aiModel: process.env.AI_MODEL ?? "claude-haiku-4-5",
+  aiProvider,
+  aiApiKey: aiProvider === "gemini" ? process.env.GEMINI_API_KEY : process.env.AI_API_KEY,
+  aiModel: process.env.AI_MODEL ?? (aiProvider === "gemini" ? "gemini-2.5-flash-lite" : "claude-haiku-4-5"),
   // Optional: Google connectors (Phase 4) are simply unavailable —
   // Settings shows "not configured" instead of a broken connect button —
   // until these are set. The rest of NEXUS never depends on them.

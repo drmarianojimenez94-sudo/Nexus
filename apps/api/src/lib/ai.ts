@@ -1,11 +1,11 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { requestAI } from "./aiTransport.js";
 import { z } from "zod";
 import { env } from "./env.js";
 
 /**
  * NexusAIProvider (spec §42): every AI-backed feature goes through this
  * interface, never a vendor SDK directly, so NEXUS is never locked to one
- * provider. Today's only implementation wraps Anthropic; Phase 3
+ * provider. Gemini and Anthropic share a validated intent pipeline; Phase 3
  * (NexusBrain) adds the rest of this interface (parseNaturalLanguage,
  * planActions, etc.) on top of the same client.
  */
@@ -51,8 +51,6 @@ export interface DailyInsightContext {
   timeOfDay: "morning" | "afternoon" | "evening";
 }
 
-const client = env.aiApiKey ? new Anthropic({ apiKey: env.aiApiKey }) : null;
-
 const parsedIntentSchema = z.object({
   intent: z.enum(["create_event", "create_task", "create_reminder", "remember", "navigate", "note", "conversation"]),
   title: z.string().max(500),
@@ -61,13 +59,13 @@ const parsedIntentSchema = z.object({
   spokenReply: z.string().trim().min(1).max(2000),
 });
 
-class AnthropicProvider implements NexusAIProvider {
+class ConfiguredProvider implements NexusAIProvider {
   async generateDailyInsight(context: DailyInsightContext): Promise<string | null> {
-    if (!client) return null;
+    if (!env.aiApiKey) return null;
 
     const prompt = buildInsightPrompt(context);
     try {
-      const response = await client.messages.create(
+      const response = await requestAI(
         {
           model: env.aiModel,
           max_tokens: 120,
@@ -88,10 +86,10 @@ class AnthropicProvider implements NexusAIProvider {
 
       const text = response.content.find((block) => block.type === "text")?.text?.trim();
       return text && text.length > 0 ? text : null;
-    } catch (err) {
+    } catch {
       // Any failure (no network, bad key, rate limit) falls back to the
       // rule-based insight in the caller — never breaks the Today screen.
-      console.error("NexusAIProvider.generateDailyInsight failed:", err);
+      console.error("NexusAIProvider.generateDailyInsight failed");
       return null;
     }
   }
@@ -106,13 +104,13 @@ class AnthropicProvider implements NexusAIProvider {
    * structured data, never free text to parse-and-hope.
    */
   async interpretUtterance(text: string, context: UtteranceContext): Promise<ParsedIntent | null> {
-    if (!client) return null;
+    if (!env.aiApiKey) return null;
 
     const nowIso = context.now.toISOString();
     const weekday = context.now.toLocaleDateString("es-AR", { weekday: "long", timeZone: "America/Argentina/Buenos_Aires" });
 
     try {
-      const response = await client.messages.create(
+      const response = await requestAI(
         {
           model: env.aiModel,
           max_tokens: 400,
@@ -184,8 +182,8 @@ class AnthropicProvider implements NexusAIProvider {
       if (!toolUse || toolUse.type !== "tool_use") return null;
       const input = parsedIntentSchema.safeParse(toolUse.input);
       return input.success ? input.data : null;
-    } catch (err) {
-      console.error("NexusAIProvider.interpretUtterance failed:", err);
+    } catch {
+      console.error("NexusAIProvider.interpretUtterance failed");
       return null;
     }
   }
@@ -214,7 +212,7 @@ function buildInsightPrompt(context: DailyInsightContext): string {
   return lines.join("\n");
 }
 
-export const aiProvider: NexusAIProvider = new AnthropicProvider();
+export const aiProvider: NexusAIProvider = new ConfiguredProvider();
 
 /** True only when a real provider is configured — lets callers skip the
  * round-trip entirely instead of awaiting a no-op. */

@@ -7,7 +7,8 @@ import { useAuth } from "@/lib/auth-context";
 import { flushOfflineQueue } from "@/lib/offlineQueue";
 import { usePreferences } from "@/lib/usePreferences";
 import { BottomNav } from "./BottomNav";
-import { NexusFace } from "./NexusFace";
+import { NexusCore } from "./NexusCore";
+import { SystemHeader } from "./SystemHeader";
 import { OnboardingTour } from "./OnboardingTour";
 import { Sidebar } from "./Sidebar";
 import { VoiceSession } from "./VoiceSession";
@@ -64,7 +65,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   if (loading || !user) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <NexusFace state="thinking" size={56} />
+        <NexusCore state="thinking" size={56} />
       </div>
     );
   }
@@ -72,12 +73,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const showOnboarding = !preferencesLoading && !preferences?.[PREFERENCE_KEYS.ONBOARDING_COMPLETED];
 
   return (
-    <div className={`mx-auto flex max-w-6xl gap-4 px-3 pt-4 sm:px-6 ${voiceDocked ? "pb-[22rem]" : "pb-24 sm:pb-6"}`}>
+    <div className={`nexus-app-shell mx-auto flex max-w-7xl gap-5 px-3 pt-4 sm:px-6 sm:pt-5 ${voiceDocked ? "pb-[22rem]" : "pb-24 sm:pb-6"}`}>
       <Suspense fallback={null}>
         <ListenParam onListen={openVoice} />
       </Suspense>
       <Sidebar onOrbClick={() => setCaptureOpen(true)} />
-      <main className="min-w-0 flex-1">{children}</main>
+      <main className="min-w-0 flex-1 sm:pt-2"><SystemHeader onVoice={openVoice}/>{children}</main>
       {!voiceDocked && <BottomNav onOrbClick={openVoice} />}
       {captureOpen && <VoiceSession onClose={closeVoice} onDockChange={setVoiceDocked} />}
       {showOnboarding && !captureOpen && (

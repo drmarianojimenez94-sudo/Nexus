@@ -33,7 +33,7 @@ export default function AreasPage() {
   return (
     <div className="flex flex-col gap-4">
       <header>
-        <h1 className="text-2xl font-semibold">Areas</h1>
+        <h1 className="text-2xl font-semibold">Áreas</h1>
         <p className="text-sm text-nexus-muted">Las categorías centrales de tu vida. Creá las que quieras.</p>
       </header>
 

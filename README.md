@@ -137,9 +137,16 @@ silently breaks cookie-based login).
    service by itself — nothing to wire by hand.
 3. Open the new service once it's up, click through to its URL. That's
    the whole app, live.
-4. Optional: in the service's Environment tab, set `AI_API_KEY` (an
-   Anthropic key from [console.anthropic.com](https://console.anthropic.com))
-   for the AI-generated Today insight — works fine without it too.
+4. For AI conversation and daily insights, use Gemini's limited free tier:
+   create your account key at [Google AI Studio](https://aistudio.google.com/apikey),
+   then set `AI_PROVIDER=gemini`, `GEMINI_API_KEY` and
+   `AI_MODEL=gemini-2.5-flash-lite` in Render's Environment tab. Save and deploy.
+   Keys stay on the server. Free-tier data may be used to improve Google's products;
+   don't send patient information or other sensitive data. Nexus does not enable
+   billing or fail over to a paid provider. Quota errors preserve local commands.
+   Existing Claude installations remain supported with `AI_PROVIDER=anthropic`,
+   `AI_API_KEY`, and `AI_MODEL=claude-haiku-4-5`. Configuration status only checks
+   whether a key is present; an actual conversation verifies access.
 
 Free tier: the service sleeps after 15 minutes idle (~30-60s to wake on
 the next request), and the free Postgres database expires after 90 days.

@@ -33,7 +33,7 @@ export default function ProjectsPage() {
   return (
     <div className="flex flex-col gap-4">
       <header>
-        <h1 className="text-2xl font-semibold">Projects</h1>
+        <h1 className="text-2xl font-semibold">Proyectos</h1>
       </header>
 
       <form onSubmit={createProject} className="glass-panel flex gap-2 p-4">

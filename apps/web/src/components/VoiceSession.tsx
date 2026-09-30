@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { FaceState } from "./NexusFace";
+import { NexusCore } from "./NexusCore";
 import { useSpeech } from "@/lib/useSpeech";
 import { handleVoiceCommand, type ConversationTurn } from "@/lib/voiceCommands";
 import { api } from "@/lib/api";
@@ -115,7 +116,7 @@ export function VoiceSession({ onClose, onDockChange }: { onClose: () => void; o
     <div role={docked ? "region" : "dialog"} aria-modal={docked ? undefined : true} aria-label="Asistente Nexus" className={docked ? "voice-console voice-dock fixed inset-x-3 bottom-3 z-50 mx-auto max-w-3xl rounded-2xl border border-nexus-cyan/30" : "voice-console fixed inset-0 z-50 overflow-y-auto"}>
       <div className={docked ? "relative p-3 sm:p-4" : "relative mx-auto flex min-h-[100dvh] max-w-5xl flex-col px-5 pb-8 pt-6 sm:px-10"}>
         <header className="flex flex-wrap items-center justify-between gap-3">
-          <div className={docked ? "min-w-0 flex-1" : "w-full sm:w-auto"}><p className="font-mono text-xs tracking-[0.3em] text-nexus-cyan">NEXUS · ASISTENTE</p>{!docked && <p className="mt-1 text-xs text-nexus-muted">Voz, conversación y tus paneles en un solo lugar</p>}</div>
+          <div className={docked ? "min-w-0 flex-1" : "w-full sm:w-auto"}><p className="font-mono text-xs tracking-[0.3em] text-nexus-cyan">NEXUS</p>{!docked && <p className="mt-1 text-xs text-nexus-muted">Tu voz. Tu agenda. Tu universo.</p>}</div>
           <div className="ml-auto flex shrink-0 gap-2">
             <button autoFocus onClick={() => dock(!docked)} className="whitespace-nowrap rounded-full border border-nexus-border px-3 py-2 text-xs">{docked ? "Expandir" : "Ver mi panel"}</button>
             <button onClick={onClose} aria-label="Cerrar asistente y apagar micrófono" className="whitespace-nowrap rounded-full border border-nexus-border px-3 py-2 text-xs">Cerrar</button>
@@ -124,10 +125,10 @@ export function VoiceSession({ onClose, onDockChange }: { onClose: () => void; o
         <div className={docked ? "my-3 flex items-center gap-3" : "flex flex-1 flex-col items-center justify-center gap-6 py-8 text-center"}>
           <div className={`voice-core ${docked ? "voice-core-compact" : ""}`} data-state={state} aria-hidden="true">
             <span className="voice-ring voice-ring-outer" /><span className="voice-ring voice-ring-inner" />
-            <span className="voice-reactor" />
+            <NexusCore size={docked ? 34 : 172} state={state}/>{!docked && <><span className="voice-target voice-target-top"/><span className="voice-target voice-target-bottom"/></>}
           </div>
           <div className={docked ? "min-w-0 flex-1" : "w-full max-w-xl"}>
-            <p className="mb-2 font-mono text-xs tracking-[0.2em] text-nexus-cyan" role="status">{status}</p>
+            <p className="mb-2 font-mono text-xs tracking-[0.2em] text-nexus-cyan" role="status"><span className="mr-2 inline-block h-1.5 w-1.5 rounded-full bg-current"/>{status}</p>
             <p className={docked ? "max-h-20 overflow-y-auto text-sm leading-relaxed" : "text-xl leading-relaxed sm:text-2xl"} aria-live="polite">{reply}</p>
             {!docked && <p className="mt-4 min-h-6 text-sm text-nexus-muted">{interimTranscript || heard ? `“${interimTranscript || heard}”` : "Decime ‘abrime el calendario’ o elegí un panel."}</p>}
           </div>

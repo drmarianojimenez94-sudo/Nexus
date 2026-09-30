@@ -27,7 +27,7 @@ export default function InboxPage() {
   return (
     <div className="flex flex-col gap-4">
       <header>
-        <h1 className="text-2xl font-semibold">Inbox</h1>
+        <h1 className="text-2xl font-semibold">Bandeja</h1>
         <p className="text-sm text-nexus-muted">Todo lo que capturaste sin clasificar todavía.</p>
       </header>
 
