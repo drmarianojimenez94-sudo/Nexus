@@ -6,8 +6,8 @@
 # one process) and one free Postgres database, already wired together.
 #
 # The only thing you do by hand afterwards: open the new service's
-# Environment tab and set AI_API_KEY if you want the real AI-generated
-# Today insight (get one at https://console.anthropic.com) — everything
+# Environment tab and set GEMINI_API_KEY if you want AI conversation and
+# Today insights (get one at https://aistudio.google.com/apikey) — everything
 # works without it, it just falls back to a simpler rule-based message.
 #
 # Free tier notes (so nothing here surprises you): the web service sleeps
@@ -24,7 +24,7 @@ databases:
 services:
   - type: web
     name: nexus
-    env: node
+    runtime: node
     plan: free
     # No `corepack enable` — Render's Node build image ships pnpm already,
     # and corepack's self-install step fails there (EROFS: /usr/bin is
@@ -52,10 +52,14 @@ services:
         value: http://localhost:4000
       - key: NODE_ENV
         value: production
+      - key: AI_PROVIDER
+        value: gemini
+      - key: GEMINI_API_KEY
+        sync: false
       - key: AI_API_KEY
         sync: false
       - key: AI_MODEL
-        value: claude-haiku-4-5
+        value: gemini-2.5-flash-lite
       # Optional, same pattern as AI_API_KEY — Settings just shows "not
       # configured" without these. See .env.example for how to get them
       # and why GOOGLE_REDIRECT_URI has to be set by hand (it depends on

@@ -4,10 +4,10 @@ import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 
 const LINKS = [
-  { href: "/inbox", label: "Inbox" },
-  { href: "/areas", label: "Areas" },
-  { href: "/memory", label: "Memory" },
-  { href: "/settings", label: "Settings" },
+  { href: "/inbox", label: "Bandeja" },
+  { href: "/areas", label: "Áreas" },
+  { href: "/memory", label: "Memoria" },
+  { href: "/settings", label: "Ajustes" },
 ];
 
 export default function MorePage() {

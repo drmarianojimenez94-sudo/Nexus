@@ -6,11 +6,12 @@ import { asyncHandler } from "../middleware/asyncHandler.js";
 import { authenticate } from "../middleware/authenticate.js";
 import { HttpError } from "../middleware/errorHandler.js";
 import { recordAudit } from "../lib/audit.js";
+import { env } from "../lib/env.js";
 
 export const assistantRouter = Router();
 assistantRouter.use(authenticate);
 
-assistantRouter.get("/status", (_req, res) => res.json({ aiConfigured: isAiConfigured }));
+assistantRouter.get("/status", (_req, res) => res.json({ aiConfigured: isAiConfigured, provider: env.aiProvider, model: env.aiModel }));
 
 const interpretSchema = z.object({
   text: z.string().trim().min(1).max(2000),

@@ -40,7 +40,7 @@ export default function CalendarPage() {
   return (
     <div className="flex flex-col gap-4">
       <header>
-        <h1 className="text-2xl font-semibold">Calendar</h1>
+        <h1 className="text-2xl font-semibold">Calendario</h1>
       </header>
 
       <form onSubmit={addEvent} className="glass-panel flex flex-col gap-2 p-4 sm:flex-row sm:items-end">

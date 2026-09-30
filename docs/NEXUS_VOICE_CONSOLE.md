@@ -16,9 +16,9 @@ La versión web abre el asistente después de autenticar al usuario. Es la misma
 
 ## Servidor
 
-Reutiliza el proveedor Anthropic existente. Configurar `AI_API_KEY` y, opcionalmente, `AI_MODEL` en el servidor de la API. La clave nunca se envía al navegador. No requiere migraciones de base de datos.
+Usa Gemini o Anthropic a través del mismo intérprete validado. Para Gemini, configurar `AI_PROVIDER=gemini`, `GEMINI_API_KEY` y `AI_MODEL=gemini-2.5-flash-lite`. Para Claude, `AI_PROVIDER=anthropic`, `AI_API_KEY` y `AI_MODEL=claude-haiku-4-5`. La clave nunca se envía al navegador. No requiere migraciones de base de datos.
 
-`GET /assistant/status` requiere autenticación y solo expone `aiConfigured`. `POST /assistant/interpret` admite texto y hasta doce mensajes de contexto de máximo 2000 caracteres cada uno.
+`GET /assistant/status` requiere autenticación y expone `aiConfigured`, `provider` y `model`, nunca la clave. `POST /assistant/interpret` admite texto y hasta doce mensajes de contexto de máximo 2000 caracteres cada uno.
 
 ## Alcance y límites
 
@@ -31,7 +31,7 @@ El contexto conversacional dura mientras la consola permanece abierta. No hay st
 - Seis pruebas de regresión web: frases con hoy/gracias dentro de tareas, contexto de seguimiento, fallo ambiguo de API, conversación sin IA, captura explícita y cierre.
 - Typecheck web y API, lint y build de producción web.
 - Pruebas adicionales de API para conversación sin escritura, límites de historial y autenticación de estado; el CI existente dispone de PostgreSQL para ejecutarlas.
-- La validación de micrófono real y Safari físico requiere pruebas en dispositivo. El navegador de prueba no pudo instalarse en este entorno; no se afirma una verificación visual automatizada.
+- Pruebas visuales automatizadas en Chromium a 320, 390 y 1440 px. El micrófono y Safari reales requieren una prueba en el dispositivo.
 
 La instalación local detectó que `shell-quote@1.11.0` no superaba el período mínimo de antigüedad de dependencias. Se fija la versión estable 1.8.3 en el workspace y lockfile, sin relajar la política. La lista de scripts de compilación autorizados existente también se declara para pnpm 11.
 
@@ -52,14 +52,24 @@ intérprete completo para no perder la acción.
 ### Configuración del servidor
 
 En Ajustes, «Inteligencia de Nexus» consulta `/assistant/status`. Este estado
-comprueba que existe `AI_API_KEY`; no valida la clave ni el saldo del proveedor.
+comprueba que existe la clave del proveedor seleccionado; no valida la clave ni la cuota del proveedor.
 Los errores de conexión se muestran por separado. La consola actualiza el
 estado al volver a la ventana.
 
-1. Crear una clave de Claude API dentro del workspace de la cuenta.
-2. En el servicio de Render, Environment, definir `AI_API_KEY` con esa clave.
+1. Crear una clave en [Google AI Studio](https://aistudio.google.com/apikey) con la cuenta del propietario.
+2. En el servicio de Render, Environment, definir `GEMINI_API_KEY`, `AI_PROVIDER=gemini` y `AI_MODEL=gemini-2.5-flash-lite`.
 3. Usar «Save and deploy» para aplicarla al proceso del servidor.
 4. Volver a Ajustes y pulsar «Comprobar configuración»; probar una conversación.
 
 No guardar credenciales en el repositorio, en campos del navegador ni en
-variables `NEXT_PUBLIC_*`. La configuración existente de `AI_MODEL` se conserva.
+variables `NEXT_PUBLIC_*`. El nivel gratuito tiene límites y sus datos pueden usarse para mejorar los productos de Google: no enviar información de pacientes ni otros datos sensibles. Nexus no habilita facturación ni cambia automáticamente a un proveedor pago.
+
+### Interfaz futurista
+
+Núcleo SVG reutilizable con anillos y luz que responde al estado real de la voz,
+paneles con bordes iluminados, fondo de cuadrícula, iconos propios y navegación
+en español. Hoy muestra prioridades, eventos y avisos reales como centro de control.
+El núcleo se comparte con el ingreso y la navegación móvil. Los indicadores no
+afirman conectividad ni una IA activa sin comprobar el servidor. Respeta la preferencia
+de reducir movimiento. Validado en 320, 390 y 1440 px, incluida la navegación por voz
+al calendario y la expansión/cierre del asistente.
