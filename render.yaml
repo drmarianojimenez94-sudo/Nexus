@@ -24,7 +24,7 @@ databases:
 services:
   - type: web
     name: nexus
-    env: node
+    runtime: node
     plan: free
     # No `corepack enable` — Render's Node build image ships pnpm already,
     # and corepack's self-install step fails there (EROFS: /usr/bin is
