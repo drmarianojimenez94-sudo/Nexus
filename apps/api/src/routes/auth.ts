@@ -1,5 +1,6 @@
 import { Router } from "express";
 import type { CookieOptions, Response } from "express";
+import type { Prisma } from "@prisma/client";
 import { loginSchema, registerSchema, type PublicUser } from "@nexus/shared";
 import { prisma } from "../lib/prisma.js";
 import {
@@ -25,7 +26,12 @@ const baseCookieOptions: CookieOptions = {
   path: "/",
 };
 
-function toPublicUser(user: { id: string; name: string; email: string; createdAt: Date }): PublicUser {
+function toPublicUser(user: {
+  id: string;
+  name: string;
+  email: string;
+  createdAt: Date;
+}): PublicUser {
   return {
     id: user.id,
     name: user.name,
@@ -42,13 +48,17 @@ function toPublicUser(user: { id: string; name: string; email: string; createdAt
  * `Authorization: Bearer` and the refresh token in the /auth/refresh body.
  * Returning them costs the web client nothing; it just never reads them.
  */
-async function issueSession(res: Response, userId: string): Promise<{ accessToken: string; refreshToken: string }> {
+async function issueSession(
+  res: Response,
+  userId: string,
+  database: Prisma.TransactionClient = prisma,
+): Promise<{ accessToken: string; refreshToken: string }> {
   const accessToken = signAccessToken(userId);
   const refreshToken = generateRefreshToken();
   const refreshTokenHash = hashRefreshToken(refreshToken);
   const expiresAt = new Date(Date.now() + parseDurationMs(env.refreshTokenTtl));
 
-  await prisma.refreshToken.create({
+  await database.refreshToken.create({
     data: { userId, tokenHash: refreshTokenHash, expiresAt },
   });
 
@@ -72,7 +82,9 @@ async function issueSession(res: Response, userId: string): Promise<{ accessToke
  * including anything an XSS bug might inject, can't read the access token;
  * unconditionally echoing it back in the JSON body would quietly undo that.
  */
-function isMobileClient(req: { get(name: string): string | undefined }): boolean {
+function isMobileClient(req: {
+  get(name: string): string | undefined;
+}): boolean {
   return req.get("x-nexus-client") === "mobile";
 }
 
@@ -80,7 +92,9 @@ authRouter.post(
   "/register",
   asyncHandler(async (req, res) => {
     const input = registerSchema.parse(req.body);
-    const existing = await prisma.user.findUnique({ where: { email: input.email } });
+    const existing = await prisma.user.findUnique({
+      where: { email: input.email },
+    });
     if (existing) {
       throw new HttpError(409, "An account with this email already exists");
     }
@@ -90,25 +104,45 @@ authRouter.post(
       data: { name: input.name, email: input.email, passwordHash },
     });
 
-    await recordAudit({ userId: user.id, action: "auth.register", entityType: "user", entityId: user.id });
+    await recordAudit({
+      userId: user.id,
+      action: "auth.register",
+      entityType: "user",
+      entityId: user.id,
+    });
     const tokens = await issueSession(res, user.id);
-    res.status(201).json({ user: toPublicUser(user), ...(isMobileClient(req) ? tokens : {}) });
-  })
+    res
+      .status(201)
+      .json({
+        user: toPublicUser(user),
+        ...(isMobileClient(req) ? tokens : {}),
+      });
+  }),
 );
 
 authRouter.post(
   "/login",
   asyncHandler(async (req, res) => {
     const input = loginSchema.parse(req.body);
-    const user = await prisma.user.findUnique({ where: { email: input.email } });
+    const user = await prisma.user.findUnique({
+      where: { email: input.email },
+    });
     if (!user || !(await verifyPassword(input.password, user.passwordHash))) {
       throw new HttpError(401, "Invalid email or password");
     }
 
-    await recordAudit({ userId: user.id, action: "auth.login", entityType: "user", entityId: user.id });
+    await recordAudit({
+      userId: user.id,
+      action: "auth.login",
+      entityType: "user",
+      entityId: user.id,
+    });
     const tokens = await issueSession(res, user.id);
-    res.json({ user: toPublicUser(user), ...(isMobileClient(req) ? tokens : {}) });
-  })
+    res.json({
+      user: toPublicUser(user),
+      ...(isMobileClient(req) ? tokens : {}),
+    });
+  }),
 );
 
 authRouter.post(
@@ -116,7 +150,9 @@ authRouter.post(
   asyncHandler(async (req, res) => {
     const refreshToken =
       (req.cookies?.nexus_refresh_token as string | undefined) ??
-      (typeof req.body?.refreshToken === "string" ? req.body.refreshToken : undefined);
+      (typeof req.body?.refreshToken === "string"
+        ? req.body.refreshToken
+        : undefined);
     if (refreshToken) {
       await prisma.refreshToken
         .updateMany({
@@ -128,7 +164,7 @@ authRouter.post(
     res.clearCookie("nexus_access_token", baseCookieOptions);
     res.clearCookie("nexus_refresh_token", baseCookieOptions);
     res.status(204).send();
-  })
+  }),
 );
 
 authRouter.post(
@@ -138,31 +174,51 @@ authRouter.post(
     // expo-secure-store back explicitly in the body instead.
     const refreshToken =
       (req.cookies?.nexus_refresh_token as string | undefined) ??
-      (typeof req.body?.refreshToken === "string" ? req.body.refreshToken : undefined);
+      (typeof req.body?.refreshToken === "string"
+        ? req.body.refreshToken
+        : undefined);
     if (!refreshToken) {
       throw new HttpError(401, "Missing refresh token");
     }
     const tokenHash = hashRefreshToken(refreshToken);
-    const stored = await prisma.refreshToken.findUnique({ where: { tokenHash } });
+    const stored = await prisma.refreshToken.findUnique({
+      where: { tokenHash },
+    });
     if (!stored || stored.revokedAt || stored.expiresAt < new Date()) {
       throw new HttpError(401, "Refresh token expired or revoked");
     }
 
-    await prisma.refreshToken.update({ where: { id: stored.id }, data: { revokedAt: new Date() } });
-    const tokens = await issueSession(res, stored.userId);
+    // Claim the token once and create its successor in the same transaction.
+    // A second request that read the old row before rotation must lose this
+    // conditional update, rather than create another valid successor.
+    const tokens = await prisma.$transaction(async (tx) => {
+      const claimed = await tx.refreshToken.updateMany({
+        where: {
+          id: stored.id,
+          revokedAt: null,
+          expiresAt: { gt: new Date() },
+        },
+        data: { revokedAt: new Date() },
+      });
+      if (!claimed.count)
+        throw new HttpError(401, "Refresh token expired or revoked");
+      return issueSession(res, stored.userId, tx);
+    });
     if (isMobileClient(req)) {
       res.json(tokens);
     } else {
       res.status(204).send();
     }
-  })
+  }),
 );
 
 authRouter.get(
   "/me",
   authenticate,
   asyncHandler(async (req, res) => {
-    const user = await prisma.user.findUniqueOrThrow({ where: { id: req.userId } });
+    const user = await prisma.user.findUniqueOrThrow({
+      where: { id: req.userId },
+    });
     res.json({ user: toPublicUser(user) });
-  })
+  }),
 );

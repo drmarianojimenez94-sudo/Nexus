@@ -39,6 +39,82 @@ async function encounter(patientId: string, clientId = randomUUID()) {
   });
 }
 describe("clinical workspace", () => {
+  it("rejects stale clinical account headers before reads and mutations", async () => {
+    const otherUser = (await other.get("/auth/me")).body.user;
+    const wrongOwner = { "X-Nexus-Owner": otherUser.id };
+    expect((await owner.get("/clinical/patients").set(wrongOwner)).status).toBe(
+      409,
+    );
+    expect(
+      (
+        await owner
+          .post("/clinical/patients")
+          .set(wrongOwner)
+          .send({ name: "Wrong account" })
+      ).status,
+    ).toBe(409);
+    expect(await prisma.patient.count()).toBe(0);
+  });
+  it("freezes identities at validation and rejects unreviewed dictation", async () => {
+    const p = await patient(),
+      c = (await encounter(p.id)).body.encounter;
+    const saved = await owner
+      .put(`/clinical/encounters/${c.id}`)
+      .send({ ...c, dictation: "Texto pendiente" });
+    expect(
+      (
+        await owner
+          .post(`/clinical/encounters/${c.id}/finalize`)
+          .send({ version: saved.body.encounter.version, confirmed: true })
+      ).status,
+    ).toBe(400);
+    const cleared = await owner
+      .put(`/clinical/encounters/${c.id}`)
+      .send({ ...saved.body.encounter, dictation: "" });
+    const final = await owner
+      .post(`/clinical/encounters/${c.id}/finalize`)
+      .send({ version: cleared.body.encounter.version, confirmed: true });
+    expect(final.status).toBe(200);
+    expect(final.body.encounter.patientSnapshot.name).toBe(p.name);
+    expect(final.body.encounter.clinicianSnapshot.name).toBe(
+      "Médico de prueba",
+    );
+    await owner
+      .put(`/clinical/patients/${p.id}`)
+      .send({ ...p, name: "Nombre modificado", document: "99999999" });
+    await prisma.user.update({
+      where: { id: final.body.encounter.clinicianSnapshot.id },
+      data: { name: "Nombre profesional modificado" },
+    });
+    const read = await owner.get(`/clinical/encounters/${c.id}`);
+    expect(read.body.patient.name).toBe("Nombre modificado");
+    expect(read.body.encounter.patientSnapshot.name).toBe(p.name);
+    expect(read.body.encounter.patientSnapshot.document).toBe(p.document);
+    expect(read.body.encounter.clinicianSnapshot.name).toBe("Médico de prueba");
+    expect(
+      (await owner.get(`/clinical/patients/${p.id}/export`)).body.encounters[0]
+        .patientSnapshot.name,
+    ).toBe(p.name);
+  });
+  it("paginates all followups and preserves owner isolation", async () => {
+    const p = await patient();
+    for (let i = 0; i < 51; i++)
+      await owner
+        .post("/clinical/followups")
+        .send({
+          patientId: p.id,
+          title: `Pendiente ${i}`,
+          dueAt: new Date(Date.now() + i * 1000).toISOString(),
+        });
+    const first = await owner.get("/clinical/followups?page=1"),
+      second = await owner.get("/clinical/followups?page=2");
+    expect(first.body.total).toBe(51);
+    expect(first.body.followups).toHaveLength(50);
+    expect(second.body.followups).toHaveLength(1);
+    expect(second.body.followups[0].title).toBe("Pendiente 50");
+    expect((await other.get("/clinical/followups?page=2")).body.total).toBe(0);
+  });
+
   it("requires authentication and does not cache clinical responses", async () => {
     expect((await request(app).get("/clinical/patients")).status).toBe(401);
     const r = await owner.get("/clinical/patients");

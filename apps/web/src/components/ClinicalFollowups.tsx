@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { ClinicalFollowup } from "@nexus/shared";
 import { api } from "@/lib/api";
@@ -12,6 +12,7 @@ import {
 } from "./ClinicalUi";
 export function ClinicalFollowups({ patientId }: { patientId?: string }) {
   const [status, setStatus] = useState("PENDING"),
+    [page, setPage] = useState(1),
     [title, setTitle] = useState(""),
     [dueAt, setDueAt] = useState(""),
     [kind, setKind] = useState("CONTROL"),
@@ -22,9 +23,19 @@ export function ClinicalFollowups({ patientId }: { patientId?: string }) {
     loading,
     error: loadError,
     reload,
-  } = useApiData<{ followups: ClinicalFollowup[] }>(
-    `/clinical/followups?status=${status}${patientId ? `&patientId=${patientId}` : ""}`,
+  } = useApiData<{
+    followups: ClinicalFollowup[];
+    total: number;
+    page: number;
+    pageSize: number;
+  }>(
+    `/clinical/followups?status=${status}&page=${page}${patientId ? `&patientId=${patientId}` : ""}`,
   );
+  useEffect(() => {
+    if (!data) return;
+    const lastPage = Math.max(1, Math.ceil(data.total / data.pageSize));
+    if (page > lastPage) setPage(lastPage);
+  }, [data, page]);
   return (
     <section className="glass-panel flex flex-col gap-4 p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -33,7 +44,10 @@ export function ClinicalFollowups({ patientId }: { patientId?: string }) {
           aria-label="Estado de seguimientos"
           className="rounded-lg border border-nexus-border bg-nexus-bg p-2 text-sm"
           value={status}
-          onChange={(e) => setStatus(e.target.value)}
+          onChange={(e) => {
+            setStatus(e.target.value);
+            setPage(1);
+          }}
         >
           <option value="PENDING">Pendientes</option>
           <option value="DONE">Resueltos</option>
@@ -107,6 +121,11 @@ export function ClinicalFollowups({ patientId }: { patientId?: string }) {
       )}
       <ClinicalError message={error || loadError} />
       {loading && <p>Cargando…</p>}
+      {data && (
+        <p className="text-sm text-nexus-muted" role="status">
+          {data.total} seguimientos · página {data.page}
+        </p>
+      )}
       {data?.followups.map((f) => (
         <div
           key={f.id}
@@ -157,6 +176,28 @@ export function ClinicalFollowups({ patientId }: { patientId?: string }) {
         <p className="text-sm text-nexus-muted">
           No hay seguimientos en este estado.
         </p>
+      )}
+      {data && (
+        <nav aria-label="Páginas de seguimientos" className="flex gap-3">
+          <button
+            type="button"
+            className={clinicalSecondary}
+            disabled={busy || loading || page === 1}
+            onClick={() => setPage((current) => current - 1)}
+          >
+            Anterior
+          </button>
+          <button
+            type="button"
+            className={clinicalSecondary}
+            disabled={
+              busy || loading || data.page * data.pageSize >= data.total
+            }
+            onClick={() => setPage((current) => current + 1)}
+          >
+            Siguiente
+          </button>
+        </nav>
       )}
       <p className="text-xs text-nexus-muted">
         Estos pendientes se consultan aquí. No se envía información clínica por

@@ -1,6 +1,7 @@
 import request from "supertest";
 import { describe, expect, it } from "vitest";
 import { createApp } from "../app.js";
+import { prisma } from "../lib/prisma.js";
 
 const app = createApp();
 
@@ -89,7 +90,11 @@ describe("auth", () => {
       const res = await request(app)
         .post("/auth/register")
         .set("X-Nexus-Client", "mobile")
-        .send({ name: "Mariano", email: "mariano@example.com", password: "supersecret123" });
+        .send({
+          name: "Mariano",
+          email: "mariano@example.com",
+          password: "supersecret123",
+        });
 
       expect(typeof res.body.accessToken).toBe("string");
       expect(typeof res.body.refreshToken).toBe("string");
@@ -99,7 +104,11 @@ describe("auth", () => {
       const registered = await request(app)
         .post("/auth/register")
         .set("X-Nexus-Client", "mobile")
-        .send({ name: "Mariano", email: "mariano@example.com", password: "supersecret123" });
+        .send({
+          name: "Mariano",
+          email: "mariano@example.com",
+          password: "supersecret123",
+        });
 
       const res = await request(app)
         .get("/auth/me")
@@ -112,7 +121,11 @@ describe("auth", () => {
       const registered = await request(app)
         .post("/auth/register")
         .set("X-Nexus-Client", "mobile")
-        .send({ name: "Mariano", email: "mariano@example.com", password: "supersecret123" });
+        .send({
+          name: "Mariano",
+          email: "mariano@example.com",
+          password: "supersecret123",
+        });
 
       const refreshed = await request(app)
         .post("/auth/refresh")
@@ -133,7 +146,11 @@ describe("auth", () => {
       const registered = await request(app)
         .post("/auth/register")
         .set("X-Nexus-Client", "mobile")
-        .send({ name: "Mariano", email: "mariano@example.com", password: "supersecret123" });
+        .send({
+          name: "Mariano",
+          email: "mariano@example.com",
+          password: "supersecret123",
+        });
 
       const loggedOut = await request(app)
         .post("/auth/logout")
@@ -145,6 +162,39 @@ describe("auth", () => {
         .set("X-Nexus-Client", "mobile")
         .send({ refreshToken: registered.body.refreshToken });
       expect(reused.status).toBe(401);
+    });
+
+    it("allows only one successor when the same refresh token is rotated concurrently", async () => {
+      const registered = await request(app)
+        .post("/auth/register")
+        .set("X-Nexus-Client", "mobile")
+        .send({
+          name: "Mariano",
+          email: "mariano@example.com",
+          password: "supersecret123",
+        });
+      const responses = await Promise.all(
+        Array.from({ length: 4 }, () =>
+          request(app)
+            .post("/auth/refresh")
+            .set("X-Nexus-Client", "mobile")
+            .send({ refreshToken: registered.body.refreshToken }),
+        ),
+      );
+      expect(responses.map((res) => res.status).sort()).toEqual([
+        200, 401, 401, 401,
+      ]);
+      expect(
+        await prisma.refreshToken.count({
+          where: { userId: registered.body.user.id, revokedAt: null },
+        }),
+      ).toBe(1);
+      const winner = responses.find((res) => res.status === 200)!;
+      const next = await request(app)
+        .post("/auth/refresh")
+        .set("X-Nexus-Client", "mobile")
+        .send({ refreshToken: winner.body.refreshToken });
+      expect(next.status).toBe(200);
     });
   });
 });

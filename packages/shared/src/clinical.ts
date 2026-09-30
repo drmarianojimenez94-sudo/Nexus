@@ -170,6 +170,8 @@ export type ClinicalEncounter = EncounterInput & {
   createdAt: string;
   updatedAt: string;
   finalizedAt: string | null;
+  patientSnapshot?: PatientInput & { id: string };
+  clinicianSnapshot?: { id: string; name: string; email: string };
 };
 export const followupInputSchema = z.object({
   patientId: z.string().uuid(),

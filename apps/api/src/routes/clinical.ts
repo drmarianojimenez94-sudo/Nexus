@@ -10,6 +10,7 @@ import {
   type PatientInput,
   type ClinicalTemplate,
   type EncounterInput,
+  type ClinicalEncounter as ClinicalEncounterView,
 } from "@nexus/shared";
 import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
@@ -29,6 +30,16 @@ export const clinicalRouter = Router();
 clinicalRouter.use(authenticate);
 clinicalRouter.use((_req, res, next) => {
   res.set("Cache-Control", "no-store, private");
+  const expectedOwner = _req.get("X-Nexus-Owner");
+  if (expectedOwner && expectedOwner !== _req.userId) {
+    res
+      .status(409)
+      .json({
+        error:
+          "La cuenta cambió en otra pestaña. Volvé a ingresar antes de continuar.",
+      });
+    return;
+  }
   next();
 });
 const scope = (userId: string, kind: string, id: string) =>
@@ -44,7 +55,11 @@ const patientView = (row: Patient) => ({
   createdAt: row.createdAt,
   updatedAt: row.updatedAt,
 });
-type EncounterRecord = EncounterInput & { template: ClinicalTemplate };
+type EncounterRecord = EncounterInput &
+  Pick<
+    ClinicalEncounterView,
+    "template" | "patientSnapshot" | "clinicianSnapshot"
+  >;
 const encounterView = (row: ClinicalEncounter) => ({
   ...decryptClinical<EncounterRecord>(
     row.recordEncrypted,
@@ -445,10 +460,32 @@ clinicalRouter.post(
     );
     if (!Object.values(record.fields).some((v) => v.trim()))
       throw new HttpError(400, "Completá al menos un campo antes de validar");
+    if (record.dictation.trim())
+      throw new HttpError(
+        400,
+        "Revisá la transcripción: incorporala a los campos o descartala antes de validar",
+      );
+    const patient = await ownedPatient(row.patientId, row.userId);
+    const clinician = await prisma.user.findUniqueOrThrow({
+      where: { id: row.userId },
+      select: { id: true, name: true, email: true },
+    });
+    const finalRecord: EncounterRecord = {
+      ...record,
+      patientSnapshot: {
+        ...patientInputSchema.parse(patientView(patient)),
+        id: patient.id,
+      },
+      clinicianSnapshot: clinician,
+    };
     const result = await prisma.clinicalEncounter.updateMany({
       where: { id: row.id, userId: row.userId, status: "DRAFT", version },
       data: {
         status: confirmed ? "FINAL" : "DRAFT",
+        recordEncrypted: encryptClinical(
+          finalRecord,
+          scope(row.userId, "encounter", row.id),
+        ),
         finalizedAt: new Date(),
         version: { increment: 1 },
       },
@@ -472,19 +509,29 @@ clinicalRouter.get(
       .object({
         patientId: z.string().uuid().optional(),
         status: z.enum(["PENDING", "DONE"]).default("PENDING"),
+        page: z.coerce.number().int().min(1).default(1),
       })
       .parse(req.query);
-    const rows = await prisma.clinicalFollowup.findMany({
-      where: { userId: req.userId!, ...query },
-      include: { patient: true },
-      orderBy: { dueAt: "asc" },
-      take: 200,
-    });
+    const { page, ...filters } = query;
+    const where = { userId: req.userId!, ...filters };
+    const [rows, total] = await Promise.all([
+      prisma.clinicalFollowup.findMany({
+        where,
+        include: { patient: true },
+        orderBy: [{ dueAt: "asc" }, { id: "asc" }],
+        take: 50,
+        skip: (page - 1) * 50,
+      }),
+      prisma.clinicalFollowup.count({ where }),
+    ]);
     await recordAudit({
       userId: req.userId!,
       action: "clinical.followup.list",
     });
     res.json({
+      total,
+      page,
+      pageSize: 50,
       followups: rows.map((row) => ({
         ...decryptClinical<{ title: string; kind: string }>(
           row.recordEncrypted,

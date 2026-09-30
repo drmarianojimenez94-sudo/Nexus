@@ -18,6 +18,10 @@ export class ApiError extends Error {
  * that failure mode entirely, in dev and in production alike.
  */
 let refreshInFlight: Promise<boolean> | null = null;
+let sessionOwner: string | null = null;
+export function setApiSessionOwner(userId: string | null) {
+  sessionOwner = userId;
+}
 function refreshSession(): Promise<boolean> {
   if (!refreshInFlight) {
     refreshInFlight = fetch("/api/auth/refresh", {
@@ -37,6 +41,14 @@ async function request<T>(
   options: RequestInit = {},
   retried = false,
 ): Promise<T> {
+  if (path.startsWith("/clinical/") && !retried) {
+    if (!sessionOwner)
+      throw new ApiError(401, "Volvé a ingresar antes de abrir el consultorio");
+    options = {
+      ...options,
+      headers: { ...options.headers, "X-Nexus-Owner": sessionOwner },
+    };
+  }
   const res = await fetch(`/api${path}`, {
     ...options,
     credentials: "include",

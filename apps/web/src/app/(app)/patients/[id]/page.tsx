@@ -26,7 +26,7 @@ export default function PatientPage({
     [editing, setEditing] = useState(false),
     [actionError, setActionError] = useState<string | null>(null),
     [busy, setBusy] = useState(false);
-  const patient = data?.patient;
+  const patient = data?.patient.id === id ? data.patient : undefined;
   return (
     <div className="flex flex-col gap-4">
       <ClinicalHeader
@@ -118,7 +118,7 @@ export default function PatientPage({
           </div>
           {editing ? (
             <PatientForm
-              key={patient.version}
+              key={`${patient.id}:${patient.version}`}
               initial={patient}
               onSave={async (input) => {
                 await api.put(`/clinical/patients/${id}`, {
@@ -156,13 +156,13 @@ export default function PatientPage({
               Últimas 100 atenciones. La exportación incluye el historial
               completo. Validar una consulta no equivale a una firma digital.
             </p>
-            {!data.encounters.length && (
+            {!data?.encounters.length && (
               <p className="text-sm text-nexus-muted">
                 Todavía no hay consultas. Elegí una plantilla para comenzar.
               </p>
             )}
             <div className="flex flex-col gap-3">
-              {data.encounters.map((c) => (
+              {data?.encounters.map((c) => (
                 <Link
                   key={c.id}
                   className="rounded-xl border border-nexus-border p-3"

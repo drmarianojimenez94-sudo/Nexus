@@ -67,7 +67,21 @@ export function EncounterEditor({
     [serverStatus, setServerStatus] = useState(""),
     [target, setTarget] = useState("");
   const clientId = useRef(""),
-    draftWrites = useRef<Promise<void>>(Promise.resolve());
+    draftWrites = useRef<Promise<void>>(Promise.resolve()),
+    validationDialog = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    if (!confirming || !validationDialog.current) return;
+    const dialog = validationDialog.current;
+    const previousFocus =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    dialog.showModal();
+    return () => {
+      dialog.close();
+      if (previousFocus?.isConnected) previousFocus.focus();
+    };
+  }, [confirming]);
   const {
     startListening,
     stopListening,
@@ -294,6 +308,13 @@ export function EncounterEditor({
   }
   async function finalize() {
     if (!encounterId) return;
+    if (input.dictation.trim()) {
+      setConfirming(false);
+      setError(
+        "Hay una transcripción pendiente de revisar. Incorporala a un campo o vaciala explícitamente antes de validar la consulta.",
+      );
+      return;
+    }
     setConfirming(false);
     const saved = dirty ? await save() : null;
     if (dirty && !saved) return;
@@ -326,6 +347,20 @@ export function EncounterEditor({
       </div>
     );
   const readonly = status === "FINAL" || busy;
+  const birth = patient?.birthDate
+    ? new Date(`${patient.birthDate}T00:00:00`)
+    : null;
+  const now = new Date();
+  const age =
+    birth && Number.isFinite(birth.getTime()) && birth <= now
+      ? now.getFullYear() -
+        birth.getFullYear() -
+        Number(
+          now.getMonth() < birth.getMonth() ||
+            (now.getMonth() === birth.getMonth() &&
+              now.getDate() < birth.getDate()),
+        )
+      : null;
   return (
     <div className="flex flex-col gap-4">
       <ClinicalHeader
@@ -340,10 +375,36 @@ export function EncounterEditor({
           {patient?.name}
         </Link>{" "}
         · {patient?.document || "Documento no registrado"}
+        {age !== null && ` · ${age} años`}
         <p className="mt-1 text-xs text-nexus-muted">
           {status === "FINAL" ? "Validada" : "Borrador"} ·{" "}
           {serverStatus || "Todavía no guardado en Nexus"}
         </p>
+        <details className="mt-2 rounded-lg border border-nexus-border p-2">
+          <summary className="cursor-pointer font-medium">
+            Contexto de la ficha · alergias, medicación y antecedentes
+          </summary>
+          <dl className="mt-3 flex max-h-[45vh] flex-col gap-3 overflow-y-auto text-sm">
+            {(
+              [
+                ["Alergias", patient?.allergies],
+                ["Medicación habitual", patient?.medication],
+                ["Antecedentes", patient?.history],
+              ] as const
+            ).map(([label, value]) => (
+              <div key={label}>
+                <dt className="font-semibold">{label}</dt>
+                <dd className="whitespace-pre-wrap break-words">
+                  {value || "No registrado"}
+                </dd>
+              </div>
+            ))}
+          </dl>
+          <p className="mt-2 text-xs text-nexus-muted">
+            Información actual de la ficha. Revisala en esta atención; no se
+            incorpora automáticamente a la consulta.
+          </p>
+        </details>
       </div>
       <ClinicalError message={error} />
       {recovered && (
@@ -366,13 +427,15 @@ export function EncounterEditor({
                 const next = templates.find((t) => t.id === e.target.value);
                 if (!next) return;
                 if (
-                  Object.values(input.fields).some(Boolean) &&
+                  (Object.values(input.fields).some(Boolean) ||
+                    !!input.dictation.trim()) &&
                   !window.confirm(
                     "Cambiar la plantilla borrará sus campos actuales. ¿Continuar?",
                   )
                 )
                   return;
                 setTemplate(next);
+                setTarget("");
                 change({ ...input, templateId: next.id, fields: {} });
               }}
             >
@@ -503,8 +566,13 @@ export function EncounterEditor({
             </select>
             <button
               className={`${clinicalSecondary} shrink-0`}
-              disabled={!target || !input.dictation.trim() || busy}
+              disabled={
+                !template.fields.some((f) => f.key === target) ||
+                !input.dictation.trim() ||
+                busy
+              }
               onClick={() => {
+                if (!template.fields.some((f) => f.key === target)) return;
                 const combined = `${input.fields[target] || ""}${input.fields[target] ? "\n" : ""}${input.dictation}`;
                 if (combined.length > 10000) {
                   setError(
@@ -567,11 +635,11 @@ export function EncounterEditor({
         )}
       </div>
       {confirming && (
-        <section
-          role="dialog"
-          aria-modal="true"
+        <dialog
+          ref={validationDialog}
+          onCancel={() => setConfirming(false)}
           aria-label="Validar consulta"
-          className="glass-panel flex flex-col gap-3 p-5"
+          className="glass-panel m-auto flex w-11/12 max-w-lg flex-col gap-3 p-5 text-nexus-text backdrop:bg-black/70"
         >
           <h2 className="font-semibold">¿Validar esta consulta?</h2>
           <p className="text-sm">
@@ -591,7 +659,7 @@ export function EncounterEditor({
               Confirmar validación
             </button>
           </div>
-        </section>
+        </dialog>
       )}
     </div>
   );
