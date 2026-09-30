@@ -8,6 +8,26 @@ import { recordAudit } from "../lib/audit.js";
 
 export const remindersRouter = Router();
 remindersRouter.use(authenticate);
+remindersRouter.post(
+  "/:id/retry",
+  asyncHandler(async (req, res) => {
+    const updated = await prisma.reminder.updateMany({
+      where: {
+        id: req.params.id,
+        userId: req.userId!,
+        fired: false,
+        deliveryStatus: "FAILED",
+      },
+      data: { deliveryStatus: "PENDING", nextAttemptAt: null },
+    });
+    if (!updated.count)
+      throw new HttpError(
+        409,
+        "El recordatorio no existe o no necesita reintento",
+      );
+    res.status(204).send();
+  }),
+);
 
 remindersRouter.get(
   "/",
@@ -17,14 +37,16 @@ remindersRouter.get(
       orderBy: { remindAt: "asc" },
     });
     res.json({ reminders });
-  })
+  }),
 );
 
 remindersRouter.post(
   "/",
   asyncHandler(async (req, res) => {
     const input = createReminderSchema.parse(req.body);
-    const reminder = await prisma.reminder.create({ data: { ...input, userId: req.userId! } });
+    const reminder = await prisma.reminder.create({
+      data: { ...input, userId: req.userId! },
+    });
     await recordAudit({
       userId: req.userId!,
       action: "reminder.create",
@@ -32,13 +54,15 @@ remindersRouter.post(
       entityId: reminder.id,
     });
     res.status(201).json({ reminder });
-  })
+  }),
 );
 
 remindersRouter.delete(
   "/:id",
   asyncHandler(async (req, res) => {
-    const existing = await prisma.reminder.findFirst({ where: { id: req.params.id, userId: req.userId } });
+    const existing = await prisma.reminder.findFirst({
+      where: { id: req.params.id, userId: req.userId },
+    });
     if (!existing) throw new HttpError(404, "Reminder not found");
 
     await prisma.reminder.delete({ where: { id: existing.id } });
@@ -49,5 +73,5 @@ remindersRouter.delete(
       entityId: existing.id,
     });
     res.status(204).send();
-  })
+  }),
 );

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { api, ApiError } from "@/lib/api";
 import { queueCapture } from "@/lib/offlineQueue";
+import { useAuth } from "@/lib/auth-context";
 
 interface QuickCaptureModalProps {
   onClose: () => void;
@@ -14,7 +15,11 @@ interface QuickCaptureModalProps {
  * it. Voice capture is stubbed until Nexus Voice (Phase 2) lands; text
  * works end to end today, online or offline (spec §51).
  */
-export function QuickCaptureModal({ onClose, onCaptured }: QuickCaptureModalProps) {
+export function QuickCaptureModal({
+  onClose,
+  onCaptured,
+}: QuickCaptureModalProps) {
+  const { user } = useAuth();
   const [text, setText] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -28,7 +33,11 @@ export function QuickCaptureModal({ onClose, onCaptured }: QuickCaptureModalProp
     setError(null);
 
     if (!navigator.onLine) {
-      queueCapture(rawText);
+      if (!queueCapture(rawText, "TEXT", user?.id)) {
+        setError("No se pudo guardar en el dispositivo. El texto sigue aquí.");
+        setSubmitting(false);
+        return;
+      }
       setText("");
       setQueuedNotice(true);
       setSubmitting(false);
@@ -50,7 +59,13 @@ export function QuickCaptureModal({ onClose, onCaptured }: QuickCaptureModalProp
       } else {
         // Network failure even though navigator.onLine said we're up —
         // treat it the same as offline rather than lose the thought.
-        queueCapture(rawText);
+        if (!queueCapture(rawText, "TEXT", user?.id)) {
+          setError(
+            "No se pudo guardar en el dispositivo. El texto sigue aquí.",
+          );
+          setSubmitting(false);
+          return;
+        }
         setText("");
         setQueuedNotice(true);
         setTimeout(() => {
@@ -70,7 +85,9 @@ export function QuickCaptureModal({ onClose, onCaptured }: QuickCaptureModalProp
         className="glass-panel w-full max-w-lg animate-fade-in p-5 pb-[calc(env(safe-area-inset-bottom)+1.25rem)] sm:pb-5"
       >
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-medium tracking-wide text-nexus-muted">CAPTURA RÁPIDA</h2>
+          <h2 className="text-sm font-medium tracking-wide text-nexus-muted">
+            CAPTURA RÁPIDA
+          </h2>
           <button
             type="button"
             onClick={onClose}
@@ -91,7 +108,8 @@ export function QuickCaptureModal({ onClose, onCaptured }: QuickCaptureModalProp
         {error && <p className="mt-2 text-sm text-nexus-danger">{error}</p>}
         {queuedNotice && (
           <p className="mt-2 text-sm text-nexus-amber">
-            Sin conexión — lo guardé en el teléfono y lo sincronizo apenas vuelva internet.
+            Sin conexión — lo guardé en el teléfono y lo sincronizo apenas
+            vuelva internet.
           </p>
         )}
         <div className="mt-3 flex items-center justify-between">

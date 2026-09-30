@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 
 const LINKS = [
+  { href: "/projects", label: "Proyectos" },
+  { href: "/patients", label: "Pacientes" },
   { href: "/inbox", label: "Bandeja" },
   { href: "/areas", label: "Áreas" },
   { href: "/memory", label: "Memoria" },
@@ -25,7 +27,10 @@ export default function MorePage() {
             {link.label}
           </Link>
         ))}
-        <button onClick={() => void logout()} className="p-4 text-left text-sm text-nexus-danger">
+        <button
+          onClick={() => void logout()}
+          className="p-4 text-left text-sm text-nexus-danger"
+        >
           Cerrar sesión
         </button>
       </nav>

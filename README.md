@@ -26,6 +26,20 @@ Postgres and reachable from a mobile-first PWA. See
 what's next (Voice is next up, then Brain, Connectors — including a
 NEXUS Home smart-home connector — Life Modules, Intelligence, Native).
 
+## Pacientes y consultorio
+
+La web incluye **Pacientes** en la navegación principal del iPhone y del escritorio:
+
+- Fichas con identificación, antecedentes, alergias y medicación; búsqueda por nombre/documento, edición con control de versiones y archivado.
+- Seis plantillas: primera consulta, evolución, guardia, control crónico, interconsulta e indicaciones. Se pueden crear versiones propias.
+- Consultas con borradores cifrados recuperables en el dispositivo y guardado explícito en el servidor. La validación requiere revisión; bloquea esa versión y no equivale a firma digital.
+- Dictado de fragmentos para revisar e incorporar manualmente al campo seleccionado. No se envían las fichas al asistente de IA; el reconocimiento del navegador puede usar servicios externos.
+- Seguimientos de controles, resultados y llamadas dentro del módulo médico, separados del calendario y del correo personal.
+- Documento imprimible (incluido guardar PDF desde el navegador), descarga de texto y exportación completa de una ficha en JSON.
+- Colores adaptativos: verde en Pacientes, dorado en Agenda, y en el inicio dorado de mañana, cian de tarde y violeta de noche. Ajustes permite modos por horario, sección o color fijo.
+
+Los campos vacíos permanecen **No registrado**. No hay diagnósticos, tratamientos ni recetas automáticos. Ver [guía de consultorio](docs/NEXUS_CLINICAL.md) para almacenamiento, despliegue y límites.
+
 ## Architecture
 
 Monorepo, pnpm workspaces. Frontend and backend are independent services
@@ -55,14 +69,14 @@ architecture).
 
 ## Stack
 
-| Layer | Choice | Why |
-|---|---|---|
-| Frontend | Next.js 15 (App Router) + React 19 + Tailwind | SSR-capable PWA, ships to iPhone home screen today, migrates cleanly to React Native later (see UI doc) |
-| Backend | Express + TypeScript, ESM | Small, explicit, no framework magic — easy for NexusBrain to sit in front of later |
-| Database | PostgreSQL via Prisma | Relational integrity for a graph of tasks/projects/people; Neon is the preferred managed host |
-| Auth | Custom JWT (access + refresh) in httpOnly cookies, bcrypt | No third-party auth dependency; full control over session/device model |
-| Validation | Zod, shared between client and server | One schema defines both the wire contract and the UI form validation |
-| AI | Provider-agnostic `NexusAIProvider` interface (Phase 3) | Never locks the product to one LLM vendor |
+| Layer      | Choice                                                    | Why                                                                                                     |
+| ---------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Frontend   | Next.js 15 (App Router) + React 19 + Tailwind             | SSR-capable PWA, ships to iPhone home screen today, migrates cleanly to React Native later (see UI doc) |
+| Backend    | Express + TypeScript, ESM                                 | Small, explicit, no framework magic — easy for NexusBrain to sit in front of later                      |
+| Database   | PostgreSQL via Prisma                                     | Relational integrity for a graph of tasks/projects/people; Neon is the preferred managed host           |
+| Auth       | Custom JWT (access + refresh) in httpOnly cookies, bcrypt | No third-party auth dependency; full control over session/device model                                  |
+| Validation | Zod, shared between client and server                     | One schema defines both the wire contract and the UI form validation                                    |
+| AI         | Provider-agnostic `NexusAIProvider` interface (Phase 3)   | Never locks the product to one LLM vendor                                                               |
 
 ## Repository structure & local development
 
@@ -127,7 +141,7 @@ running both the API and the Next.js app together (see
 [`scripts/render-start.sh`](scripts/render-start.sh) for why they're one
 process — it also sidesteps a real footgun: api and web on two different
 subdomains of a shared platform domain, e.g. `*.onrender.com`, are
-different *sites* for cookie purposes on most PaaS providers, which
+different _sites_ for cookie purposes on most PaaS providers, which
 silently breaks cookie-based login).
 
 1. Push this repo to your own GitHub account (already done if you're
@@ -152,13 +166,13 @@ Free tier: the service sleeps after 15 minutes idle (~30-60s to wake on
 the next request), and the free Postgres database expires after 90 days.
 Fine for trying it out; move to a paid plan for anything longer-lived.
 
-*(I built and verified this Blueprint's logic by running the exact same
+_(I built and verified this Blueprint's logic by running the exact same
 build and start commands locally against a throwaway database — including
 the cookie/proxy behavior end-to-end in a real browser — but couldn't
 click through an actual Render deploy from this session, since this
 environment's network policy blocks render.com outright. If Render's
 blueprint UI flags a field when you deploy it, paste me the error and
-I'll fix it immediately.)*
+I'll fix it immediately.)_
 
 ### Other hosts
 

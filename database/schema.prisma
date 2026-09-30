@@ -49,6 +49,10 @@ model User {
   aiActions            AiAction[]
   auditLogs            AuditLog[]
   refreshTokens        RefreshToken[]
+  patients             Patient[]
+  clinicalEncounters   ClinicalEncounter[]
+  clinicalFollowups    ClinicalFollowup[]
+  clinicalTemplates    ClinicalTemplate[]
 
   @@map("users")
 }
@@ -249,6 +253,11 @@ model Reminder {
   title     String
   remindAt  DateTime
   fired     Boolean   @default(false)
+  deliveryStatus String @default("PENDING")
+  deliveryAttempts Int @default(0)
+  claimedUntil DateTime?
+  nextAttemptAt DateTime?
+  sentAt DateTime?
   createdAt DateTime  @default(now())
 
   @@index([userId, remindAt])
@@ -290,6 +299,7 @@ model InboxItem {
   id               String            @id @default(uuid())
   userId           String
   user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  captureId        String?
   rawText          String
   source           InboxItemSource   @default(TEXT)
   status           InboxItemStatus   @default(PENDING)
@@ -299,6 +309,7 @@ model InboxItem {
   updatedAt        DateTime          @updatedAt
 
   @@index([userId, status])
+  @@unique([userId, captureId])
   @@map("inbox_items")
 }
 
@@ -603,4 +614,70 @@ model AuditLog {
 
   @@index([userId, createdAt])
   @@map("audit_log")
+}
+
+
+// Clinical records are isolated from personal Memory/Inbox/AI context.
+model Patient {
+  id String @id @default(uuid())
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recordEncrypted String
+  searchTokens String[]
+  documentHash String?
+  version Int @default(1)
+  archived Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  encounters ClinicalEncounter[]
+  followups ClinicalFollowup[]
+  @@unique([userId, documentHash])
+  @@index([userId, archived, updatedAt])
+  @@index([searchTokens], type: Gin)
+  @@map("clinical_patients")
+}
+
+model ClinicalEncounter {
+  id String @id @default(uuid())
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  patientId String
+  patient Patient @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  clientId String
+  recordEncrypted String
+  status String @default("DRAFT")
+  version Int @default(1)
+  occurredAt DateTime
+  finalizedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@unique([userId, clientId])
+  @@index([userId, patientId, occurredAt])
+  @@map("clinical_encounters")
+}
+
+model ClinicalFollowup {
+  id String @id @default(uuid())
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  patientId String
+  patient Patient @relation(fields: [patientId], references: [id], onDelete: Restrict)
+  recordEncrypted String
+  dueAt DateTime
+  status String @default("PENDING")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([userId, status, dueAt])
+  @@map("clinical_followups")
+}
+
+model ClinicalTemplate {
+  id String @id @default(uuid())
+  userId String
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recordEncrypted String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([userId])
+  @@map("clinical_templates")
 }
