@@ -49,7 +49,7 @@ body {
 }
 .voice-console::before {
   content: "";
-  position: fixed;
+  position: absolute;
   inset: 0;
   pointer-events: none;
   opacity: 0.12;
@@ -66,3 +66,16 @@ body {
 .voice-wave-active { opacity: 1; animation: voice-wave 0.8s ease-in-out infinite alternate; }
 @keyframes voice-orbit { to { transform: rotate(360deg); } }
 @keyframes voice-wave { to { transform: scaleY(0.25); } }
+
+.voice-dock { overflow: hidden; box-shadow: 0 -8px 45px #4fd8ff12; padding-bottom: env(safe-area-inset-bottom); }
+.voice-core-compact { width: 56px; height: 56px; flex-shrink: 0; }
+.voice-core-compact .voice-ring-inner { inset: 7px; }
+.voice-reactor { width: 90px; height: 90px; border-radius: 50%; background: radial-gradient(circle, #c5f7ff 0%, #4fd8ff 15%, #167aa6 40%, transparent 70%); box-shadow: 0 0 55px #4fd8ff55; }
+.voice-core-compact .voice-reactor { width: 24px; height: 24px; }
+.voice-core[data-state="listening"] .voice-reactor,
+.voice-core[data-state="speaking"] .voice-reactor { animation: voice-pulse 1.5s ease-in-out infinite alternate; }
+.voice-core[data-state="thinking"] .voice-reactor { filter: hue-rotate(55deg); }
+@keyframes voice-pulse { to { transform: scale(1.15); opacity: 0.65; } }
+@media (prefers-reduced-motion: reduce) {
+  .voice-ring, .voice-reactor, .voice-wave { animation: none !important; }
+}

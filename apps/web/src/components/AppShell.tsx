@@ -32,10 +32,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const router = useRouter();
   const [captureOpen, setCaptureOpen] = useState(false);
+  const [voiceDocked, setVoiceDocked] = useState(false);
   const { preferences, setPreference, loading: preferencesLoading } = usePreferences();
   const voiceOpened = useRef(false);
   const openVoice = useCallback(() => setCaptureOpen(true), []);
-  const closeVoice = useCallback(() => setCaptureOpen(false), []);
+  const closeVoice = useCallback(() => { setCaptureOpen(false); setVoiceDocked(false); }, []);
 
   useEffect(() => {
     if (!user || preferencesLoading || voiceOpened.current) return;
@@ -71,14 +72,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const showOnboarding = !preferencesLoading && !preferences?.[PREFERENCE_KEYS.ONBOARDING_COMPLETED];
 
   return (
-    <div className="mx-auto flex max-w-6xl gap-4 px-3 pb-24 pt-4 sm:px-6 sm:pb-6">
+    <div className={`mx-auto flex max-w-6xl gap-4 px-3 pt-4 sm:px-6 ${voiceDocked ? "pb-[22rem]" : "pb-24 sm:pb-6"}`}>
       <Suspense fallback={null}>
         <ListenParam onListen={openVoice} />
       </Suspense>
       <Sidebar onOrbClick={() => setCaptureOpen(true)} />
       <main className="min-w-0 flex-1">{children}</main>
-      <BottomNav onOrbClick={() => setCaptureOpen(true)} />
-      {captureOpen && <VoiceSession onClose={closeVoice} />}
+      {!voiceDocked && <BottomNav onOrbClick={openVoice} />}
+      {captureOpen && <VoiceSession onClose={closeVoice} onDockChange={setVoiceDocked} />}
       {showOnboarding && !captureOpen && (
         <OnboardingTour onFinish={() => void setPreference(PREFERENCE_KEYS.ONBOARDING_COMPLETED, true)} />
       )}

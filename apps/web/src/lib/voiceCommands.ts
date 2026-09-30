@@ -20,13 +20,23 @@ export interface VoiceCommandResult {
   close?: boolean;
 }
 
-const NAV_COMMANDS: { patterns: RegExp; path: string; label: string }[] = [
-  { patterns: /\b(inbox|bandeja)\b/i, path: "/inbox", label: "tu inbox" },
-  { patterns: /\b(calendario|agenda)\b/i, path: "/calendar", label: "tu calendario" },
-  { patterns: /\b(proyectos?)\b/i, path: "/projects", label: "tus proyectos" },
-  { patterns: /\b(áreas?|areas?)\b/i, path: "/areas", label: "tus áreas" },
-  { patterns: /\bmemoria\b/i, path: "/memory", label: "tu memoria" },
+// Full utterance matching prevents "abrí el calendario y agendá..." losing its action.
+const NAV_COMMANDS = [
+  { patterns: /^(inbox|bandeja(?: de entrada)?)$/, path: "/inbox", label: "tu inbox" },
+  { patterns: /^(calendario|agenda)$/, path: "/calendar", label: "tu calendario" },
+  { patterns: /^proyectos?$/, path: "/projects", label: "tus proyectos" },
+  { patterns: /^areas?$/, path: "/areas", label: "tus áreas" },
+  { patterns: /^memoria$/, path: "/memory", label: "tu memoria" },
+  { patterns: /^(ajustes|configuracion)$/, path: "/settings", label: "la configuración" },
+  { patterns: /^(hoy|inicio|panel)$/, path: "/today", label: "tu panel de hoy" },
 ];
+
+function navigationCommand(text: string) {
+  const normalized = text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+    .replace(/^nexus[, ]+/, "").replace(/[.!?]+$/, "").trim();
+  const match = normalized.match(/^(?:por favor,? )?(?:abri(?:me)?|abrir|abre(?:me)?|mostra(?:me)?|mostrar|muestra(?:me)?|llevame a|ver|quiero ver|quiero que (?:me )?abras)\s+(?:(?:el|la|los|las|mi|mis)\s+)?(.+?)(?:,? por favor)?$/);
+  return match ? NAV_COMMANDS.find((command) => command.patterns.test(match[1] ?? "")) : undefined;
+}
 
 const CLOSE_PATTERN = /^(?:(?:nexus)[, ]+)?(?:listo|gracias|cerrar|terminar|chau|nada m[aá]s|hasta luego)[.!?]*$/i;
 // Anchored to an explicit "today"/"pending" framing — bare "qué tengo" alone
@@ -68,8 +78,8 @@ interface InterpretResponse {
  * NexusBrain (spec Fase 3): real understanding via NexusAIProvider —
  * "anotame en el calendario que tengo turno el martes" comes back as an
  * actual calendar event, not a page navigation. Server-side only (needs
- * AI_API_KEY, which the client must never see). Returns null when NEXUS
- * has no AI configured (501) or the call fails for any reason, so the
+ * AI_API_KEY, which the client must never see). Returns null only when NEXUS
+ * has no AI configured (501), so the
  * caller can fall through to the always-available rule-based router —
  * this is an enhancement, never a hard dependency.
  */
@@ -95,10 +105,10 @@ async function tryBrain(text: string, history: ConversationTurn[]): Promise<Voic
 
 /**
  * Voice command router (Nexus Voice V1/V1.5). CLOSE/HELP/REMEMBER/RECALL/
- * TODAY stay rule-based on purpose — zero latency, zero cost, unambiguous
+ * TODAY/NAVIGATION stay rule-based on purpose — zero latency, zero cost, unambiguous
  * phrasing, work with no AI_API_KEY at all. Everything else tries
  * NexusBrain first (real understanding, not keyword matching) when AI is
- * configured, falling back to the old rule-based nav-or-capture chain
+ * configured, falling back to explicit note capture
  * when it isn't — so NEXUS is smarter with a key and still fully
  * functional without one.
  */
@@ -115,7 +125,7 @@ export async function handleVoiceCommand(rawText: string, history: ConversationT
         'Podés decir "qué tengo hoy", "abrí el inbox", "abrí el calendario", "abrí proyectos", "abrí áreas" o ' +
         '"abrí memoria". También "recordá que…" para que guarde algo, o "qué sabés sobre…" para preguntarte lo ' +
         "que ya te dije. Cualquier otra cosa la interpreto — pedime que agende algo, cree una tarea o te avise " +
-        "en un momento y lo hago de verdad.",
+        "en un momento cuando la IA esté conectada. Para configurar la IA, decime ‘abrí ajustes’.",
     };
   }
 
@@ -151,19 +161,16 @@ export async function handleVoiceCommand(rawText: string, history: ConversationT
     }
   }
 
+  // Navigation must work immediately even if the AI is unavailable or misconfigured.
+  const nav = navigationCommand(text);
+  if (nav) return { speak: `Listo, te muestro ${nav.label}.`, navigateTo: nav.path };
+
   try {
     const brainResult = await tryBrain(text, history);
     if (brainResult) return brainResult;
   } catch {
     // A failed response can follow a successful write. Never execute a second fallback write.
     return { speak: "No pude confirmar la respuesta de la IA. Revisá tu panel antes de repetir una acción." };
-  }
-
-  // No AI configured, or the brain call failed — same rule-based fallback
-  // as before, so voice never goes silent just because a key is missing.
-  const nav = /^(?:abr[ií]|abrir|mostrame|mostrar|llevame a|ver)\s/i.test(text) ? NAV_COMMANDS.find((c) => c.patterns.test(text)) : undefined;
-  if (nav) {
-    return { speak: `Listo, te muestro ${nav.label}.`, navigateTo: nav.path };
   }
 
   if (!/^(?:anot[aá](?:me)?|guard[aá](?:me)?|nota|captur[aá]|tengo que|record[aá](?:me)?|avis[aá](?:me)?|agend[aá](?:me)?)(?=\s|$)/i.test(text)) {

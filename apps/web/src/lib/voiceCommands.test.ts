@@ -11,6 +11,24 @@ import { handleVoiceCommand } from "./voiceCommands";
 
 beforeEach(() => vi.resetAllMocks());
 describe("voice routing", () => {
+  it.each([
+    ["abrime el calendario", "/calendar"],
+    ["Nexus, abrí la agenda", "/calendar"],
+    ["quiero que me abras el calendario", "/calendar"],
+    ["Mostrá mis proyectos", "/projects"],
+    ["por favor, abrí ajustes", "/settings"],
+    ["mostrame las áreas, por favor", "/areas"],
+    ["abrí mi panel", "/today"],
+  ])("opens %s without calling the AI", async (command, path) => {
+    post.mockRejectedValue(new ApiError(502, "AI unavailable"));
+    expect((await handleVoiceCommand(command)).navigateTo).toBe(path);
+    expect(post).not.toHaveBeenCalled();
+  });
+  it("preserves actions attached to a navigation request", async () => {
+    post.mockResolvedValue({ speak: "Evento creado", navigateTo: "/calendar" });
+    await handleVoiceCommand("abrí el calendario y agendá una reunión mañana");
+    expect(post).toHaveBeenCalledWith("/assistant/interpret", { text: "abrí el calendario y agendá una reunión mañana", history: [] });
+  });
   it("does not close or read today when those words occur in an action", async () => {
     post.mockResolvedValue({ speak: "Recordatorio creado", navigateTo: "/today" });
     await handleVoiceCommand("recordame hoy llamar al banco, gracias");
