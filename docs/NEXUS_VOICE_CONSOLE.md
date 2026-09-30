@@ -34,3 +34,32 @@ El contexto conversacional dura mientras la consola permanece abierta. No hay st
 - La validación de micrófono real y Safari físico requiere pruebas en dispositivo. El navegador de prueba no pudo instalarse en este entorno; no se afirma una verificación visual automatizada.
 
 La instalación local detectó que `shell-quote@1.11.0` no superaba el período mínimo de antigüedad de dependencias. Se fija la versión estable 1.8.3 en el workspace y lockfile, sin relajar la política. La lista de scripts de compilación autorizados existente también se declara para pnpm 11.
+
+## Paneles visibles y consola persistente
+
+Al pedir una sección (por ejemplo, «Nexus, abrime el calendario»), Nexus abre
+la ruta real y reduce el asistente a una consola inferior. La conversación y
+la escucha continúan; el documento vuelve a permitir desplazamiento y foco
+normal. «Expandir» vuelve a la consola completa; «Ver mi panel» la reduce;
+«Cerrar» apaga la sesión. «Pausar micrófono» mantiene la pausa aunque se
+escriba un pedido o se cambie de panel.
+
+La navegación explícita se resuelve localmente antes de consultar la IA,
+incluso cuando la clave falta o el proveedor falla. Las frases que agregan
+una acción, como «abrí el calendario y agendá una reunión», se envían al
+intérprete completo para no perder la acción.
+
+### Configuración del servidor
+
+En Ajustes, «Inteligencia de Nexus» consulta `/assistant/status`. Este estado
+comprueba que existe `AI_API_KEY`; no valida la clave ni el saldo del proveedor.
+Los errores de conexión se muestran por separado. La consola actualiza el
+estado al volver a la ventana.
+
+1. Crear una clave de Claude API dentro del workspace de la cuenta.
+2. En el servicio de Render, Environment, definir `AI_API_KEY` con esa clave.
+3. Usar «Save and deploy» para aplicarla al proceso del servidor.
+4. Volver a Ajustes y pulsar «Comprobar configuración»; probar una conversación.
+
+No guardar credenciales en el repositorio, en campos del navegador ni en
+variables `NEXT_PUBLIC_*`. La configuración existente de `AI_MODEL` se conserva.
