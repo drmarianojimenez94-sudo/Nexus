@@ -1,10 +1,4 @@
-/**
- * The Web Speech API's SpeechRecognition interface isn't in TypeScript's
- * standard DOM lib either. Declares only what useSpeech.ts uses.
- * Crucially: iOS Safari has never shipped this interface — feature-detect
- * with `"SpeechRecognition" in window || "webkitSpeechRecognition" in window`
- * before using it, never assume it exists.
- */
+/** Minimal browser declarations. Detect both standard and Safari-prefixed implementations. */
 interface SpeechRecognitionResultItem {
   transcript: string;
   confidence: number;

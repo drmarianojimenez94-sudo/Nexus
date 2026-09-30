@@ -2,6 +2,8 @@ import type { Event, Memory, Task } from "@nexus/shared";
 import { api, ApiError } from "./api";
 import { queueCapture } from "./offlineQueue";
 
+export interface ConversationTurn { role: "user" | "assistant"; content: string }
+
 interface TodayResponse {
   now: Event | null;
   priorities: Task[];
@@ -26,13 +28,13 @@ const NAV_COMMANDS: { patterns: RegExp; path: string; label: string }[] = [
   { patterns: /\bmemoria\b/i, path: "/memory", label: "tu memoria" },
 ];
 
-const CLOSE_PATTERN = /\b(listo|gracias|cerrar|terminar|chau|nada más|nada mas)\b/i;
+const CLOSE_PATTERN = /^(?:(?:nexus)[, ]+)?(?:listo|gracias|cerrar|terminar|chau|nada m[aá]s|hasta luego)[.!?]*$/i;
 // Anchored to an explicit "today"/"pending" framing — bare "qué tengo" alone
 // used to match ANY sentence containing that extremely common phrase (e.g.
 // "anotá en el calendario que tengo turno mañana"), hijacking navigation to
 // /today before the NAV_COMMANDS check below ever saw the word "calendario".
-const TODAY_PATTERN = /\b(hoy|today|resumen)\b|\bqu[eé] tengo (hoy|para hoy|pendiente|ahora)\b/i;
-const HELP_PATTERN = /\b(ayuda|qu[eé] pod[eé]s hacer|qu[eé] hac[eé]s)\b/i;
+const TODAY_PATTERN = /^(?:nexus[, ]+)?(?:qu[eé] tengo (?:hoy|para hoy|pendiente|ahora)|(?:mostrame|dame|leeme|leer) (?:mi |el )?resumen(?: de hoy)?|resumen|hoy|today)[.!?]*$/i;
+const HELP_PATTERN = /^(?:nexus[, ]+)?(?:ayuda|qu[eé] pod[eé]s hacer|qu[eé] hac[eé]s)[.!?]*$/i;
 
 /** "Recordá que mi hijo se llama Tomás" → guarda el contenido en Memory (spec §6). */
 const REMEMBER_PATTERN = /\b(?:record[aá]|acord[aá]te|no te olvides)\s+que\s+(.+)/i;
@@ -71,9 +73,9 @@ interface InterpretResponse {
  * caller can fall through to the always-available rule-based router —
  * this is an enhancement, never a hard dependency.
  */
-async function tryBrain(text: string): Promise<VoiceCommandResult | null> {
+async function tryBrain(text: string, history: ConversationTurn[]): Promise<VoiceCommandResult | null> {
   try {
-    const result = await api.post<InterpretResponse>("/assistant/interpret", { text });
+    const result = await api.post<InterpretResponse>("/assistant/interpret", { text, history });
     if (result.target === "today") {
       // The brain's spokenReply is a generic transition line; Today has a
       // richer, already-working spoken summary with live NOW/priorities/
@@ -85,8 +87,9 @@ async function tryBrain(text: string): Promise<VoiceCommandResult | null> {
       }
     }
     return { speak: result.speak, navigateTo: result.navigateTo };
-  } catch {
-    return null;
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 501) return null;
+    throw err;
   }
 }
 
@@ -99,7 +102,7 @@ async function tryBrain(text: string): Promise<VoiceCommandResult | null> {
  * when it isn't — so NEXUS is smarter with a key and still fully
  * functional without one.
  */
-export async function handleVoiceCommand(rawText: string): Promise<VoiceCommandResult> {
+export async function handleVoiceCommand(rawText: string, history: ConversationTurn[] = []): Promise<VoiceCommandResult> {
   const text = rawText.trim();
 
   if (CLOSE_PATTERN.test(text)) {
@@ -148,14 +151,23 @@ export async function handleVoiceCommand(rawText: string): Promise<VoiceCommandR
     }
   }
 
-  const brainResult = await tryBrain(text);
-  if (brainResult) return brainResult;
+  try {
+    const brainResult = await tryBrain(text, history);
+    if (brainResult) return brainResult;
+  } catch {
+    // A failed response can follow a successful write. Never execute a second fallback write.
+    return { speak: "No pude confirmar la respuesta de la IA. Revisá tu panel antes de repetir una acción." };
+  }
 
   // No AI configured, or the brain call failed — same rule-based fallback
   // as before, so voice never goes silent just because a key is missing.
-  const nav = NAV_COMMANDS.find((c) => c.patterns.test(text));
+  const nav = /^(?:abr[ií]|abrir|mostrame|mostrar|llevame a|ver)\s/i.test(text) ? NAV_COMMANDS.find((c) => c.patterns.test(text)) : undefined;
   if (nav) {
     return { speak: `Listo, te muestro ${nav.label}.`, navigateTo: nav.path };
+  }
+
+  if (!/^(?:anot[aá](?:me)?|guard[aá](?:me)?|nota|captur[aá]|tengo que|record[aá](?:me)?|avis[aá](?:me)?|agend[aá](?:me)?)(?=\s|$)/i.test(text)) {
+    return { speak: "La conversación con IA todavía no está configurada. Puedo leer tu resumen, abrir secciones o guardar una nota si me decís ‘anotá’." };
   }
 
   // Nothing matched a command — treat it as a thought to capture, exactly

@@ -19,8 +19,8 @@ export function usePreferences() {
   }, []);
 
   const setPreference = useCallback(async (key: string, value: unknown) => {
-    setPreferences((prev) => ({ ...(prev ?? {}), [key]: value }));
     await api.put(`/preferences/${key}`, { value });
+    setPreferences((prev) => ({ ...(prev ?? {}), [key]: value }));
   }, []);
 
   return { preferences, setPreference, loading: preferences === null };
