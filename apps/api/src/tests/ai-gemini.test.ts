@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../lib/env.js", () => ({ env: { aiProvider: "gemini", aiApiKey: "test-key", aiModel: "gemini-2.5-flash-lite" } }));
+vi.mock("../lib/env.js", () => ({ env: { aiProvider: "gemini", aiApiKey: "test-key", aiModel: "gemini-3.5-flash-lite" } }));
 const { aiProvider } = await import("../lib/ai.js");
 const context = { userName: "Mariano", now: new Date("2026-09-30T12:00:00Z") };
 const intent = { intent: "navigate", title: "", when: null, target: "calendar", spokenReply: "Abro tu calendario." };
@@ -19,7 +19,7 @@ describe("Gemini intent pipeline", () => {
     const body = JSON.parse(options.body);
     expect(body.messages.slice(-2)).toEqual([{ role: "assistant", content: "¿Qué hacemos?" }, { role: "user", content: "abrime el calendario" }]);
     expect(body.tool_choice.function.name).toBe("record_intent");
-    expect(body.model).toBe("gemini-2.5-flash-lite");
+    expect(body.model).toBe("gemini-3.5-flash-lite");
   });
   it("keeps conversation as conversation instead of creating a note", async () => {
     const conversation = { ...intent, intent: "conversation", target: null, spokenReply: "¿A qué hora querés el turno?" };

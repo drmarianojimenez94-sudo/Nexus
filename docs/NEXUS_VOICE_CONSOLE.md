@@ -16,7 +16,7 @@ La versión web abre el asistente después de autenticar al usuario. Es la misma
 
 ## Servidor
 
-Usa Gemini o Anthropic a través del mismo intérprete validado. Para Gemini, configurar `AI_PROVIDER=gemini`, `GEMINI_API_KEY` y `AI_MODEL=gemini-2.5-flash-lite`. Para Claude, `AI_PROVIDER=anthropic`, `AI_API_KEY` y `AI_MODEL=claude-haiku-4-5`. La clave nunca se envía al navegador. No requiere migraciones de base de datos.
+Usa Gemini o Anthropic a través del mismo intérprete validado. Para Gemini, configurar `AI_PROVIDER=gemini`, `GEMINI_API_KEY` y `AI_MODEL=gemini-3.5-flash-lite`. Para Claude, `AI_PROVIDER=anthropic`, `AI_API_KEY` y `AI_MODEL=claude-haiku-4-5`. La clave nunca se envía al navegador. No requiere migraciones de base de datos.
 
 `GET /assistant/status` requiere autenticación y expone `aiConfigured`, `provider` y `model`, nunca la clave. `POST /assistant/interpret` admite texto y hasta doce mensajes de contexto de máximo 2000 caracteres cada uno.
 
@@ -57,7 +57,7 @@ Los errores de conexión se muestran por separado. La consola actualiza el
 estado al volver a la ventana.
 
 1. Crear una clave en [Google AI Studio](https://aistudio.google.com/apikey) con la cuenta del propietario.
-2. En el servicio de Render, Environment, definir `GEMINI_API_KEY`, `AI_PROVIDER=gemini` y `AI_MODEL=gemini-2.5-flash-lite`.
+2. En el servicio de Render, Environment, definir `GEMINI_API_KEY`, `AI_PROVIDER=gemini` y `AI_MODEL=gemini-3.5-flash-lite`.
 3. Usar «Save and deploy» para aplicarla al proceso del servidor.
 4. Volver a Ajustes y pulsar «Comprobar configuración»; probar una conversación.
 

@@ -140,7 +140,7 @@ silently breaks cookie-based login).
 4. For AI conversation and daily insights, use Gemini's limited free tier:
    create your account key at [Google AI Studio](https://aistudio.google.com/apikey),
    then set `AI_PROVIDER=gemini`, `GEMINI_API_KEY` and
-   `AI_MODEL=gemini-2.5-flash-lite` in Render's Environment tab. Save and deploy.
+   `AI_MODEL=gemini-3.5-flash-lite` in Render's Environment tab. Save and deploy.
    Keys stay on the server. Free-tier data may be used to improve Google's products;
    don't send patient information or other sensitive data. Nexus does not enable
    billing or fail over to a paid provider. Quota errors preserve local commands.
