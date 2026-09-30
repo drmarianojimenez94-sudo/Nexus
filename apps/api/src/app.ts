@@ -18,6 +18,7 @@ import { projectsRouter } from "./routes/projects.js";
 import { remindersRouter } from "./routes/reminders.js";
 import { tasksRouter } from "./routes/tasks.js";
 import { todayRouter } from "./routes/today.js";
+import { clinicalRouter } from "./routes/clinical.js";
 
 export function createApp() {
   const app = express();
@@ -30,11 +31,21 @@ export function createApp() {
   // Auth endpoints get a tighter limit to slow down credential stuffing.
   app.use(
     "/auth/login",
-    rateLimit({ windowMs: 15 * 60 * 1000, limit: 10, standardHeaders: true, legacyHeaders: false })
+    rateLimit({
+      windowMs: 15 * 60 * 1000,
+      limit: 10,
+      standardHeaders: true,
+      legacyHeaders: false,
+    }),
   );
   app.use(
     "/",
-    rateLimit({ windowMs: 60 * 1000, limit: 120, standardHeaders: true, legacyHeaders: false })
+    rateLimit({
+      windowMs: 60 * 1000,
+      limit: 120,
+      standardHeaders: true,
+      legacyHeaders: false,
+    }),
   );
 
   app.get("/health", (_req, res) => res.json({ status: "ok" }));
@@ -48,6 +59,7 @@ export function createApp() {
   app.use("/inbox", inboxRouter);
   app.use("/quick-capture", quickCaptureRouter);
   app.use("/today", todayRouter);
+  app.use("/clinical", clinicalRouter);
   app.use("/preferences", preferencesRouter);
   app.use("/memories", memoryRouter);
   app.use("/connectors", connectorsRouter);

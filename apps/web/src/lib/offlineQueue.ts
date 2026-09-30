@@ -1,75 +1,113 @@
 "use client";
-
-import { api, ApiError } from "./api";
-
-const STORAGE_KEY = "nexus_offline_captures";
-
+import { api } from "./api";
+const STORAGE_PREFIX = "nexus_offline_captures_v2:";
 interface QueuedCapture {
   id: string;
   rawText: string;
   source: "TEXT" | "VOICE";
   queuedAt: string;
 }
-
-/**
- * Quick Capture must never lose a thought just because the phone has no
- * signal (spec §51: capturar sin conexión). Simplest thing that actually
- * works: hold captures in localStorage when the request fails, and flush
- * them the moment connectivity comes back — no service worker, no
- * IndexedDB, nothing that needs its own debugging story.
- */
-function readQueue(): QueuedCapture[] {
+const locks = new Map<string, Promise<{ sent: number; remaining: number }>>();
+function readQueue(userId: string): QueuedCapture[] {
+  const raw = localStorage.getItem(STORAGE_PREFIX + userId);
+  if (!raw) return [];
+  const parsed: unknown = JSON.parse(raw);
+  if (!Array.isArray(parsed))
+    throw new Error(
+      "La cola local no pudo leerse; se conserva para recuperación",
+    );
+  return parsed as QueuedCapture[];
+}
+function writeQueue(userId: string, queue: QueuedCapture[]) {
+  localStorage.setItem(STORAGE_PREFIX + userId, JSON.stringify(queue));
+  window.dispatchEvent(new Event("nexus-offline-queue"));
+}
+export function queueCapture(
+  rawText: string,
+  source: "TEXT" | "VOICE" = "TEXT",
+  userId?: string,
+): boolean {
+  if (!userId) return false;
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as QueuedCapture[]) : [];
+    const queue = readQueue(userId);
+    queue.push({
+      id: crypto.randomUUID(),
+      rawText,
+      source,
+      queuedAt: new Date().toISOString(),
+    });
+    writeQueue(userId, queue);
+    return true;
   } catch {
-    return [];
+    return false;
   }
 }
-
-function writeQueue(queue: QueuedCapture[]) {
+export function pendingCaptureCount(userId: string): number {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(queue));
+    return readQueue(userId).length;
   } catch {
-    // Storage full or unavailable (private mode) — nothing more we can do.
+    return -1;
   }
 }
-
-export function queueCapture(rawText: string, source: "TEXT" | "VOICE" = "TEXT") {
-  const queue = readQueue();
-  queue.push({ id: crypto.randomUUID(), rawText, source, queuedAt: new Date().toISOString() });
-  writeQueue(queue);
+export function hasLegacyCaptures(): boolean {
+  return Boolean(localStorage.getItem("nexus_offline_captures"));
 }
-
-export function pendingCaptureCount(): number {
-  return readQueue().length;
+// Only a user-initiated claim migrates legacy captures, whose owner is unknown.
+export function claimLegacyCaptures(userId: string): boolean {
+  try {
+    const legacy = localStorage.getItem("nexus_offline_captures");
+    if (!legacy) return true;
+    const parsed = JSON.parse(legacy) as QueuedCapture[];
+    if (!Array.isArray(parsed)) return false;
+    const current = readQueue(userId),
+      ids = new Set(current.map((item) => item.id));
+    writeQueue(userId, [
+      ...current,
+      ...parsed.filter((item) => !ids.has(item.id)),
+    ]);
+    localStorage.removeItem("nexus_offline_captures");
+    return true;
+  } catch {
+    return false;
+  }
 }
-
-/** Network vs. auth/validation errors need different handling — only the
- * former means "try again later", the latter would just fail forever. */
-function isNetworkError(err: unknown): boolean {
-  return !(err instanceof ApiError);
-}
-
-/** Sends every queued capture; keeps whatever still fails for next time. */
-export async function flushOfflineQueue(): Promise<{ sent: number; remaining: number }> {
-  const queue = readQueue();
-  if (queue.length === 0) return { sent: 0, remaining: 0 };
-
-  const stillQueued: QueuedCapture[] = [];
-  let sent = 0;
-  for (const item of queue) {
+export function flushOfflineQueue(
+  userId: string,
+): Promise<{ sent: number; remaining: number }> {
+  const running = locks.get(userId);
+  if (running) return running;
+  const task = (async () => {
+    let queue: QueuedCapture[];
     try {
-      await api.post("/quick-capture", { rawText: item.rawText, source: item.source });
-      sent++;
-    } catch (err) {
-      if (isNetworkError(err)) {
-        stillQueued.push(item);
-      }
-      // A validation/auth error means this item can never succeed — drop it
-      // rather than retry forever.
+      queue = readQueue(userId);
+    } catch {
+      return { sent: 0, remaining: -1 };
     }
-  }
-  writeQueue(stillQueued);
-  return { sent, remaining: stillQueued.length };
+    const sentIds = new Set<string>();
+    for (const item of queue) {
+      try {
+        await api.post("/quick-capture", {
+          rawText: item.rawText,
+          source: item.source,
+          captureId: item.id,
+          expectedOwnerId: userId,
+        });
+        sentIds.add(item.id);
+      } catch {
+        break;
+      } // Includes 401, validation and network errors. Never discard unsent text.
+    }
+    try {
+      // Read again so a capture added during a request cannot be overwritten.
+      const remaining = readQueue(userId).filter(
+        (item) => !sentIds.has(item.id),
+      );
+      writeQueue(userId, remaining);
+      return { sent: sentIds.size, remaining: remaining.length };
+    } catch {
+      return { sent: sentIds.size, remaining: -1 };
+    }
+  })().finally(() => locks.delete(userId));
+  locks.set(userId, task);
+  return task;
 }

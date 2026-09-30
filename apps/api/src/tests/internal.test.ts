@@ -1,5 +1,6 @@
 import request from "supertest";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { prisma } from "../lib/prisma.js";
 
 // Set before the dynamic import below so lib/env.js picks it up fresh in
 // this test file's isolated module registry — same trick as mocking a
@@ -34,6 +35,29 @@ beforeEach(async () => {
 });
 
 describe("internal/dispatch-reminders", () => {
+  it("keeps failed reminders pending and retries them successfully", async () => {
+    await agent.post("/reminders").send({
+      title: "Reintentar",
+      remindAt: new Date(Date.now() - 60000).toISOString(),
+    });
+    sendEmail.mockResolvedValueOnce(false);
+    const first = await request(app)
+      .post("/internal/dispatch-reminders")
+      .set("X-Internal-Secret", "test-internal-secret");
+    expect(first.body.failed).toBe(1);
+    const row = await prisma.reminder.findFirstOrThrow();
+    expect(row.fired).toBe(false);
+    expect(row.deliveryStatus).toBe("FAILED");
+    await agent.post(`/reminders/${row.id}/retry`);
+    const next = await request(app)
+      .post("/internal/dispatch-reminders")
+      .set("X-Internal-Secret", "test-internal-secret");
+    expect(next.body.sent).toBe(1);
+    expect(
+      (await prisma.reminder.findUniqueOrThrow({ where: { id: row.id } }))
+        .deliveryStatus,
+    ).toBe("SENT");
+  });
   it("401s without the correct secret", async () => {
     const res = await request(app).post("/internal/dispatch-reminders");
     expect(res.status).toBe(401);
@@ -48,7 +72,9 @@ describe("internal/dispatch-reminders", () => {
 
   it("emails a due reminder and never resends it once fired", async () => {
     const past = new Date(Date.now() - 60_000).toISOString();
-    await agent.post("/reminders").send({ title: "Llamar al dentista", remindAt: past });
+    await agent
+      .post("/reminders")
+      .send({ title: "Llamar al dentista", remindAt: past });
 
     const res = await request(app)
       .post("/internal/dispatch-reminders")
@@ -67,7 +93,9 @@ describe("internal/dispatch-reminders", () => {
 
   it("does not dispatch a reminder that isn't due yet", async () => {
     const future = new Date(Date.now() + 3_600_000).toISOString();
-    await agent.post("/reminders").send({ title: "Todavía no", remindAt: future });
+    await agent
+      .post("/reminders")
+      .send({ title: "Todavía no", remindAt: future });
 
     const res = await request(app)
       .post("/internal/dispatch-reminders")

@@ -1,7 +1,7 @@
 export class ApiError extends Error {
   constructor(
     public status: number,
-    message: string
+    message: string,
   ) {
     super(message);
   }
@@ -17,7 +17,26 @@ export class ApiError extends Error {
  * reach a cross-site fetch. Routing everything through one origin avoids
  * that failure mode entirely, in dev and in production alike.
  */
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+let refreshInFlight: Promise<boolean> | null = null;
+function refreshSession(): Promise<boolean> {
+  if (!refreshInFlight) {
+    refreshInFlight = fetch("/api/auth/refresh", {
+      method: "POST",
+      credentials: "include",
+    })
+      .then((res) => res.ok)
+      .catch(() => false)
+      .finally(() => {
+        refreshInFlight = null;
+      });
+  }
+  return refreshInFlight;
+}
+async function request<T>(
+  path: string,
+  options: RequestInit = {},
+  retried = false,
+): Promise<T> {
   const res = await fetch(`/api${path}`, {
     ...options,
     credentials: "include",
@@ -26,6 +45,17 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
       ...options.headers,
     },
   });
+
+  // An expired short-lived access cookie should not end a consultation.
+  // Retry only a 401 (authentication runs before mutations), never a 5xx.
+  if (
+    res.status === 401 &&
+    !retried &&
+    (!path.startsWith("/auth/") || path === "/auth/me") &&
+    (await refreshSession())
+  ) {
+    return request<T>(path, options, true);
+  }
 
   if (!res.ok) {
     let message = res.statusText;
@@ -45,10 +75,19 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 export const api = {
   get: <T>(path: string) => request<T>(path),
   post: <T>(path: string, body?: unknown) =>
-    request<T>(path, { method: "POST", body: body ? JSON.stringify(body) : undefined }),
+    request<T>(path, {
+      method: "POST",
+      body: body ? JSON.stringify(body) : undefined,
+    }),
   patch: <T>(path: string, body?: unknown) =>
-    request<T>(path, { method: "PATCH", body: body ? JSON.stringify(body) : undefined }),
+    request<T>(path, {
+      method: "PATCH",
+      body: body ? JSON.stringify(body) : undefined,
+    }),
   put: <T>(path: string, body?: unknown) =>
-    request<T>(path, { method: "PUT", body: body ? JSON.stringify(body) : undefined }),
+    request<T>(path, {
+      method: "PUT",
+      body: body ? JSON.stringify(body) : undefined,
+    }),
   delete: <T>(path: string) => request<T>(path, { method: "DELETE" }),
 };

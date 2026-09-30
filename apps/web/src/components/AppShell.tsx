@@ -1,7 +1,7 @@
 "use client";
 
 import { PREFERENCE_KEYS } from "@nexus/shared";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { flushOfflineQueue } from "@/lib/offlineQueue";
@@ -12,6 +12,8 @@ import { SystemHeader } from "./SystemHeader";
 import { OnboardingTour } from "./OnboardingTour";
 import { Sidebar } from "./Sidebar";
 import { VoiceSession } from "./VoiceSession";
+import { ThemeController } from "./ThemeController";
+import { SyncStatus } from "./SyncStatus";
 
 /**
  * Deep link for the Siri Shortcut / home-screen quick action ("hablarle
@@ -32,18 +34,39 @@ function ListenParam({ onListen }: { onListen: () => void }) {
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const clinical = (usePathname() || "").startsWith("/patients");
+  const [clinicalVoiceNotice, setClinicalVoiceNotice] = useState(false);
   const [captureOpen, setCaptureOpen] = useState(false);
   const [voiceDocked, setVoiceDocked] = useState(false);
-  const { preferences, setPreference, loading: preferencesLoading } = usePreferences();
+  const {
+    preferences,
+    setPreference,
+    loading: preferencesLoading,
+  } = usePreferences();
   const voiceOpened = useRef(false);
-  const openVoice = useCallback(() => setCaptureOpen(true), []);
-  const closeVoice = useCallback(() => { setCaptureOpen(false); setVoiceDocked(false); }, []);
+  const openVoice = useCallback(() => {
+    if (clinical) {
+      setClinicalVoiceNotice(true);
+      return;
+    }
+    setCaptureOpen(true);
+  }, [clinical]);
+  const closeVoice = useCallback(() => {
+    setCaptureOpen(false);
+    setVoiceDocked(false);
+  }, []);
 
   useEffect(() => {
-    if (!user || preferencesLoading || voiceOpened.current) return;
+    if (!user || preferencesLoading || voiceOpened.current || clinical) return;
     voiceOpened.current = true;
-    if (preferences?.[PREFERENCE_KEYS.VOICE_AUTO_START] !== false) setCaptureOpen(true);
-  }, [user, preferencesLoading, preferences]);
+    if (preferences?.[PREFERENCE_KEYS.VOICE_AUTO_START] !== false)
+      setCaptureOpen(true);
+  }, [user, preferencesLoading, preferences, clinical]);
+
+  useEffect(() => {
+    if (clinical) closeVoice();
+    else setClinicalVoiceNotice(false);
+  }, [clinical, closeVoice]);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -56,8 +79,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   // browser tells us we came back online.
   useEffect(() => {
     if (!user) return;
-    void flushOfflineQueue();
-    const onOnline = () => void flushOfflineQueue();
+    void flushOfflineQueue(user.id);
+    const onOnline = () => void flushOfflineQueue(user.id);
     window.addEventListener("online", onOnline);
     return () => window.removeEventListener("online", onOnline);
   }, [user]);
@@ -70,19 +93,42 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     );
   }
 
-  const showOnboarding = !preferencesLoading && !preferences?.[PREFERENCE_KEYS.ONBOARDING_COMPLETED];
+  const showOnboarding =
+    !preferencesLoading && !preferences?.[PREFERENCE_KEYS.ONBOARDING_COMPLETED];
 
   return (
-    <div className={`nexus-app-shell mx-auto flex max-w-7xl gap-5 px-3 pt-4 sm:px-6 sm:pt-5 ${voiceDocked ? "pb-[22rem]" : "pb-24 sm:pb-6"}`}>
+    <div
+      className={`nexus-app-shell mx-auto flex max-w-7xl gap-5 px-3 pt-4 sm:px-6 sm:pt-5 ${voiceDocked ? "pb-[22rem]" : "pb-24 sm:pb-6"}`}
+    >
+      <ThemeController mode={preferences?.theme_mode} />
       <Suspense fallback={null}>
         <ListenParam onListen={openVoice} />
       </Suspense>
-      <Sidebar onOrbClick={() => setCaptureOpen(true)} />
-      <main className="min-w-0 flex-1 sm:pt-2"><SystemHeader onVoice={openVoice}/>{children}</main>
+      <Sidebar onOrbClick={openVoice} />
+      <main className="min-w-0 flex-1 sm:pt-2">
+        <SystemHeader onVoice={openVoice} />
+        {!clinical && <SyncStatus userId={user.id} />}{" "}
+        {clinicalVoiceNotice && (
+          <p
+            role="status"
+            className="mb-3 rounded-xl border border-nexus-border p-3 text-sm"
+          >
+            Para registrar una consulta, usá el dictado dentro de su plantilla.
+            El asistente personal está separado de las fichas.
+          </p>
+        )}
+        {children}
+      </main>
       {!voiceDocked && <BottomNav onOrbClick={openVoice} />}
-      {captureOpen && <VoiceSession onClose={closeVoice} onDockChange={setVoiceDocked} />}
+      {captureOpen && !clinical && (
+        <VoiceSession onClose={closeVoice} onDockChange={setVoiceDocked} />
+      )}
       {showOnboarding && !captureOpen && (
-        <OnboardingTour onFinish={() => void setPreference(PREFERENCE_KEYS.ONBOARDING_COMPLETED, true)} />
+        <OnboardingTour
+          onFinish={() =>
+            void setPreference(PREFERENCE_KEYS.ONBOARDING_COMPLETED, true)
+          }
+        />
       )}
     </div>
   );

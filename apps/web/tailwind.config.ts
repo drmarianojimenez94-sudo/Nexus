@@ -14,7 +14,7 @@ export default {
           bg: "#05070c",
           panel: "#0d121f",
           border: "rgba(148, 197, 255, 0.12)",
-          cyan: "#4fd8ff",
+          cyan: "rgb(var(--nexus-accent) / <alpha-value>)",
           violet: "#8b7bff",
           text: "#e7ecf7",
           muted: "#8791a8",
@@ -27,7 +27,7 @@ export default {
         mono: ["var(--font-mono)", "ui-monospace", "monospace"],
       },
       boxShadow: {
-        glow: "0 0 24px rgba(79, 216, 255, 0.35)",
+        glow: "0 0 24px rgb(var(--nexus-accent) / 0.35)",
         "glow-violet": "0 0 24px rgba(139, 123, 255, 0.35)",
       },
       keyframes: {

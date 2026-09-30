@@ -1,6 +1,7 @@
 import { BluetoothPanel } from "@/components/BluetoothPanel";
 import { IntegrationsPanel } from "@/components/IntegrationsPanel";
 import { VoicePreferences } from "@/components/VoicePreferences";
+import { ThemePreferences } from "@/components/ThemePreferences";
 
 export default function SettingsPage() {
   return (
@@ -9,6 +10,7 @@ export default function SettingsPage() {
         <h1 className="text-2xl font-semibold">Ajustes</h1>
       </header>
       <VoicePreferences />
+      <ThemePreferences />
       <IntegrationsPanel />
       <BluetoothPanel />
     </div>

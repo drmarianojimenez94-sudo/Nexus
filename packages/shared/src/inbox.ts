@@ -9,13 +9,15 @@ export const InboxItemStatus = {
   CLASSIFIED: "CLASSIFIED",
   DISMISSED: "DISMISSED",
 } as const;
-export type InboxItemStatus = (typeof InboxItemStatus)[keyof typeof InboxItemStatus];
+export type InboxItemStatus =
+  (typeof InboxItemStatus)[keyof typeof InboxItemStatus];
 
 export const InboxItemSource = {
   TEXT: "TEXT",
   VOICE: "VOICE",
 } as const;
-export type InboxItemSource = (typeof InboxItemSource)[keyof typeof InboxItemSource];
+export type InboxItemSource =
+  (typeof InboxItemSource)[keyof typeof InboxItemSource];
 
 export const inboxItemSchema = z.object({
   id: z.string().uuid(),
@@ -37,5 +39,8 @@ export const createInboxItemSchema = z.object({
 export type CreateInboxItemInput = z.infer<typeof createInboxItemSchema>;
 
 /** Quick Capture is the same primitive as an inbox item — capture first, classify later. */
-export const quickCaptureSchema = createInboxItemSchema;
+export const quickCaptureSchema = createInboxItemSchema.extend({
+  captureId: z.string().uuid().optional(),
+  expectedOwnerId: z.string().uuid().optional(),
+});
 export type QuickCaptureInput = z.infer<typeof quickCaptureSchema>;
