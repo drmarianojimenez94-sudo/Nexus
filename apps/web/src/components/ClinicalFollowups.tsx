@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { ClinicalFollowup } from "@nexus/shared";
 import { api } from "@/lib/api";
@@ -11,20 +11,33 @@ import {
   clinicalSecondary,
 } from "./ClinicalUi";
 export function ClinicalFollowups({ patientId }: { patientId?: string }) {
+  const clientId = useRef("");
   const [status, setStatus] = useState("PENDING"),
+    [page, setPage] = useState(1),
     [title, setTitle] = useState(""),
     [dueAt, setDueAt] = useState(""),
     [kind, setKind] = useState("CONTROL"),
     [busy, setBusy] = useState(false),
-    [error, setError] = useState<string | null>(null);
+    [error, setError] = useState<string | null>(null),
+    [editing, setEditing] = useState<ClinicalFollowup | null>(null);
   const {
     data,
     loading,
     error: loadError,
     reload,
-  } = useApiData<{ followups: ClinicalFollowup[] }>(
-    `/clinical/followups?status=${status}${patientId ? `&patientId=${patientId}` : ""}`,
+  } = useApiData<{
+    followups: ClinicalFollowup[];
+    total: number;
+    page: number;
+    pageSize: number;
+  }>(
+    `/clinical/followups?status=${status}&page=${page}${patientId ? `&patientId=${patientId}` : ""}`,
   );
+  useEffect(() => {
+    if (!data) return;
+    const lastPage = Math.max(1, Math.ceil(data.total / data.pageSize));
+    if (page > lastPage) setPage(lastPage);
+  }, [data, page]);
   return (
     <section className="glass-panel flex flex-col gap-4 p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -33,7 +46,11 @@ export function ClinicalFollowups({ patientId }: { patientId?: string }) {
           aria-label="Estado de seguimientos"
           className="rounded-lg border border-nexus-border bg-nexus-bg p-2 text-sm"
           value={status}
-          onChange={(e) => setStatus(e.target.value)}
+          onChange={(e) => {
+            setStatus(e.target.value);
+            setEditing(null);
+            setPage(1);
+          }}
         >
           <option value="PENDING">Pendientes</option>
           <option value="DONE">Resueltos</option>
@@ -48,11 +65,13 @@ export function ClinicalFollowups({ patientId }: { patientId?: string }) {
             setError(null);
             try {
               await api.post("/clinical/followups", {
+                clientId: (clientId.current ||= crypto.randomUUID()),
                 patientId,
                 title,
                 dueAt: new Date(dueAt).toISOString(),
                 kind,
               });
+              clientId.current = "";
               setTitle("");
               setDueAt("");
               await reload();
@@ -107,6 +126,22 @@ export function ClinicalFollowups({ patientId }: { patientId?: string }) {
       )}
       <ClinicalError message={error || loadError} />
       {loading && <p>Cargando…</p>}
+      {data && (
+        <p className="text-sm text-nexus-muted" role="status">
+          {data.total} seguimientos · página {data.page}
+        </p>
+      )}
+      {editing && (
+        <FollowupEditor
+          key={`${editing.id}:${editing.version}`}
+          followup={editing}
+          onCancel={() => setEditing(null)}
+          onSaved={async () => {
+            setEditing(null);
+            await reload();
+          }}
+        />
+      )}
       {data?.followups.map((f) => (
         <div
           key={f.id}
@@ -129,28 +164,39 @@ export function ClinicalFollowups({ patientId }: { patientId?: string }) {
                 : ""}
             </p>
           </div>
-          <button
-            disabled={busy}
-            className={clinicalSecondary}
-            onClick={async () => {
-              setBusy(true);
-              setError(null);
-              try {
-                await api.patch(`/clinical/followups/${f.id}`, {
-                  status: f.status === "DONE" ? "PENDING" : "DONE",
-                });
-                await reload();
-              } catch (e) {
-                setError(
-                  e instanceof Error ? e.message : "No se pudo actualizar",
-                );
-              } finally {
-                setBusy(false);
-              }
-            }}
-          >
-            {f.status === "DONE" ? "Reabrir" : "Marcar resuelto"}
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              className={clinicalSecondary}
+              disabled={busy}
+              onClick={() => setEditing(f)}
+            >
+              Editar seguimiento
+            </button>
+            <button
+              disabled={busy}
+              className={clinicalSecondary}
+              onClick={async () => {
+                setBusy(true);
+                setError(null);
+                try {
+                  await api.patch(`/clinical/followups/${f.id}`, {
+                    status: f.status === "DONE" ? "PENDING" : "DONE",
+                    version: f.version,
+                  });
+                  await reload();
+                } catch (e) {
+                  setError(
+                    e instanceof Error ? e.message : "No se pudo actualizar",
+                  );
+                } finally {
+                  setBusy(false);
+                }
+              }}
+            >
+              {f.status === "DONE" ? "Reabrir" : "Marcar resuelto"}
+            </button>
+          </div>
         </div>
       ))}
       {data && !data.followups.length && (
@@ -158,10 +204,125 @@ export function ClinicalFollowups({ patientId }: { patientId?: string }) {
           No hay seguimientos en este estado.
         </p>
       )}
+      {data && (
+        <nav aria-label="Páginas de seguimientos" className="flex gap-3">
+          <button
+            type="button"
+            className={clinicalSecondary}
+            disabled={busy || loading || page === 1}
+            onClick={() => setPage((current) => current - 1)}
+          >
+            Anterior
+          </button>
+          <button
+            type="button"
+            className={clinicalSecondary}
+            disabled={
+              busy || loading || data.page * data.pageSize >= data.total
+            }
+            onClick={() => setPage((current) => current + 1)}
+          >
+            Siguiente
+          </button>
+        </nav>
+      )}
       <p className="text-xs text-nexus-muted">
         Estos pendientes se consultan aquí. No se envía información clínica por
         correo ni al calendario personal.
       </p>
     </section>
+  );
+}
+
+function FollowupEditor({
+  followup,
+  onCancel,
+  onSaved,
+}: {
+  followup: ClinicalFollowup;
+  onCancel: () => void;
+  onSaved: () => Promise<void>;
+}) {
+  const date = new Date(followup.dueAt);
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000)
+    .toISOString()
+    .slice(0, 16);
+  const [title, setTitle] = useState(followup.title),
+    [dueAt, setDueAt] = useState(local),
+    [kind, setKind] = useState(followup.kind),
+    [busy, setBusy] = useState(false),
+    [error, setError] = useState<string | null>(null);
+  return (
+    <form
+      className="flex flex-col gap-3 rounded-xl border border-nexus-cyan p-3"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        setBusy(true);
+        setError(null);
+        try {
+          await api.put(`/clinical/followups/${followup.id}`, {
+            title,
+            dueAt: new Date(dueAt).toISOString(),
+            kind,
+            version: followup.version,
+          });
+          await onSaved();
+        } catch (err) {
+          setError(err instanceof Error ? err.message : "No se pudo guardar");
+        } finally {
+          setBusy(false);
+        }
+      }}
+    >
+      <h3 className="font-semibold">
+        Editar seguimiento de {followup.patientName}
+      </h3>
+      <label className="text-sm">
+        Pendiente
+        <input
+          required
+          maxLength={300}
+          className={clinicalInput}
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+        />
+      </label>
+      <label className="text-sm">
+        Fecha
+        <input
+          required
+          type="datetime-local"
+          className={clinicalInput}
+          value={dueAt}
+          onChange={(e) => setDueAt(e.target.value)}
+        />
+      </label>
+      <label className="text-sm">
+        Tipo
+        <select
+          className={clinicalInput}
+          value={kind}
+          onChange={(e) => setKind(e.target.value as ClinicalFollowup["kind"])}
+        >
+          <option value="CONTROL">Control</option>
+          <option value="RESULT">Resultado de estudio</option>
+          <option value="CALL">Llamada</option>
+        </select>
+      </label>
+      <ClinicalError message={error} />
+      <div className="flex gap-3">
+        <button className={clinicalButton} disabled={busy}>
+          Guardar cambios
+        </button>
+        <button
+          type="button"
+          className={clinicalSecondary}
+          disabled={busy}
+          onClick={onCancel}
+        >
+          Cancelar
+        </button>
+      </div>
+    </form>
   );
 }

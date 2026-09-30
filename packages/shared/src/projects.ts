@@ -14,8 +14,8 @@ export const projectSchema = z.object({
   id: z.string().uuid(),
   userId: z.string().uuid(),
   areaId: z.string().uuid().nullable(),
-  name: z.string().min(1).max(120),
-  goal: z.string().max(2000).nullable(),
+  name: z.string().trim().min(1).max(120),
+  goal: z.string().max(10000).nullable(),
   status: z.nativeEnum(ProjectStatus),
   progress: z.number().min(0).max(100),
   deadline: z.string().datetime().nullable(),
@@ -25,17 +25,22 @@ export const projectSchema = z.object({
 export type Project = z.infer<typeof projectSchema>;
 
 export const createProjectSchema = z.object({
-  name: z.string().min(1).max(120),
+  name: z.string().trim().min(1).max(120),
   areaId: z.string().uuid().optional(),
-  goal: z.string().max(2000).optional(),
+  goal: z.string().max(10000).optional(),
   status: z.nativeEnum(ProjectStatus).optional(),
   deadline: z.string().datetime().optional(),
+  clientId: z.string().uuid().optional(),
+  tasks: z.array(z.string().trim().min(1).max(300)).max(100).optional(),
 });
 export type CreateProjectInput = z.infer<typeof createProjectSchema>;
 
-export const updateProjectSchema = createProjectSchema.partial().extend({
-  progress: z.number().min(0).max(100).optional(),
-});
+export const updateProjectSchema = createProjectSchema
+  .omit({ clientId: true, tasks: true })
+  .partial()
+  .extend({
+    progress: z.number().min(0).max(100).optional(),
+  });
 export type UpdateProjectInput = z.infer<typeof updateProjectSchema>;
 
 export const milestoneSchema = z.object({
@@ -53,3 +58,14 @@ export const createMilestoneSchema = z.object({
   dueDate: z.string().datetime().optional(),
 });
 export type CreateMilestoneInput = z.infer<typeof createMilestoneSchema>;
+
+export const projectPlanSchema = z.object({
+  text: z.string().trim().min(1).max(10000),
+  useAI: z.boolean().default(false),
+});
+export const projectDraftSchema = z.object({
+  name: z.string().trim().max(120),
+  goal: z.string().max(10000),
+  tasks: z.array(z.string().trim().min(1).max(300)).max(100),
+});
+export type ProjectDraft = z.infer<typeof projectDraftSchema>;

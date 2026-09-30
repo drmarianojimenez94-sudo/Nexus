@@ -1,10 +1,12 @@
 "use client";
 import { use, useState } from "react";
 import Link from "next/link";
+import { ClinicalLocalDrafts } from "@/components/ClinicalLocalDrafts";
 import type { Patient, ClinicalEncounter } from "@nexus/shared";
 import { api } from "@/lib/api";
 import { useApiData } from "@/lib/useApiData";
 import { PatientForm } from "@/components/PatientForm";
+import { ClinicalHistory } from "@/components/ClinicalHistory";
 import { ClinicalFollowups } from "@/components/ClinicalFollowups";
 import {
   ClinicalHeader,
@@ -26,7 +28,7 @@ export default function PatientPage({
     [editing, setEditing] = useState(false),
     [actionError, setActionError] = useState<string | null>(null),
     [busy, setBusy] = useState(false);
-  const patient = data?.patient;
+  const patient = data?.patient.id === id ? data.patient : undefined;
   return (
     <div className="flex flex-col gap-4">
       <ClinicalHeader
@@ -60,6 +62,12 @@ export default function PatientPage({
             >
               {editing ? "Cerrar edición" : "Editar ficha"}
             </button>
+            <Link
+              className={clinicalSecondary}
+              href={`/patients/${id}/summary`}
+            >
+              Resumen longitudinal / imprimir
+            </Link>
             <button
               disabled={busy}
               className={clinicalSecondary}
@@ -118,7 +126,7 @@ export default function PatientPage({
           </div>
           {editing ? (
             <PatientForm
-              key={patient.version}
+              key={`${patient.id}:${patient.version}`}
               initial={patient}
               onSave={async (input) => {
                 await api.put(`/clinical/patients/${id}`, {
@@ -150,34 +158,9 @@ export default function PatientPage({
               ))}
             </section>
           )}
-          <section className="glass-panel p-4">
-            <h2 className="mb-3 font-semibold">Historial de consultas</h2>
-            <p className="mb-3 text-xs text-nexus-muted">
-              Últimas 100 atenciones. La exportación incluye el historial
-              completo. Validar una consulta no equivale a una firma digital.
-            </p>
-            {!data.encounters.length && (
-              <p className="text-sm text-nexus-muted">
-                Todavía no hay consultas. Elegí una plantilla para comenzar.
-              </p>
-            )}
-            <div className="flex flex-col gap-3">
-              {data.encounters.map((c) => (
-                <Link
-                  key={c.id}
-                  className="rounded-xl border border-nexus-border p-3"
-                  href={`/patients/${id}/consultations/${c.id}`}
-                >
-                  <p className="font-medium">{c.template.name}</p>
-                  <p className="mt-1 text-xs text-nexus-muted">
-                    {new Date(c.occurredAt).toLocaleString("es-AR")} ·{" "}
-                    {c.status === "FINAL" ? "Validada" : "Borrador"}
-                  </p>
-                </Link>
-              ))}
-            </div>
-          </section>
-          <ClinicalFollowups patientId={id} />
+          <ClinicalHistory key={id} patientId={id} />
+          <ClinicalLocalDrafts patientId={id} />
+          <ClinicalFollowups key={id} patientId={id} />
         </>
       )}
     </div>

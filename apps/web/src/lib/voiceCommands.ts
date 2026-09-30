@@ -227,6 +227,26 @@ export async function handleVoiceCommand(
     }
   }
 
+  if (
+    /^(?:(?:quiero|vamos a)\s+)?(?:crear|armar|desglosar|planificar|explicar)\s+(?:un|el|mi)?\s*proyecto\b/i.test(
+      text,
+    )
+  ) {
+    try {
+      sessionStorage.setItem("nexus_project_brief", text);
+    } catch {
+      return {
+        speak:
+          "Abrí Proyectos y dictá allí la explicación; no pude conservar este texto en el dispositivo.",
+        navigateTo: "/projects",
+      };
+    }
+    return {
+      speak:
+        "Te llevo a Proyectos para revisar el nombre, la descripción y los pendientes antes de guardar.",
+      navigateTo: "/projects",
+    };
+  }
   // Navigation must work immediately even if the AI is unavailable or misconfigured.
   const nav = navigationCommand(text);
   if (nav)

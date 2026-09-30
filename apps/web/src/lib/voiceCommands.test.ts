@@ -11,6 +11,14 @@ import { handleVoiceCommand } from "./voiceCommands";
 
 beforeEach(() => vi.resetAllMocks());
 describe("voice routing", () => {
+  it("keeps project speech for review without an automatic write", async()=>{
+    const setItem=vi.fn();vi.stubGlobal("sessionStorage",{setItem});
+    try { const result=await handleVoiceCommand("crear un proyecto de consultorio con pendientes organizar turnos");
+      expect(result.navigateTo).toBe("/projects");
+      expect(setItem).toHaveBeenCalledWith("nexus_project_brief",expect.stringContaining("organizar turnos"));
+      expect(post).not.toHaveBeenCalled();
+    }finally{vi.unstubAllGlobals();}
+  });
   it.each([
     ["abrime el calendario", "/calendar"],
     ["Nexus, abrí la agenda", "/calendar"],

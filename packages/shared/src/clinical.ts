@@ -40,6 +40,12 @@ export interface ClinicalTemplate {
   description: string;
   version: number;
   fields: ClinicalField[];
+  revision?: number;
+  archived?: boolean;
+  favorite?: boolean;
+  builtin?: boolean;
+  lineageId?: string;
+  previousVersionId?: string | null;
 }
 const fields = (pairs: string[][]): ClinicalField[] =>
   pairs.map(([key, label]) => ({ key: key!, label: label! }));
@@ -151,6 +157,23 @@ export const templateInputSchema = z.object({
       "Campos duplicados",
     ),
 });
+export const templateCreateSchema = templateInputSchema.extend({
+  clientId: z.string().uuid().optional(),
+});
+export const templateVersionSchema = templateInputSchema.extend({
+  revision: z.number().int().min(1),
+  clientId: z.string().uuid(),
+});
+export const templateMetadataSchema = z
+  .object({
+    revision: z.number().int().min(1),
+    archived: z.boolean().optional(),
+    favorite: z.boolean().optional(),
+  })
+  .refine(
+    (v) => v.archived !== undefined || v.favorite !== undefined,
+    "Indicá un cambio",
+  );
 export const encounterInputSchema = z.object({
   templateId: z.string().min(1).max(100),
   occurredAt: z.string().datetime(),
@@ -170,6 +193,8 @@ export type ClinicalEncounter = EncounterInput & {
   createdAt: string;
   updatedAt: string;
   finalizedAt: string | null;
+  patientSnapshot?: PatientInput & { id: string };
+  clinicianSnapshot?: { id: string; name: string; email: string };
 };
 export const followupInputSchema = z.object({
   patientId: z.string().uuid(),
@@ -179,6 +204,7 @@ export const followupInputSchema = z.object({
 });
 export interface ClinicalFollowup {
   id: string;
+  version: number;
   patientId: string;
   title: string;
   dueAt: string;

@@ -8,3 +8,4 @@ export * from "./inbox";
 export * from "./preferences";
 export * from "./memory";
 export * from "./clinical";
+export * from "./googleWorkspace";

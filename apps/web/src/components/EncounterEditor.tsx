@@ -16,6 +16,7 @@ import {
   readClinicalDraft,
   saveClinicalDraft,
   removeClinicalDraft,
+  acquireClinicalDraftLock,
 } from "@/lib/clinicalDrafts";
 import {
   ClinicalError,
@@ -25,7 +26,7 @@ import {
   clinicalSecondary,
 } from "./ClinicalUi";
 
-interface DraftSnapshot {
+export interface DraftSnapshot {
   input: EncounterInput;
   template: ClinicalTemplate;
   patient: Patient;
@@ -33,16 +34,29 @@ interface DraftSnapshot {
   version: number;
   encounterId?: string;
 }
+import {
+  ClinicalDraftConflict,
+  reconcileClinicalDraft,
+} from "./ClinicalDraftConflict";
+import { ClinicalLocalDrafts } from "./ClinicalLocalDrafts";
+
 export function EncounterEditor({
   patientId,
   encounterId,
+  draftId,
 }: {
   patientId: string;
   encounterId?: string;
+  draftId?: string;
 }) {
   const { user } = useAuth(),
     router = useRouter(),
-    slot = `${patientId}:${encounterId || "new"}`;
+    slot = `${patientId}:${encounterId || (draftId === "legacy" ? "new" : draftId || "new")}`;
+  const [writable, setWritable] = useState(false);
+  const [conflict, setConflict] = useState<{
+    local: DraftSnapshot;
+    server: ClinicalEncounter;
+  } | null>(null);
   const [patient, setPatient] = useState<Patient | null>(null),
     [templates, setTemplates] =
       useState<ClinicalTemplate[]>(CLINICAL_TEMPLATES),
@@ -67,7 +81,21 @@ export function EncounterEditor({
     [serverStatus, setServerStatus] = useState(""),
     [target, setTarget] = useState("");
   const clientId = useRef(""),
-    draftWrites = useRef<Promise<void>>(Promise.resolve());
+    draftWrites = useRef<Promise<void>>(Promise.resolve()),
+    validationDialog = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    if (!confirming || !validationDialog.current) return;
+    const dialog = validationDialog.current;
+    const previousFocus =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    dialog.showModal();
+    return () => {
+      dialog.close();
+      if (previousFocus?.isConnected) previousFocus.focus();
+    };
+  }, [confirming]);
   const {
     startListening,
     stopListening,
@@ -79,7 +107,25 @@ export function EncounterEditor({
   useEffect(() => {
     if (!user) return;
     let cancelled = false;
+    let release = () => {};
+    setReady(false);
+    setWritable(false);
+    setConflict(null);
+    setDirty(false);
+    setRecovered(false);
+    setError(null);
     (async () => {
+      try {
+        const lock = await acquireClinicalDraftLock(user.id, slot);
+        if (cancelled) {
+          lock.release();
+          return;
+        }
+        release = lock.release;
+        setWritable(lock.writable);
+      } catch {
+        setWritable(false);
+      }
       let local: DraftSnapshot | null = null;
       try {
         local = await readClinicalDraft<DraftSnapshot>(user.id, slot);
@@ -107,7 +153,8 @@ export function EncounterEditor({
         if (cancelled) return;
         setPatient(result.patient);
         setTemplates(list.templates);
-        clientId.current = crypto.randomUUID();
+        clientId.current =
+          draftId && draftId !== "legacy" ? draftId : crypto.randomUUID();
         if (c) {
           setTemplate(c.template);
           setInput({
@@ -124,17 +171,20 @@ export function EncounterEditor({
               : "Borrador guardado en Nexus",
           );
         }
-        if (local && (!c || c.status === "DRAFT")) {
+        if (
+          local &&
+          c &&
+          (c.version !== local.version || c.status === "FINAL")
+        ) {
+          setConflict({ local, server: c });
+          setRecovered(true);
+        } else if (local && (!c || c.status === "DRAFT")) {
           setTemplate(local.template);
           setInput(local.input);
           clientId.current = local.clientId;
           setVersion(local.version);
           setDirty(true);
           setRecovered(true);
-          if (c && c.version !== local.version)
-            setError(
-              "Existe una versión más reciente en Nexus. Tu borrador se conserva; copiá lo que necesites antes de recargar. No se sobrescribirá la otra versión.",
-            );
         }
         setReady(true);
       } catch (err) {
@@ -165,10 +215,22 @@ export function EncounterEditor({
     })();
     return () => {
       cancelled = true;
+      stopListening();
+      // Complete queued encryption before another tab acquires this slot.
+      void draftWrites.current.catch(() => {}).finally(() => release());
     };
-  }, [user, slot, patientId, encounterId]);
+  }, [user, slot, patientId, encounterId, draftId, stopListening]);
   useEffect(() => {
-    if (!ready || !dirty || !patient || !user || status === "FINAL") return;
+    if (
+      !ready ||
+      !dirty ||
+      !patient ||
+      !user ||
+      status === "FINAL" ||
+      !writable ||
+      conflict
+    )
+      return;
     {
       const snapshot: DraftSnapshot = {
         input,
@@ -202,6 +264,8 @@ export function EncounterEditor({
     status,
     version,
     encounterId,
+    writable,
+    conflict,
   ]);
   useEffect(() => {
     const guard = (e: BeforeUnloadEvent) => {
@@ -229,7 +293,7 @@ export function EncounterEditor({
     setServerStatus("Cambios pendientes de guardar en Nexus");
   }, []);
   async function save(): Promise<ClinicalEncounter | null> {
-    if (!user) return null;
+    if (!user || !writable || conflict) return null;
     stopListening();
     setBusy(true);
     setError(null);
@@ -256,10 +320,22 @@ export function EncounterEditor({
           encounter.occurredAt,
         ]) !== JSON.stringify([input.fields, input.dictation, input.occurredAt])
       ) {
-        if (encounter.version !== version)
+        if (encounter.version !== version || encounter.status === "FINAL") {
+          if (patient)
+            setConflict({
+              local: {
+                input,
+                template,
+                patient,
+                clientId: clientId.current,
+                version,
+              },
+              server: encounter,
+            });
           throw new Error(
-            "La consulta recuperada tiene otra versión. Conservá el borrador y revisá el historial del paciente.",
+            "La consulta recuperada tiene otra versión. Compará los textos antes de continuar.",
           );
+        }
         const updated = await api.put<{ encounter: ClinicalEncounter }>(
           `/clinical/encounters/${encounter.id}`,
           { ...input, version },
@@ -282,6 +358,33 @@ export function EncounterEditor({
         router.replace(`/patients/${patientId}/consultations/${encounter.id}`);
       return encounter;
     } catch (err) {
+      if (
+        encounterId &&
+        err &&
+        typeof err === "object" &&
+        "status" in err &&
+        Number(err.status) === 409 &&
+        patient
+      ) {
+        try {
+          const latest = await api.get<{ encounter: ClinicalEncounter }>(
+            `/clinical/encounters/${encounterId}`,
+          );
+          setConflict({
+            local: {
+              input,
+              template,
+              patient,
+              clientId: clientId.current,
+              version,
+              encounterId,
+            },
+            server: latest.encounter,
+          });
+        } catch {
+          /* Keep the local editor and surface the original conflict. */
+        }
+      }
       setError(
         err instanceof Error
           ? err.message
@@ -293,7 +396,14 @@ export function EncounterEditor({
     }
   }
   async function finalize() {
-    if (!encounterId) return;
+    if (!encounterId || !writable || conflict) return;
+    if (input.dictation.trim()) {
+      setConfirming(false);
+      setError(
+        "Hay una transcripción pendiente de revisar. Incorporala a un campo o vaciala explícitamente antes de validar la consulta.",
+      );
+      return;
+    }
     setConfirming(false);
     const saved = dirty ? await save() : null;
     if (dirty && !saved) return;
@@ -325,7 +435,21 @@ export function EncounterEditor({
         {!error && <p>Cargando…</p>}
       </div>
     );
-  const readonly = status === "FINAL" || busy;
+  const readonly = status === "FINAL" || busy || !writable || !!conflict;
+  const birth = patient?.birthDate
+    ? new Date(`${patient.birthDate}T00:00:00`)
+    : null;
+  const now = new Date();
+  const age =
+    birth && Number.isFinite(birth.getTime()) && birth <= now
+      ? now.getFullYear() -
+        birth.getFullYear() -
+        Number(
+          now.getMonth() < birth.getMonth() ||
+            (now.getMonth() === birth.getMonth() &&
+              now.getDate() < birth.getDate()),
+        )
+      : null;
   return (
     <div className="flex flex-col gap-4">
       <ClinicalHeader
@@ -340,12 +464,101 @@ export function EncounterEditor({
           {patient?.name}
         </Link>{" "}
         · {patient?.document || "Documento no registrado"}
+        {age !== null && ` · ${age} años`}
         <p className="mt-1 text-xs text-nexus-muted">
           {status === "FINAL" ? "Validada" : "Borrador"} ·{" "}
           {serverStatus || "Todavía no guardado en Nexus"}
         </p>
+        <details className="mt-2 rounded-lg border border-nexus-border p-2">
+          <summary className="cursor-pointer font-medium">
+            Contexto de la ficha · alergias, medicación y antecedentes
+          </summary>
+          <dl className="mt-3 flex max-h-[45vh] flex-col gap-3 overflow-y-auto text-sm">
+            {(
+              [
+                ["Alergias", patient?.allergies],
+                ["Medicación habitual", patient?.medication],
+                ["Antecedentes", patient?.history],
+              ] as const
+            ).map(([label, value]) => (
+              <div key={label}>
+                <dt className="font-semibold">{label}</dt>
+                <dd className="whitespace-pre-wrap break-words">
+                  {value || "No registrado"}
+                </dd>
+              </div>
+            ))}
+          </dl>
+          <p className="mt-2 text-xs text-nexus-muted">
+            Información actual de la ficha. Revisala en esta atención; no se
+            incorpora automáticamente a la consulta.
+          </p>
+        </details>
       </div>
       <ClinicalError message={error} />
+      {!writable && status !== "FINAL" && (
+        <p
+          role="status"
+          className="rounded-xl border border-nexus-amber p-3 text-sm"
+        >
+          Solo lectura: otra pestaña está editando este borrador, o este
+          navegador no admite el bloqueo seguro. Cerrá la otra pestaña y
+          recargá, o usá un navegador actualizado.
+        </p>
+      )}
+      {conflict && (
+        <ClinicalDraftConflict
+          local={conflict.local.input}
+          server={conflict.server}
+          localTemplate={conflict.local.template}
+          writable={writable}
+          onUseLocal={() => {
+            if (!writable) return;
+            setInput(
+              reconcileClinicalDraft(conflict.local.input, conflict.server),
+            );
+            setTemplate(conflict.server.template);
+            setVersion(conflict.server.version);
+            setStatus(conflict.server.status);
+            setConflict(null);
+            setDirty(true);
+            setError(null);
+            setServerStatus(
+              "Borrador incorporado; revisá el contenido antes de guardar",
+            );
+          }}
+          onUseServer={() => {
+            if (!writable || !user) return;
+            const server = conflict.server;
+            setInput({
+              templateId: server.templateId,
+              occurredAt: server.occurredAt,
+              fields: server.fields,
+              dictation: server.dictation,
+            });
+            setTemplate(server.template);
+            setVersion(server.version);
+            setStatus(server.status);
+            setConflict(null);
+            setDirty(false);
+            setRecovered(false);
+            setError(null);
+            draftWrites.current = draftWrites.current
+              .catch(() => {})
+              .then(() => removeClinicalDraft(user.id, slot));
+            void draftWrites.current.catch(() =>
+              setLocalStatus("No se pudo eliminar la copia local."),
+            );
+            if (!encounterId)
+              router.replace(
+                `/patients/${patientId}/consultations/${server.id}`,
+              );
+          }}
+        />
+      )}
+      {!encounterId && (
+        <ClinicalLocalDrafts patientId={patientId} currentSlot={slot} />
+      )}
       {recovered && (
         <p
           role="status"
@@ -366,13 +579,15 @@ export function EncounterEditor({
                 const next = templates.find((t) => t.id === e.target.value);
                 if (!next) return;
                 if (
-                  Object.values(input.fields).some(Boolean) &&
+                  (Object.values(input.fields).some(Boolean) ||
+                    !!input.dictation.trim()) &&
                   !window.confirm(
                     "Cambiar la plantilla borrará sus campos actuales. ¿Continuar?",
                   )
                 )
                   return;
                 setTemplate(next);
+                setTarget("");
                 change({ ...input, templateId: next.id, fields: {} });
               }}
             >
@@ -381,6 +596,7 @@ export function EncounterEditor({
                 : templates
               ).map((t) => (
                 <option key={t.id} value={t.id}>
+                  {t.favorite ? "★ " : ""}
                   {t.name}
                 </option>
               ))}
@@ -442,7 +658,7 @@ export function EncounterEditor({
           </p>
           <div className="flex flex-wrap gap-3">
             <button
-              disabled={busy || !sttSupported}
+              disabled={readonly || !sttSupported}
               className={clinicalSecondary}
               onClick={() => {
                 if (listening) {
@@ -479,7 +695,7 @@ export function EncounterEditor({
           <label className="text-sm">
             Transcripción para revisar
             <textarea
-              disabled={busy}
+              disabled={readonly}
               rows={5}
               maxLength={40000}
               className={`${clinicalInput} mt-2`}
@@ -489,6 +705,7 @@ export function EncounterEditor({
           </label>
           <div className="flex flex-col gap-3 sm:flex-row">
             <select
+              disabled={readonly}
               aria-label="Campo destinatario del dictado"
               className={clinicalInput}
               value={target}
@@ -503,8 +720,13 @@ export function EncounterEditor({
             </select>
             <button
               className={`${clinicalSecondary} shrink-0`}
-              disabled={!target || !input.dictation.trim() || busy}
+              disabled={
+                !template.fields.some((f) => f.key === target) ||
+                !input.dictation.trim() ||
+                readonly
+              }
               onClick={() => {
+                if (!template.fields.some((f) => f.key === target)) return;
                 const combined = `${input.fields[target] || ""}${input.fields[target] ? "\n" : ""}${input.dictation}`;
                 if (combined.length > 10000) {
                   setError(
@@ -533,7 +755,7 @@ export function EncounterEditor({
       <div className="flex flex-wrap gap-3">
         {status !== "FINAL" && (
           <button
-            disabled={busy}
+            disabled={readonly}
             className={clinicalButton}
             onClick={() => void save()}
           >
@@ -542,7 +764,7 @@ export function EncounterEditor({
         )}
         {encounterId && status !== "FINAL" && (
           <button
-            disabled={busy}
+            disabled={readonly}
             className={clinicalSecondary}
             onClick={() => setConfirming(true)}
           >
@@ -567,11 +789,11 @@ export function EncounterEditor({
         )}
       </div>
       {confirming && (
-        <section
-          role="dialog"
-          aria-modal="true"
+        <dialog
+          ref={validationDialog}
+          onCancel={() => setConfirming(false)}
           aria-label="Validar consulta"
-          className="glass-panel flex flex-col gap-3 p-5"
+          className="glass-panel m-auto flex w-11/12 max-w-lg flex-col gap-3 p-5 text-nexus-text backdrop:bg-black/70"
         >
           <h2 className="font-semibold">¿Validar esta consulta?</h2>
           <p className="text-sm">
@@ -591,7 +813,7 @@ export function EncounterEditor({
               Confirmar validación
             </button>
           </div>
-        </section>
+        </dialog>
       )}
     </div>
   );

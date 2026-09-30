@@ -1,4 +1,5 @@
 import { BluetoothPanel } from "@/components/BluetoothPanel";
+import { GoogleWorkspacePanel } from "@/components/GoogleWorkspacePanel";
 import { IntegrationsPanel } from "@/components/IntegrationsPanel";
 import { VoicePreferences } from "@/components/VoicePreferences";
 import { ThemePreferences } from "@/components/ThemePreferences";
@@ -12,6 +13,7 @@ export default function SettingsPage() {
       <VoicePreferences />
       <ThemePreferences />
       <IntegrationsPanel />
+      <GoogleWorkspacePanel />
       <BluetoothPanel />
     </div>
   );

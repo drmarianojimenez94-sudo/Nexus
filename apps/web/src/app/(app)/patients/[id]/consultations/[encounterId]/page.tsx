@@ -7,5 +7,11 @@ export default function EncounterPage({
   params: Promise<{ id: string; encounterId: string }>;
 }) {
   const { id, encounterId } = use(params);
-  return <EncounterEditor patientId={id} encounterId={encounterId} />;
+  return (
+    <EncounterEditor
+      key={`${id}:${encounterId}`}
+      patientId={id}
+      encounterId={encounterId}
+    />
+  );
 }

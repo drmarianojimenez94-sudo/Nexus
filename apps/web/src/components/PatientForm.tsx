@@ -44,47 +44,49 @@ export function PatientForm({
         }
       }}
     >
-      <div className="grid gap-4 sm:grid-cols-2">
+      <fieldset disabled={busy} className="flex min-w-0 flex-col gap-4">
+        <div className="grid gap-4 sm:grid-cols-2">
+          {(
+            [
+              ["name", "Nombre y apellido", "text"],
+              ["document", "Documento", "text"],
+              ["birthDate", "Fecha de nacimiento", "date"],
+              ["phone", "Teléfono", "tel"],
+            ] as const
+          ).map(([key, label, type]) => (
+            <label key={key} className="flex min-w-0 flex-col gap-2 text-sm">
+              {label}
+              <input
+                required={key === "name"}
+                type={type}
+                maxLength={key === "name" ? 160 : 80}
+                autoComplete="off"
+                className={clinicalInput}
+                value={data[key]}
+                onChange={(e) => change(key, e.target.value)}
+              />
+            </label>
+          ))}
+        </div>
         {(
           [
-            ["name", "Nombre y apellido", "text"],
-            ["document", "Documento", "text"],
-            ["birthDate", "Fecha de nacimiento", "date"],
-            ["phone", "Teléfono", "tel"],
+            ["allergies", "Alergias (dejar vacío si no se investigaron)"],
+            ["medication", "Medicación habitual"],
+            ["history", "Antecedentes"],
           ] as const
-        ).map(([key, label, type]) => (
-          <label key={key} className="flex min-w-0 flex-col gap-2 text-sm">
+        ).map(([key, label]) => (
+          <label key={key} className="flex flex-col gap-2 text-sm">
             {label}
-            <input
-              required={key === "name"}
-              type={type}
-              maxLength={key === "name" ? 160 : 80}
-              autoComplete="off"
+            <textarea
+              rows={3}
+              maxLength={10000}
               className={clinicalInput}
               value={data[key]}
               onChange={(e) => change(key, e.target.value)}
             />
           </label>
         ))}
-      </div>
-      {(
-        [
-          ["allergies", "Alergias (dejar vacío si no se investigaron)"],
-          ["medication", "Medicación habitual"],
-          ["history", "Antecedentes"],
-        ] as const
-      ).map(([key, label]) => (
-        <label key={key} className="flex flex-col gap-2 text-sm">
-          {label}
-          <textarea
-            rows={3}
-            maxLength={10000}
-            className={clinicalInput}
-            value={data[key]}
-            onChange={(e) => change(key, e.target.value)}
-          />
-        </label>
-      ))}
+      </fieldset>
       <ClinicalError message={error} />
       <button className={clinicalButton} disabled={busy}>
         {busy ? "Guardando…" : "Guardar ficha"}

@@ -8,6 +8,8 @@ Los campos vacíos nunca se convierten en hallazgos normales. El dictado se acum
 
 La validación conserva una versión que ya no puede editarse. Las correcciones se registran como nuevas evoluciones. No implementa firma digital, receta electrónica ni certificación legal de historia clínica.
 
+La rama de consolidación conserva, al validar, una copia cifrada de la identificación del paciente y del profesional. Los documentos anteriores sin esa copia lo indican explícitamente. Antes de validar, la transcripción pendiente debe incorporarse a los campos o vaciarse tras revisarla. Los seguimientos tienen paginación y recuento completo. La auditoría y pendientes para la versión definitiva están en `NEXUS_RELEASE_AUDIT.md`.
+
 En una ficha se pueden agregar controles, resultados a revisar y llamadas. El panel Seguimientos muestra pendientes y vencidos, y permite resolver/reabrir. No envía datos clínicos por correo ni los copia a Google Calendar.
 
 ## Plantillas y documentos

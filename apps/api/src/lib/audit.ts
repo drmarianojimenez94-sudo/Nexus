@@ -11,10 +11,13 @@ export interface AuditEntry {
 
 /**
  * Every NEXUS tool call that reads or writes user data records itself here
- * (spec §46). Write-only, never blocks the request on failure.
+ * (spec §46). Write-only; mutations include audit in their transaction.
  */
-export async function recordAudit(entry: AuditEntry): Promise<void> {
-  await prisma.auditLog.create({
+export async function recordAudit(
+  entry: AuditEntry,
+  database: Prisma.TransactionClient = prisma,
+): Promise<void> {
+  await database.auditLog.create({
     data: {
       userId: entry.userId,
       action: entry.action,
