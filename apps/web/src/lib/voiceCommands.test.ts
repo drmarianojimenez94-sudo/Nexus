@@ -68,6 +68,38 @@ describe("voice routing", () => {
     expect(post).toHaveBeenLastCalledWith("/quick-capture", { rawText: "anotá llamar mañana", source: "VOICE" });
     expect(result.navigateTo).toBe("/inbox");
   });
+  it("hands patient data to the clinical assistant instead of the inbox when AI is unconfigured", async () => {
+    const setItem = vi.fn(); vi.stubGlobal("sessionStorage", { setItem });
+    try {
+      post.mockRejectedValueOnce(new ApiError(501, "unconfigured"));
+      const text = "anotá paciente Juan Pérez DNI 30123456 consulta por fiebre";
+      const result = await handleVoiceCommand(text);
+      expect(result.navigateTo).toBe("/patients/capture");
+      expect(setItem).toHaveBeenCalledWith("nexus.clinicalHandoff", text);
+      expect(post).toHaveBeenCalledTimes(1);
+      expect(post).not.toHaveBeenCalledWith("/quick-capture", expect.anything());
+      expect(queue).not.toHaveBeenCalled();
+    } finally { vi.unstubAllGlobals(); }
+  });
+  it("hands patient data off locally when offline", async () => {
+    const setItem = vi.fn(); vi.stubGlobal("sessionStorage", { setItem });
+    try {
+      post.mockRejectedValueOnce(new TypeError("Failed to fetch"));
+      const result = await handleVoiceCommand("anotá paciente Ana Gómez tiene fiebre y tos, control en una semana");
+      expect(result.navigateTo).toBe("/patients/capture");
+      expect(setItem).toHaveBeenCalledWith("nexus.clinicalHandoff", expect.stringContaining("Ana Gómez"));
+      expect(queue).not.toHaveBeenCalled();
+    } finally { vi.unstubAllGlobals(); }
+  });
+  it("follows the server handoff for clinical text", async () => {
+    const setItem = vi.fn(); vi.stubGlobal("sessionStorage", { setItem });
+    try {
+      post.mockResolvedValue({ speak: "Lo paso al asistente clínico.", navigateTo: "/patients/capture", handoff: { vertical: "medicine", text: "paciente X" } });
+      const result = await handleVoiceCommand("paciente X con fiebre");
+      expect(result).toEqual({ speak: "Lo paso al asistente clínico.", navigateTo: "/patients/capture" });
+      expect(setItem).toHaveBeenCalledWith("nexus.clinicalHandoff", "paciente X");
+    } finally { vi.unstubAllGlobals(); }
+  });
   it("closes only an explicit goodbye", async () => {
     expect((await handleVoiceCommand("gracias")).close).toBe(true);
     expect(post).not.toHaveBeenCalled();

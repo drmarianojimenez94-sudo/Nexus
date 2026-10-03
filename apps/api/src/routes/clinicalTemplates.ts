@@ -9,6 +9,7 @@ import {
   templateMetadataSchema,
   type ClinicalTemplate,
 } from "@nexus/shared";
+import { verticalTemplate } from "@nexus/verticals";
 import { prisma } from "../lib/prisma.js";
 import { encryptClinical, decryptClinical } from "../lib/clinicalCrypto.js";
 import { recordAudit } from "../lib/audit.js";
@@ -16,7 +17,9 @@ import { asyncHandler } from "../middleware/asyncHandler.js";
 import { HttpError } from "../middleware/errorHandler.js";
 
 const scope = (userId: string, id: string) => `${userId}:template:${id}`;
-const base = (id: string) => CLINICAL_TEMPLATES.find((t) => t.id === id);
+// Plantillas base: las médicas y las de otras verticales (`vertical:plantilla`).
+const base = (id: string): ClinicalTemplate | undefined =>
+  CLINICAL_TEMPLATES.find((t) => t.id === id) ?? verticalTemplate(id);
 const view = (row: TemplateRow): ClinicalTemplate => ({
   ...decryptClinical<ClinicalTemplate>(
     row.recordEncrypted,

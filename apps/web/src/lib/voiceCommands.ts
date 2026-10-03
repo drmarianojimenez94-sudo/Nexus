@@ -1,6 +1,8 @@
 import type { Event, Memory, Task } from "@nexus/shared";
 import { api, ApiError } from "./api";
 import { queueCapture } from "./offlineQueue";
+import { looksSensitive, medicineVertical } from "@nexus/verticals";
+import { CLINICAL_HANDOFF_KEY } from "./clinicalCapture";
 
 export interface ConversationTurn {
   role: "user" | "assistant";
@@ -119,6 +121,32 @@ interface InterpretResponse {
   speak: string;
   navigateTo?: string;
   target?: "today" | "inbox" | "calendar" | "projects" | "areas" | "memory";
+  /** Datos de pacientes: se derivan al asistente clínico, nunca al inbox. */
+  handoff?: { vertical: string; text: string };
+}
+
+const CLINICAL_CAPTURE_PATH = "/patients/capture";
+
+/**
+ * Lleva el texto al asistente clínico para revisarlo allí: nada se guarda
+ * hasta que el profesional confirme. Si el dispositivo no permite conservarlo,
+ * igual abre la pantalla y pide repetirlo, sin escribirlo en otro lado.
+ */
+function clinicalHandoff(
+  text: string,
+  speak = "Eso parece información de un paciente. Te llevo al asistente clínico para revisarla antes de guardar.",
+  navigateTo = CLINICAL_CAPTURE_PATH,
+): VoiceCommandResult {
+  try {
+    sessionStorage.setItem(CLINICAL_HANDOFF_KEY, text);
+  } catch {
+    return {
+      speak:
+        "Eso parece información de un paciente. Abrí el asistente clínico y dictalo allí; no pude conservar el texto en el dispositivo.",
+      navigateTo,
+    };
+  }
+  return { speak, navigateTo };
 }
 
 /**
@@ -149,6 +177,12 @@ async function tryBrain(
         return { speak: result.speak, navigateTo: result.navigateTo };
       }
     }
+    if (result.handoff?.text)
+      return clinicalHandoff(
+        result.handoff.text,
+        result.speak,
+        result.navigateTo ?? CLINICAL_CAPTURE_PATH,
+      );
     return { speak: result.speak, navigateTo: result.navigateTo };
   } catch (err) {
     if (err instanceof ApiError && err.status === 501) return null;
@@ -187,6 +221,9 @@ export async function handleVoiceCommand(
   }
 
   const remember = text.match(REMEMBER_PATTERN);
+  // La memoria personal tampoco es lugar para datos de pacientes.
+  if (remember?.[1] && looksSensitive(text, medicineVertical))
+    return clinicalHandoff(text);
   if (remember?.[1]) {
     try {
       await api.post("/memories", { content: remember[1].trim() });
@@ -255,13 +292,21 @@ export async function handleVoiceCommand(
   try {
     const brainResult = await tryBrain(text, history);
     if (brainResult) return brainResult;
-  } catch {
+  } catch (err) {
+    // Sin respuesta del servidor (sin conexión): nada se escribió, así que
+    // los datos de pacientes pueden derivarse al asistente clínico.
+    if (!(err instanceof ApiError) && looksSensitive(text, medicineVertical))
+      return clinicalHandoff(text);
     // A failed response can follow a successful write. Never execute a second fallback write.
     return {
       speak:
         "No pude confirmar la respuesta de la IA. Revisá tu panel antes de repetir una acción.",
     };
   }
+
+  // Datos de pacientes nunca van al inbox ni a la cola offline sin cifrar,
+  // aunque la IA no esté configurada.
+  if (looksSensitive(text, medicineVertical)) return clinicalHandoff(text);
 
   if (
     !/^(?:anot[aá](?:me)?|guard[aá](?:me)?|nota|captur[aá]|tengo que|record[aá](?:me)?|avis[aá](?:me)?|agend[aá](?:me)?)(?=\s|$)/i.test(

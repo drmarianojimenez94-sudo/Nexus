@@ -7,6 +7,7 @@ import { authenticate } from "../middleware/authenticate.js";
 import { HttpError } from "../middleware/errorHandler.js";
 import { recordAudit } from "../lib/audit.js";
 import { env } from "../lib/env.js";
+import { looksSensitive, medicineVertical } from "@nexus/verticals";
 
 export const assistantRouter = Router();
 assistantRouter.use(authenticate);
@@ -43,10 +44,21 @@ const NAVIGATE_PATHS: Record<NavigateTarget, string> = {
 assistantRouter.post(
   "/interpret",
   asyncHandler(async (req, res) => {
+    const { text, history } = interpretSchema.parse(req.body);
+    // Datos de pacientes: nunca a un proveedor externo ni al inbox sin cifrar.
+    // Se derivan al asistente clínico, que interpreta sin IA externa.
+    if (!medicineVertical.ai.sensitiveToExternalAI && looksSensitive(text, medicineVertical)) {
+      await recordAudit({ userId: req.userId!, action: "assistant.sensitive_redirect", entityType: "vertical", entityId: medicineVertical.id });
+      res.json({
+        speak: "Eso parece información de un paciente. Lo paso al asistente clínico, que no la envía a servicios externos.",
+        navigateTo: medicineVertical.routes.capture,
+        handoff: { vertical: medicineVertical.id, text },
+      });
+      return;
+    }
     if (!isAiConfigured) {
       throw new HttpError(501, "NEXUS no tiene IA configurada todavía.");
     }
-    const { text, history } = interpretSchema.parse(req.body);
     const user = await prisma.user.findUniqueOrThrow({ where: { id: req.userId! }, select: { name: true } });
 
     const [memories, tasks] = await Promise.all([

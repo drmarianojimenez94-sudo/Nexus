@@ -42,7 +42,7 @@ async function request<T>(
   retried = false,
 ): Promise<T> {
   if (
-    ["/clinical/", "/projects", "/tasks", "/google-workspace/"].some((prefix) =>
+    ["/clinical/", "/projects", "/tasks", "/google-workspace/", "/verticals/"].some((prefix) =>
       path.startsWith(prefix),
     ) &&
     !retried

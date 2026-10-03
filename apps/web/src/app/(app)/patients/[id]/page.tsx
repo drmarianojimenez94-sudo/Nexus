@@ -56,6 +56,14 @@ export default function PatientPage({
                 Nueva consulta
               </Link>
             )}
+            {!patient.archived && (
+              <Link
+                className={clinicalSecondary}
+                href={`/patients/capture?patient=${encodeURIComponent(id)}`}
+              >
+                Dictar en esta ficha
+              </Link>
+            )}
             <button
               className={clinicalSecondary}
               onClick={() => setEditing(!editing)}
@@ -143,6 +151,7 @@ export default function PatientPage({
               {[
                 ["Nacimiento", patient.birthDate],
                 ["Teléfono", patient.phone],
+                ["Núcleo familiar / contacto", patient.familyContact],
                 ["Alergias", patient.allergies],
                 ["Medicación habitual", patient.medication],
                 ["Antecedentes", patient.history],

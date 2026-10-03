@@ -60,6 +60,9 @@ jobs:
       - name: Test
         run: pnpm test
 
+      - name: Vertical scorecard (rubric + golden cases)
+        run: pnpm --filter @nexus/verticals score
+
       - name: Build
         run: pnpm build
 

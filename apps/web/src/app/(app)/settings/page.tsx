@@ -3,6 +3,7 @@ import { GoogleWorkspacePanel } from "@/components/GoogleWorkspacePanel";
 import { IntegrationsPanel } from "@/components/IntegrationsPanel";
 import { VoicePreferences } from "@/components/VoicePreferences";
 import { ThemePreferences } from "@/components/ThemePreferences";
+import { ClinicalProfilePreferences } from "@/components/ClinicalProfilePreferences";
 
 export default function SettingsPage() {
   return (
@@ -12,6 +13,7 @@ export default function SettingsPage() {
       </header>
       <VoicePreferences />
       <ThemePreferences />
+      <ClinicalProfilePreferences />
       <IntegrationsPanel />
       <GoogleWorkspacePanel />
       <BluetoothPanel />

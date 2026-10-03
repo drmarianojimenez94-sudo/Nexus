@@ -1,0 +1,657 @@
+[
+  {
+    "id": "h4-01-clinica-catarro",
+    "utterance": "Paciente Ramiro Benítez, DNI 28.456.123, consulta por catarro de vías altas de 3 días, sin fiebre, TA 120/80, FC 78. Indico paracetamol 500 mg cada 8 horas. Control en una semana.",
+    "expect": {
+      "subjectName": "Ramiro Benítez",
+      "document": "28456123",
+      "followups": [
+        {
+          "kind": "CONTROL",
+          "inDays": 7
+        }
+      ],
+      "redFlags": [],
+      "negated": [
+        "fiebre"
+      ],
+      "medications": [
+        {
+          "name": "paracetamol",
+          "flagged": false
+        }
+      ]
+    }
+  },
+  {
+    "id": "h4-02-pedia-nino-sano",
+    "utterance": "Paciente Lucía Ferreyra, 4 años, control de niño sano, peso 17 kilos, talla 104 centímetros, vacunas completas para la edad, buen desarrollo. La volvemos a ver en 15 días con el control de agudeza visual.",
+    "expect": {
+      "subjectName": "Lucía Ferreyra",
+      "followups": [
+        {
+          "kind": "CONTROL",
+          "inDays": 15
+        }
+      ],
+      "redFlags": []
+    }
+  },
+  {
+    "id": "h4-03-geriatria-mareos",
+    "utterance": "La señora Elvira Castro, 82 años, viene acompañada por la hija, refiere mareos al incorporarse desde hace dos semanas, sin caídas. TA sentada 130/70, de pie 112/68. Pido hemograma, ionograma y función renal, la veo con los resultados.",
+    "expect": {
+      "subjectName": "Elvira Castro",
+      "followups": [
+        {
+          "kind": "RESULT",
+          "inDays": 7
+        }
+      ],
+      "redFlags": []
+    }
+  },
+  {
+    "id": "h4-04-gineco-anual",
+    "utterance": "Paciente Romina Aguirre, 41 años, control ginecológico anual, PAP y colposcopía sin particularidades, FUM 20/09, ciclos regulares, sin flujo. Solicito mamografía bilateral y ecografía mamaria, control con resultados.",
+    "expect": {
+      "subjectName": "Romina Aguirre",
+      "followups": [
+        {
+          "kind": "RESULT",
+          "inDays": 7
+        }
+      ],
+      "redFlags": [],
+      "negated": [
+        "flujo"
+      ]
+    }
+  },
+  {
+    "id": "h4-05-endo-dm2",
+    "utterance": "Paciente Héctor Giménez, DM2 de 8 años de evolución, hemoglobina glicosilada 7,2, glucemia en ayunas 138. Continúa metformina 850 mg dos veces por día con las comidas. Pido perfil lipídico y microalbuminuria y lo veo con el resultado en 15 días.",
+    "expect": {
+      "subjectName": "Héctor Giménez",
+      "followups": [
+        {
+          "kind": "RESULT",
+          "inDays": 15
+        }
+      ],
+      "redFlags": [],
+      "medications": [
+        {
+          "name": "metformina",
+          "flagged": false
+        }
+      ]
+    }
+  },
+  {
+    "id": "h4-06-neumo-epoc",
+    "utterance": "Paciente Oscar Villalba, EPOC moderado, estable, saturación 95% aire ambiente, sin disnea de reposo, tos matinal habitual. Continúa tiotropio 18 mcg una inhalación diaria. Control en 15 días.",
+    "expect": {
+      "subjectName": "Oscar Villalba",
+      "followups": [
+        {
+          "kind": "CONTROL",
+          "inDays": 15
+        }
+      ],
+      "redFlags": [],
+      "negated": [
+        "disnea"
+      ],
+      "medications": [
+        {
+          "name": "tiotropio",
+          "flagged": false
+        }
+      ]
+    }
+  },
+  {
+    "id": "h4-07-uro-hpb",
+    "utterance": "El señor Alberto Funes, 67 años, HPB, nicturia de dos veces por noche, chorro débil, PSA 2,1. Sigue con tamsulosina 0,4 mg por la noche. Control en 4 semanas.",
+    "expect": {
+      "subjectName": "Alberto Funes",
+      "followups": [
+        {
+          "kind": "CONTROL",
+          "inDays": 28
+        }
+      ],
+      "redFlags": [],
+      "medications": [
+        {
+          "name": "tamsulosina",
+          "flagged": false
+        }
+      ]
+    }
+  },
+  {
+    "id": "h4-08-psiq-ansiedad",
+    "utterance": "Paciente Martina Sosa, trastorno de ansiedad generalizada, viene mucho mejor, duerme bien, volvió a trabajar, niega ideas de muerte. Sigue sertralina 50 mg por día. La veo en 4 semanas.",
+    "expect": {
+      "subjectName": "Martina Sosa",
+      "followups": [
+        {
+          "kind": "CONTROL",
+          "inDays": 28
+        }
+      ],
+      "redFlags": [],
+      "negated": [
+        "ideas de muerte"
+      ],
+      "medications": [
+        {
+          "name": "sertralina",
+          "flagged": false
+        }
+      ]
+    }
+  },
+  {
+    "id": "h4-09-laboral-periodico",
+    "utterance": "Paciente Jorge Medina, DNI 31.222.908, examen periódico, operario de planta, audiometría normal, espirometría normal, apto sin restricciones. No lo cito, próximo periódico el año que viene por la empresa.",
+    "expect": {
+      "subjectName": "Jorge Medina",
+      "document": "31222908",
+      "followups": [],
+      "redFlags": []
+    }
+  },
+  {
+    "id": "h4-10-guardia-esguince",
+    "utterance": "Guardia. Esguince de tobillo derecho grado uno jugando al fútbol, Ottawa negativo, no requiere rx. Ibuprofeno 400 mg cada 8 horas por 5 días, hielo, elevación y vendaje. Control por consultorio externo en 7 días.",
+    "expect": {
+      "followups": [
+        {
+          "kind": "CONTROL",
+          "inDays": 7
+        }
+      ],
+      "redFlags": [],
+      "medications": [
+        {
+          "name": "ibuprofeno",
+          "flagged": false
+        }
+      ]
+    }
+  },
+  {
+    "id": "h4-11-voseo-hta",
+    "utterance": "Mirá Carlos, la presión te dio 150 sobre 95, así que vamos a arrancar con enalapril 10 mg a la mañana. Bajale a la sal, caminá media hora por día y anotate la presión en un cuadernito. Te veo en 15 días con el registro.",
+    "expect": {
+      "followups": [
+        {
+          "kind": "CONTROL",
+          "inDays": 15
+        }
+      ],
+      "redFlags": [],
+      "medications": [
+        {
+          "name": "enalapril",
+          "flagged": false
+        }
+      ]
+    }
+  },
+  {
+    "id": "h4-12-pedia-otitis",
+    "utterance": "Paciente Thiago Romero, 7 años, 24 kilos, otitis media aguda izquierda, otalgia desde ayer, hoy afebril. Amoxicilina 500 mg cada 8 horas por 7 días. Control en 48 horas.",
+    "expect": {
+      "subjectName": "Thiago Romero",
+      "followups": [
+        {
+          "kind": "CONTROL",
+          "inDays": 2
+        }
+      ],
+      "redFlags": [],
+      "medications": [
+        {
+          "name": "amoxicilina",
+          "flagged": false
+        }
+      ]
+    }
+  },
+  {
+    "id": "h4-13-obst-prenatal",
+    "utterance": "Paciente Daiana Quiroga, embarazo de 24 semanas, control prenatal, altura uterina acorde, latidos fetales positivos, TA 110/70, niega contracciones. Pido PTOG con 75 gramos y urocultivo, la veo con los resultados.",
+    "expect": {
+      "subjectName": "Daiana Quiroga",
+      "followups": [
+        {
+          "kind": "RESULT",
+          "inDays": 7
+        }
+      ],
+      "redFlags": [],
+      "negated": [
+        "contracciones"
+      ]
+    }
+  },
+  {
+    "id": "h4-14-guardia-sepsis",
+    "utterance": "Guardia. El señor Aníbal Ruiz, 79 años, fiebre de 39 con escalofríos, está confuso desde la mañana, TA 85/50, FC 118, FR 26, foco urinario. Sospecho sepsis, hemocultivos por dos, ceftriaxona 1 g endovenoso y se interna.",
+    "expect": {
+      "subjectName": "Aníbal Ruiz",
+      "redFlags": [
+        "sepsis"
+      ],
+      "medications": [
+        {
+          "name": "ceftriaxona",
+          "flagged": false
+        }
+      ]
+    }
+  },
+  {
+    "id": "h4-15-guardia-precordial",
+    "utterance": "Guardia, masculino de 58 años, tabaquista, dolor precordial opresivo de 40 minutos irradiado a brazo izquierdo y mandíbula, sudoroso. Aspirina 300 mg masticable y se deriva a unidad coronaria.",
+    "expect": {
+      "redFlags": [
+        "chest_pain"
+      ],
+      "medications": [
+        {
+          "name": "aspirina",
+          "flagged": false
+        }
+      ],
+      "followups": []
+    }
+  },
+  {
+    "id": "h4-16-acv",
+    "utterance": "Paciente Norma Peralta, 74 años, la hija cuenta que hace una hora se le cayó la taza, no puede mover el brazo derecho, habla arrastrado y tiene la boca torcida. Activamos código ACV.",
+    "expect": {
+      "subjectName": "Norma Peralta",
+      "redFlags": [
+        "stroke"
+      ],
+      "followups": []
+    }
+  },
+  {
+    "id": "h4-17-obstetrica",
+    "utterance": "Paciente Yamila Coronel, embarazada de 32 semanas, consulta por sangrado vaginal abundante con dolor abdominal desde hace dos horas y dice que no siente moverse al bebé. Pasa a sala de partos.",
+    "expect": {
+      "subjectName": "Yamila Coronel",
+      "redFlags": [
+        "obstetric"
+      ]
+    }
+  },
+  {
+    "id": "h4-18-anafilaxia",
+    "utterance": "Guardia. Picadura de abeja hace 20 minutos, urticaria generalizada, edema de labios, siente que se le cierra la garganta y no puede respirar, saturación 86%, TA 80/50. Adrenalina 0,5 mg intramuscular.",
+    "expect": {
+      "redFlags": [
+        "anaphylaxis",
+        "severe_dyspnea"
+      ],
+      "medications": [
+        {
+          "name": "adrenalina",
+          "flagged": false
+        }
+      ]
+    }
+  },
+  {
+    "id": "h4-19-crisis-trueno",
+    "utterance": "Paciente Silvia Moreno, hipertensa mal controlada, TA 200/120, cefalea de comienzo súbito mientras levantaba un bidón, la peor de su vida, con vómitos. Se pide TAC de cerebro urgente.",
+    "expect": {
+      "subjectName": "Silvia Moreno",
+      "redFlags": [
+        "hypertensive_crisis",
+        "thunderclap_headache"
+      ]
+    }
+  },
+  {
+    "id": "h4-20-hda",
+    "utterance": "Paciente Rubén Acosta, toma ibuprofeno por lumbalgia hace un mes, hoy hematemesis en borra de café y melena desde ayer, FC 115, TA 95/60. Se suspende el ibuprofeno, interconsulta con gastro para endoscopía urgente.",
+    "expect": {
+      "subjectName": "Rubén Acosta",
+      "redFlags": [
+        "gi_bleeding"
+      ]
+    }
+  },
+  {
+    "id": "h4-21-neg-postalta",
+    "utterance": "Paciente Raúl Ojeda, control post alta de neumonía, niega dolor de pecho, niega falta de aire, afebril, saturación 97%. Termina el antibiótico mañana. Control en 15 días.",
+    "expect": {
+      "subjectName": "Raúl Ojeda",
+      "redFlags": [],
+      "negated": [
+        "dolor de pecho",
+        "falta de aire"
+      ],
+      "followups": [
+        {
+          "kind": "CONTROL",
+          "inDays": 15
+        }
+      ]
+    }
+  },
+  {
+    "id": "h4-22-neg-obst",
+    "utterance": "Paciente Micaela Herrera, embarazo de 30 semanas, sin sangrado, sin pérdida de líquido, movimientos fetales presentes, TA 115/75, sin edemas. Control en 15 días.",
+    "expect": {
+      "subjectName": "Micaela Herrera",
+      "redFlags": [],
+      "negated": [
+        "sangrado"
+      ],
+      "followups": [
+        {
+          "kind": "CONTROL",
+          "inDays": 15
+        }
+      ]
+    }
+  },
+  {
+    "id": "h4-23-violencia",
+    "utterance": "Paciente Carla Núñez, consulta por dolor en el brazo, al interrogatorio refiere que la pareja le pega desde hace meses, presenta hematomas en distintos estadios en ambos brazos y tiene miedo de volver a la casa. Se da intervención al equipo de violencia.",
+    "expect": {
+      "subjectName": "Carla Núñez",
+      "redFlags": [
+        "violence"
+      ]
+    }
+  },
+  {
+    "id": "h4-24-neg-gastro",
+    "utterance": "Paciente Natalia Ríos, epigastralgia de un mes que mejora con las comidas, sin melena ni hematemesis, sin pérdida de peso. Omeprazol 20 mg en ayunas por 4 semanas y control en 4 semanas.",
+    "expect": {
+      "subjectName": "Natalia Ríos",
+      "redFlags": [],
+      "negated": [
+        "melena",
+        "hematemesis"
+      ],
+      "medications": [
+        {
+          "name": "omeprazol",
+          "flagged": false
+        }
+      ],
+      "followups": [
+        {
+          "kind": "CONTROL",
+          "inDays": 28
+        }
+      ]
+    }
+  },
+  {
+    "id": "h4-25-med-amoxi-sobredosis",
+    "utterance": "Paciente Gustavo Lema, faringoamigdalitis bacteriana, placas en amígdalas, adenopatías. Amoxicilina 5000 mg cada 8 horas por 10 días.",
+    "expect": {
+      "subjectName": "Gustavo Lema",
+      "medications": [
+        {
+          "name": "amoxicilina",
+          "flagged": true
+        }
+      ],
+      "redFlags": []
+    }
+  },
+  {
+    "id": "h4-26-med-sin-dosis",
+    "utterance": "Paciente Beatriz Soria, dislipemia, LDL 190 pese a la dieta. Le indico atorvastatina a la noche y control en 4 semanas con perfil lipídico nuevo.",
+    "expect": {
+      "subjectName": "Beatriz Soria",
+      "medications": [
+        {
+          "name": "atorvastatina",
+          "flagged": true
+        }
+      ],
+      "redFlags": []
+    }
+  },
+  {
+    "id": "h4-27-med-unidad",
+    "utterance": "Paciente Graciela Vera, hipotiroidismo, TSH 8,4. Aumento levotiroxina a 75 mg por día en ayunas. Pido TSH de control.",
+    "expect": {
+      "subjectName": "Graciela Vera",
+      "medications": [
+        {
+          "name": "levotiroxina",
+          "flagged": true
+        }
+      ],
+      "followups": [
+        {
+          "kind": "RESULT",
+          "inDays": 7
+        }
+      ],
+      "redFlags": []
+    }
+  },
+  {
+    "id": "h4-28-med-alergia-penicilina",
+    "utterance": "La señora Inés Barrios, alérgica a la penicilina, sinusitis aguda de 10 días. Indico amoxicilina 500 mg cada 8 horas por 7 días.",
+    "expect": {
+      "subjectName": "Inés Barrios",
+      "medications": [
+        {
+          "name": "amoxicilina",
+          "flagged": false
+        }
+      ],
+      "allergyConflicts": [
+        "amoxicilina"
+      ],
+      "redFlags": []
+    }
+  },
+  {
+    "id": "h4-29-med-alergia-aines",
+    "utterance": "Paciente Federico Paz, alérgico a los AINES, lumbalgia mecánica sin irradiación. Le doy ibuprofeno 600 mg cada 8 horas y paracetamol 1 g cada 8 horas si persiste el dolor.",
+    "expect": {
+      "subjectName": "Federico Paz",
+      "medications": [
+        {
+          "name": "ibuprofeno",
+          "flagged": false
+        },
+        {
+          "name": "paracetamol",
+          "flagged": false
+        }
+      ],
+      "allergyConflicts": [
+        "ibuprofeno"
+      ],
+      "redFlags": []
+    }
+  },
+  {
+    "id": "h4-30-med-clonazepam",
+    "utterance": "Paciente Lorena Díaz, insomnio de conciliación en contexto de ansiedad. Sertralina 50 mg por día y clonazepam 20 mg a la noche. La veo en 4 semanas.",
+    "expect": {
+      "subjectName": "Lorena Díaz",
+      "medications": [
+        {
+          "name": "sertralina",
+          "flagged": false
+        },
+        {
+          "name": "clonazepam",
+          "flagged": true
+        }
+      ],
+      "followups": [
+        {
+          "kind": "CONTROL",
+          "inDays": 28
+        }
+      ],
+      "redFlags": []
+    }
+  },
+  {
+    "id": "h4-31-turno-jueves",
+    "utterance": "Dale turno para Patricia Gómez el jueves a las 10:30 para ver el electro.",
+    "expect": {
+      "subjectName": "Patricia Gómez",
+      "appointmentAt": "2026-10-08T10:30",
+      "followups": []
+    }
+  },
+  {
+    "id": "h4-32-turno-martes",
+    "utterance": "Turno con el señor Mario Pereyra el martes 13 a las 8 de la mañana, control de presión.",
+    "expect": {
+      "subjectName": "Mario Pereyra",
+      "appointmentAt": "2026-10-13T08:00",
+      "followups": []
+    }
+  },
+  {
+    "id": "h4-33-call-control",
+    "utterance": "Paciente Andrea Molina, arrancó con pregabalina 75 mg cada 12 horas por neuralgia postherpética. Llamarla en 3 días para ver cómo tolera y control en 15 días.",
+    "expect": {
+      "subjectName": "Andrea Molina",
+      "medications": [
+        {
+          "name": "pregabalina",
+          "flagged": false
+        }
+      ],
+      "followups": [
+        {
+          "kind": "CALL",
+          "inDays": 3
+        },
+        {
+          "kind": "CONTROL",
+          "inDays": 15
+        }
+      ],
+      "redFlags": []
+    }
+  },
+  {
+    "id": "h4-34-result-fecha",
+    "utterance": "Paciente Ricardo Ibarra, cólico renal resuelto. Pido ecografía renal y vesical y sedimento urinario, que traiga los resultados el 19 de octubre.",
+    "expect": {
+      "subjectName": "Ricardo Ibarra",
+      "followups": [
+        {
+          "kind": "RESULT",
+          "inDays": 14
+        }
+      ],
+      "redFlags": []
+    }
+  },
+  {
+    "id": "h4-35-hipoglucemia-call",
+    "utterance": "La señora Olga Medina, diabética tipo 2, glucemia capilar 58 en el consultorio, sudorosa, se le dio jugo azucarado y a los 15 minutos dio 110. Bajo gliclazida a 30 mg por día. La llamo el miércoles para ver los controles de glucemia.",
+    "expect": {
+      "subjectName": "Olga Medina",
+      "redFlags": [
+        "hypoglycemia"
+      ],
+      "medications": [
+        {
+          "name": "gliclazida",
+          "flagged": false
+        }
+      ],
+      "followups": [
+        {
+          "kind": "CALL",
+          "inDays": 2
+        }
+      ]
+    }
+  },
+  {
+    "id": "h4-36-turno-lunes",
+    "utterance": "Turno para la señora Sofía Medina el lunes 19 a las 15 horas, trae el holter.",
+    "expect": {
+      "subjectName": "Sofía Medina",
+      "appointmentAt": "2026-10-19T15:00",
+      "followups": []
+    }
+  },
+  {
+    "id": "h4-37-tricky-limites",
+    "utterance": "Paciente Daniel Cabrera, diabético e hipertenso, viene para control, glucemia en ayunas 72, TA 178/100, asintomático, sin cefalea. Ajusto losartán a 50 mg cada 12 horas. Control en 7 días.",
+    "expect": {
+      "subjectName": "Daniel Cabrera",
+      "redFlags": [],
+      "negated": [
+        "cefalea"
+      ],
+      "medications": [
+        {
+          "name": "losartan",
+          "flagged": false
+        }
+      ],
+      "followups": [
+        {
+          "kind": "CONTROL",
+          "inDays": 7
+        }
+      ]
+    }
+  },
+  {
+    "id": "h4-38-tricky-correccion",
+    "utterance": "Paciente Pablo Sánchez, gastroenteritis aguda, tolera la vía oral, sin sangre en las heces. Sales de rehidratación oral y dieta. Control en 10 días, no, perdón, mejor en una semana.",
+    "expect": {
+      "subjectName": "Pablo Sánchez",
+      "redFlags": [],
+      "negated": [
+        "sangre"
+      ],
+      "followups": [
+        {
+          "kind": "CONTROL",
+          "inDays": 7
+        }
+      ]
+    }
+  },
+  {
+    "id": "h4-39-tricky-turno-control",
+    "utterance": "La señora Marta Ledesma, hipotiroidea, bien. Le doy turno para control el viernes 16 a las 11:15.",
+    "expect": {
+      "subjectName": "Marta Ledesma",
+      "appointmentAt": "2026-10-16T11:15",
+      "followups": []
+    }
+  },
+  {
+    "id": "h4-40-tricky-suicida-coloquial",
+    "utterance": "Paciente Valeria Ortiz, 34 años, la trae la hermana, llorando, me dice textual: no tengo más ganas de vivir, a veces pienso en tirarme abajo del tren, ya tengo pensado cuándo. Se deriva a guardia de salud mental con acompañante.",
+    "expect": {
+      "subjectName": "Valeria Ortiz",
+      "redFlags": [
+        "suicide_risk"
+      ]
+    }
+  }
+]

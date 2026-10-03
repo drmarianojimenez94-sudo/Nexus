@@ -40,6 +40,16 @@ La web incluye **Pacientes** en la navegación principal del iPhone y del escrit
 
 Los campos vacíos permanecen **No registrado**. No hay diagnósticos, tratamientos ni recetas automáticos. Ver [guía de consultorio](docs/NEXUS_CLINICAL.md) para almacenamiento, despliegue y límites.
 
+## Fábrica de verticales (medicina primero)
+
+`packages/verticals` convierte cada profesión en un manifiesto validado y puntuado (rúbrica de 100 puntos). La vertical médica (99/100) agrega:
+
+- **Asistente clínico**: dictás o escribís, y Nexus propone ficha, borrador de consulta, seguimientos y turnos con la evidencia de cada dato. Nada se guarda sin confirmar. Detecta alarmas, negaciones, dosis dudosas y alergias. No usa IA externa.
+- **Mi día**: turnos, vencidos, resultados, borradores sin validar y sugerencias.
+- **App nativa**: abre en Mi día, escucha al entrar, usa el selector de contactos y bloqueo biométrico. Los permisos se generan desde el manifiesto.
+
+Guía completa, puntaje, evaluación a ciegas y pendientes en [docs/NEXUS_VERTICAL_FACTORY.md](docs/NEXUS_VERTICAL_FACTORY.md).
+
 ## Architecture
 
 Monorepo, pnpm workspaces. Frontend and backend are independent services
@@ -54,6 +64,7 @@ Nexus/
     api/           Express + TypeScript API — the backend, owns all business logic
   packages/
     shared/        Zod schemas + TS types shared by web and api (the API contract)
+    verticals/     Vertical factory: manifests, compliance profiles, rubric, capture, day brief
   database/
     schema.prisma  Single source of truth for the data model
     migrations/    Generated Prisma migrations
@@ -199,6 +210,8 @@ CI runs install → lint → typecheck → test → build on every push (see
 - [`docs/NEXUS_UI_SYSTEM.md`](docs/NEXUS_UI_SYSTEM.md)
 - [`docs/NEXUS_ROADMAP.md`](docs/NEXUS_ROADMAP.md)
 - [`docs/NEXUS_SETUP.md`](docs/NEXUS_SETUP.md)
+- [`docs/NEXUS_VERTICAL_FACTORY.md`](docs/NEXUS_VERTICAL_FACTORY.md) — fábrica de verticales y vertical médica
+- [`docs/NEXUS_PRIVACY_POLICY.md`](docs/NEXUS_PRIVACY_POLICY.md) — borrador de política de privacidad
 - [`docs/NEXUS_TEST_REPORT.md`](docs/NEXUS_TEST_REPORT.md)
 
 ## Consolidación web y proyectos por voz

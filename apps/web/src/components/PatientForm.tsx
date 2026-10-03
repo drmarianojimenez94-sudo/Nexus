@@ -7,6 +7,7 @@ export const emptyPatient: PatientInput = {
   document: "",
   birthDate: "",
   phone: "",
+  familyContact: "",
   allergies: "",
   medication: "",
   history: "",
@@ -70,6 +71,10 @@ export function PatientForm({
         </div>
         {(
           [
+            [
+              "familyContact",
+              "Núcleo familiar / contacto (Ley 26.529, art. 15 b)",
+            ],
             ["allergies", "Alergias (dejar vacío si no se investigaron)"],
             ["medication", "Medicación habitual"],
             ["history", "Antecedentes"],
@@ -78,10 +83,10 @@ export function PatientForm({
           <label key={key} className="flex flex-col gap-2 text-sm">
             {label}
             <textarea
-              rows={3}
-              maxLength={10000}
+              rows={key === "familyContact" ? 2 : 3}
+              maxLength={key === "familyContact" ? 300 : 10000}
               className={clinicalInput}
-              value={data[key]}
+              value={data[key] ?? ""}
               onChange={(e) => change(key, e.target.value)}
             />
           </label>
