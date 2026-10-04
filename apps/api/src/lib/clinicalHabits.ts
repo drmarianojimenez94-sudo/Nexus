@@ -22,7 +22,7 @@ export async function saveHabits(userId: string, habits: Habit[], db: Prisma.Tra
 export function assessmentAndTreatment(fields: Record<string, string>, ids: Identifiers) {
   const pick = (...keys: string[]) => keys.map((k) => fields[k]?.trim()).find(Boolean) ?? "";
   return {
-    assessment: deidentify(pick("assessment", "diagnosis", "reason", "problems"), ids).text,
+    assessment: deidentify(pick("assessment", "diagnosis", "problems", "reason"), ids).text,
     treatment: deidentify(pick("treatment", "plan", "instructions", "interventions"), ids).text,
   };
 }
@@ -32,6 +32,8 @@ export async function learnFromFields(userId: string, fields: Record<string, str
   try {
     const { assessment, treatment } = assessmentAndTreatment(fields, ids);
     if (!assessment || !treatment) return;
+    // Un cuadro que todavía nombra al paciente (aunque sea enmascarado) no es una conducta reutilizable.
+    if (/\[(?:PACIENTE|CONTACTO|DOCUMENTO|TELÉFONO|CORREO)\]/.test(assessment)) return;
     await saveHabits(userId, learnHabit(await loadHabits(userId), { assessment, treatment }));
   } catch {
     console.error("No se pudo actualizar el aprendizaje clínico");

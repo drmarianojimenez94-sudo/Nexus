@@ -100,6 +100,7 @@ export function EncounterEditor({
   const {
     startListening,
     stopListening,
+    finishListening,
     listening,
     sttSupported,
     interimTranscript,
@@ -293,15 +294,15 @@ export function EncounterEditor({
     setDirty(true);
     setServerStatus("Cambios pendientes de guardar en Nexus");
   }, []);
-  async function save(): Promise<ClinicalEncounter | null> {
+  async function save(data: EncounterInput = input): Promise<ClinicalEncounter | null> {
     if (!user || !writable || conflict) return null;
     stopListening();
     setBusy(true);
     setError(null);
     try {
       const body = encounterId
-        ? { ...input, version }
-        : { ...input, clientId: clientId.current };
+        ? { ...data, version }
+        : { ...data, clientId: clientId.current };
       let { encounter } = encounterId
         ? await api.put<{ encounter: ClinicalEncounter }>(
             `/clinical/encounters/${encounterId}`,
@@ -319,13 +320,13 @@ export function EncounterEditor({
           encounter.fields,
           encounter.dictation,
           encounter.occurredAt,
-        ]) !== JSON.stringify([input.fields, input.dictation, input.occurredAt])
+        ]) !== JSON.stringify([data.fields, data.dictation, data.occurredAt])
       ) {
         if (encounter.version !== version || encounter.status === "FINAL") {
           if (patient)
             setConflict({
               local: {
-                input,
+                input: data,
                 template,
                 patient,
                 clientId: clientId.current,
@@ -339,7 +340,7 @@ export function EncounterEditor({
         }
         const updated = await api.put<{ encounter: ClinicalEncounter }>(
           `/clinical/encounters/${encounter.id}`,
-          { ...input, version },
+          { ...data, version },
         );
         encounter = updated.encounter;
       }
@@ -373,7 +374,7 @@ export function EncounterEditor({
           );
           setConflict({
             local: {
-              input,
+              input: data,
               template,
               patient,
               clientId: clientId.current,
@@ -396,18 +397,15 @@ export function EncounterEditor({
       setBusy(false);
     }
   }
-  async function finalize() {
+  async function finalize(discardDictation = false) {
     if (!encounterId || !writable || conflict) return;
-    if (input.dictation.trim()) {
-      setConfirming(false);
-      setError(
-        "Hay una transcripción pendiente de revisar. Incorporala a un campo o vaciala explícitamente antes de validar la consulta.",
-      );
-      return;
-    }
+    if (input.dictation.trim() && !discardDictation) return;
     setConfirming(false);
-    const saved = dirty ? await save() : null;
-    if (dirty && !saved) return;
+    const data = discardDictation ? { ...input, dictation: "" } : input;
+    if (discardDictation) setInput(data);
+    const mustSave = dirty || discardDictation;
+    const saved = mustSave ? await save(data) : null;
+    if (mustSave && !saved) return;
     setBusy(true);
     setError(null);
     try {
@@ -416,6 +414,7 @@ export function EncounterEditor({
         { version: saved?.version ?? version, confirmed: true },
       );
       setStatus("FINAL");
+      setLocalStatus("");
       setVersion(encounter.version);
       setDirty(false);
       setServerStatus(
@@ -671,7 +670,8 @@ export function EncounterEditor({
               className={clinicalSecondary}
               onClick={() => {
                 if (listening) {
-                  stopListening();
+                  // «Listo»: entrega todo lo dictado al borrador.
+                  finishListening();
                   return;
                 }
                 startListening((text) => {
@@ -687,7 +687,7 @@ export function EncounterEditor({
                 });
               }}
             >
-              {listening ? "Detener dictado" : "Dictar un fragmento"}
+              {listening ? "■ Listo" : "🎙 Dictar"}
             </button>
             <p className="self-center text-sm text-nexus-muted">
               {listening
@@ -752,6 +752,13 @@ export function EncounterEditor({
             >
               Incorporar al campo
             </button>
+            <button
+              className={`${clinicalSecondary} shrink-0`}
+              disabled={!input.dictation.trim() || readonly}
+              onClick={() => change({ ...input, dictation: "" })}
+            >
+              Descartar (ya está en los campos)
+            </button>
           </div>
         </section>
       )}
@@ -811,25 +818,40 @@ export function EncounterEditor({
           ref={validationDialog}
           onCancel={() => setConfirming(false)}
           aria-label="Validar consulta"
-          className="glass-panel m-auto flex w-11/12 max-w-lg flex-col gap-3 p-5 text-nexus-text backdrop:bg-black/70"
+          className="fixed inset-0 m-auto h-fit max-h-[90dvh] w-11/12 max-w-lg overflow-y-auto rounded-2xl border border-nexus-border bg-nexus-bg p-5 text-nexus-text shadow-2xl backdrop:bg-black/70"
         >
-          <h2 className="font-semibold">¿Validar esta consulta?</h2>
-          <p className="text-sm">
-            Confirmás que revisaste el contenido y el paciente. Esta versión
-            quedará bloqueada para edición; las correcciones se registran como
-            nuevas evoluciones. No constituye una firma digital.
-          </p>
-          <div className="flex flex-wrap gap-3">
-            <button
-              autoFocus
-              className={clinicalSecondary}
-              onClick={() => setConfirming(false)}
-            >
-              Volver a revisar
-            </button>
-            <button className={clinicalButton} onClick={() => void finalize()}>
-              Confirmar validación
-            </button>
+          <div className="flex flex-col gap-3">
+            <h2 className="text-lg font-semibold">¿Validar esta consulta?</h2>
+            <p className="text-sm">
+              Confirmás que revisaste el contenido y el paciente. Esta versión
+              quedará bloqueada para edición; las correcciones se registran como
+              nuevas evoluciones. No constituye una firma digital.
+            </p>
+            {!!input.dictation.trim() && (
+              <p className="rounded-xl border border-nexus-amber/50 p-3 text-sm text-nexus-amber">
+                Queda texto en «Transcripción para revisar». Si ya está volcado
+                en los campos, descartalo y validá. Si no, volvé a revisar y
+                usá «Incorporar al campo».
+              </p>
+            )}
+            <div className="flex flex-wrap gap-3">
+              <button
+                autoFocus
+                className={clinicalSecondary}
+                onClick={() => setConfirming(false)}
+              >
+                Volver a revisar
+              </button>
+              {input.dictation.trim() ? (
+                <button className={clinicalButton} onClick={() => void finalize(true)}>
+                  Descartar transcripción y validar
+                </button>
+              ) : (
+                <button className={clinicalButton} onClick={() => void finalize()}>
+                  Confirmar validación
+                </button>
+              )}
+            </div>
           </div>
         </dialog>
       )}

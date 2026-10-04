@@ -1,7 +1,7 @@
 import type { VerticalManifest } from "./manifest";
 import { uuid, type PlanStep, type ProposedField, type VerticalAdapter } from "./plan";
 import { analyzeSafety, type SafetyReport } from "./safety";
-import { fold, resolveWhen, sentences, span, type Span } from "./text";
+import { fold, resolveWhen, sentences, span, zonedParts, type Span } from "./text";
 
 export interface CaptureContext {
   now: Date;
@@ -177,9 +177,16 @@ export function interpretCapture(source: string, manifest: VerticalManifest, ada
     steps.push({
       id: subjectStep,
       kind: "find_subject",
-      summary: `Buscar la ficha de ${subject.name}`,
-      permissionLevel: 1,
+      summary: `Buscar la ficha de ${subject.name}; si no existe, crearla`,
+      permissionLevel: 4,
       ...adapter.findSubject(subject.document ?? subject.name),
+      createIfMissing: adapter.createSubject({
+        name: subject.name,
+        document: subject.document,
+        phone: subject.phone,
+        allergies: safety.allergies.join(", "),
+        clientId: id(),
+      }),
       evidence: subject.evidence,
       warnings: [],
       dependsOn: [],
@@ -339,7 +346,7 @@ export function interpretCapture(source: string, manifest: VerticalManifest, ada
   // enfermedad actual ("Viene por ardor al orinar y polaquiuria de 2 días").
   const reason = fields.get("reason");
   const presentLabeled = fields.get("present")?.evidence.some(inRegion) ?? false;
-  if (reason && templateKeys.has("present") && !presentLabeled) {
+  if (reason && templateKeys.has("present") && !presentLabeled && !reason.evidence.some(inRegion)) {
     const first = reason.evidence[0]!;
     const sentence = sentences(text).find((s) => first.start >= s.start && first.start < s.end);
     const present = fields.get("present");
@@ -367,8 +374,8 @@ export function interpretCapture(source: string, manifest: VerticalManifest, ada
         templateId,
         occurredAt: ctx.now.toISOString(),
         fields: Object.fromEntries(proposed.map((p) => [p.key, p.value])),
-        // La transcripción viaja con el borrador: hay que revisarla y vaciarla para validar.
-        dictation: text,
+        // Solo lo que no se pudo ubicar en un campo queda como transcripción a revisar.
+        dictation: unmapped.map((u) => u.text).join("\n"),
         clientId: id(),
       })),
       fields: proposed,
@@ -401,7 +408,12 @@ export function interpretCapture(source: string, manifest: VerticalManifest, ada
   }
   for (const fu of merged) {
     const assumed = !fu.when;
-    const due = fu.when?.at ?? new Date(ctx.now.getTime() + 7 * 86_400_000);
+    let due = fu.when?.at ?? new Date(ctx.now.getTime() + 7 * 86_400_000);
+    // "En una semana" que cae sábado o domingo pasa al lunes; un día dicho explícitamente se respeta.
+    const explicitDay = /\b(?:lunes|martes|miercoles|jueves|viernes|sabado|domingo|\d{1,2}\/\d{1,2}|\d{1,2} de [a-z]+)\b/.test(fold(fu.clause.text));
+    const weekday = zonedParts(due, manifest.timezone).weekday;
+    const shifted = !explicitDay && (weekday === 6 || weekday === 0);
+    if (shifted) due = new Date(due.getTime() + (weekday === 6 ? 2 : 1) * 86_400_000);
     const title = `${fu.title}: ${fu.clause.text}`.slice(0, 300);
     steps.push({
       id: id(),
@@ -410,7 +422,10 @@ export function interpretCapture(source: string, manifest: VerticalManifest, ada
       permissionLevel: 4,
       ...bindSubject(adapter.createFollowup({ title, kind: fu.kind, dueAt: due.toISOString(), clientId: id() })),
       evidence: [fu.clause],
-      warnings: assumed ? ["No se dijo cuándo: propuse 7 días. Confirmá o cambiá la fecha."] : [],
+      warnings: [
+        ...(assumed ? ["No se dijo cuándo: propuse 7 días. Confirmá o cambiá la fecha."] : []),
+        ...(shifted ? ["Caía en fin de semana: lo pasé al lunes."] : []),
+      ],
     });
   }
 

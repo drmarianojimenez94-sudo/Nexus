@@ -40,6 +40,8 @@ export interface PlanStep {
   resultIdPath: string;
   /** Para búsquedas: ruta a la lista de resultados, que debe tener 1 elemento. */
   listPath?: string;
+  /** Para búsquedas: si no hay ninguna ficha, se crea con este pedido (paciente nuevo dictado). */
+  createIfMissing?: Pick<PlanStep, "request" | "resultIdPath">;
   evidence: Span[];
   fields?: ProposedField[];
   warnings: string[];
@@ -101,6 +103,16 @@ export async function executePlan(steps: PlanStep[], fetcher: Fetcher, selected?
     if (step.listPath) {
       const list = getPath(response, step.listPath);
       const items = Array.isArray(list) ? list : [];
+      if (items.length === 0 && step.createIfMissing) {
+        try {
+          response = await fetcher(step.createIfMissing.request);
+        } catch (err) {
+          throw new PlanExecutionError("request_failed", err instanceof Error ? err.message : String(err), step.id, done);
+        }
+        const id = getPath(response, step.createIfMissing.resultIdPath);
+        if (typeof id === "string") done[step.id] = id;
+        continue;
+      }
       if (items.length === 0) throw new PlanExecutionError("subject_not_found", "No encontré esa ficha. Revisá el nombre o creala como nueva.", step.id, done);
       if (items.length > 1) throw new PlanExecutionError("ambiguous_subject", "Hay más de una ficha con ese nombre. Elegí la correcta.", step.id, done, items);
       response = items[0];

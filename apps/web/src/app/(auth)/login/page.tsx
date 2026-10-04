@@ -40,6 +40,7 @@ export default function LoginPage() {
           type="email"
           required
           placeholder="Email"
+            aria-label="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           className="rounded-xl border border-nexus-border bg-black/30 px-3 py-2 text-nexus-text placeholder:text-nexus-muted focus:border-nexus-cyan focus:outline-none"
@@ -48,6 +49,7 @@ export default function LoginPage() {
           type="password"
           required
           placeholder="Contraseña"
+            aria-label="Contraseña"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           className="rounded-xl border border-nexus-border bg-black/30 px-3 py-2 text-nexus-text placeholder:text-nexus-muted focus:border-nexus-cyan focus:outline-none"

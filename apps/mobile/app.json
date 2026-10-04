@@ -17,7 +17,7 @@
             "com.google.android.as",
             "com.google.android.googlequicksearchbox"
           ],
-          "microphonePermission": "Nexus usa el micrófono solo con la app abierta, cuando le hablás en Inicio o en Dictar, para transcribir tus pedidos, consultas y pendientes. No escucha en segundo plano ni guarda el audio.",
+          "microphonePermission": "Nexus usa el micrófono solo con la app abierta, cuando tocás el botón de micrófono y hasta que tocás «Listo», para transcribir tus pedidos, consultas y pendientes. No escucha en segundo plano ni guarda el audio.",
           "speechRecognitionPermission": "El reconocimiento de voz convierte tu dictado en texto, en el dispositivo cuando está disponible, para preparar borradores que siempre revisás antes de guardar."
         }
       ],

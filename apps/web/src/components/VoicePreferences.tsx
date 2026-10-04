@@ -20,7 +20,7 @@ export function VoicePreferences() {
     } catch { setAiStatus("error"); }
   }, []);
   useEffect(() => { void checkAI(); }, [checkAI]);
-  const enabled = preferences?.[PREFERENCE_KEYS.VOICE_AUTO_START] !== false;
+  const enabled = preferences?.[PREFERENCE_KEYS.VOICE_AUTO_START] === true;
   return <><section className="glass-panel p-4">
     <h2 className="mb-3 text-lg">Voz de Nexus</h2>
     <label className="flex items-center gap-3 text-sm">

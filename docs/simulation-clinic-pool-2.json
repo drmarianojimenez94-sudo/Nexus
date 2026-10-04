@@ -14,12 +14,12 @@
   "alarmas": "35/35 (100%)",
   "seguimientos": "43/45 (96%)",
   "fugasDeIdentidadHaciaIA": 0,
-  "conductasAprendidas": 33,
+  "conductasAprendidas": 31,
   "miDia": {
     "borradores": 0,
     "seguimientosProximos": 7
   },
-  "segundos": 4,
+  "segundos": 3,
   "fallas": [
     "q03#1 observations: esperaba «guardia obstétrica», quedó «—»",
     "q05#1 observations: esperaba «reposo laboral», quedó «—»",

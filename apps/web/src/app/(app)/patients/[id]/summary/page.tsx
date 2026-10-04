@@ -58,11 +58,11 @@ export default function SummaryPage({
             </h1>
             <p>
               Documento: {patient.document || "No registrado"} · Nacimiento:{" "}
-              {patient.birthDate || "No registrado"}
+              {patient.birthDate ? patient.birthDate.split("-").reverse().join("/") : "No registrado"}
             </p>
             <p className="mt-2 text-xs">
               Ficha actual y registros guardados. Generado{" "}
-              {new Date(data.exportedAt).toLocaleString("es-AR")}. Sin firma
+              {new Date(data.exportedAt).toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short" })}. Sin firma
               digital.{" "}
               {drafts
                 ? "Incluye borradores."
@@ -92,7 +92,7 @@ export default function SummaryPage({
                 className="mt-6 border-t border-slate-300 pt-4"
               >
                 <h3 className="font-semibold">
-                  {new Date(c.occurredAt).toLocaleString("es-AR")} ·{" "}
+                  {new Date(c.occurredAt).toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short" })} ·{" "}
                   {c.template.name}
                 </h3>
                 <p className="text-xs">
@@ -124,7 +124,7 @@ export default function SummaryPage({
             .filter((f) => f.status === "PENDING")
             .map((f) => (
               <p key={f.id} className="mt-2 break-words">
-                {new Date(f.dueAt).toLocaleString("es-AR")} · {f.title}
+                {new Date(f.dueAt).toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short" })} · {f.title}
               </p>
             ))}
           {!data.followups.some((f) => f.status === "PENDING") && (

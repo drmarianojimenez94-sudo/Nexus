@@ -7,7 +7,7 @@ vi.mock("./api", () => ({
 }));
 vi.mock("./offlineQueue", () => ({ queueCapture: queue }));
 import { ApiError } from "./api";
-import { handleVoiceCommand } from "./voiceCommands";
+import { handleVoiceCommand, resolveSpokenTime, shortTitle } from "./voiceCommands";
 
 beforeEach(() => vi.resetAllMocks());
 describe("voice routing", () => {
@@ -73,7 +73,7 @@ describe("voice routing", () => {
     try {
       const text = "dictar paciente Juan Pérez con fiebre de tres días";
       const result = await handleVoiceCommand(text);
-      expect(result.navigateTo).toBe("/patients/capture");
+      expect(result.navigateTo).toBe("/patients/capture?auto=1");
       expect(setItem).toHaveBeenCalledWith("nexus.clinicalHandoff", text);
       // Intención clínica explícita: no pasa por la IA general.
       expect(post).not.toHaveBeenCalled();
@@ -129,7 +129,7 @@ describe("voice routing", () => {
       post.mockRejectedValueOnce(new ApiError(501, "unconfigured"));
       const text = "anotá paciente Juan Pérez DNI 30123456 consulta por fiebre";
       const result = await handleVoiceCommand(text);
-      expect(result.navigateTo).toBe("/patients/capture");
+      expect(result.navigateTo).toBe("/patients/capture?auto=1");
       expect(setItem).toHaveBeenCalledWith("nexus.clinicalHandoff", text);
       expect(post).toHaveBeenCalledTimes(1);
       expect(post).not.toHaveBeenCalledWith("/quick-capture", expect.anything());
@@ -141,7 +141,7 @@ describe("voice routing", () => {
     try {
       post.mockRejectedValueOnce(new TypeError("Failed to fetch"));
       const result = await handleVoiceCommand("anotá paciente Ana Gómez tiene fiebre y tos, control en una semana");
-      expect(result.navigateTo).toBe("/patients/capture");
+      expect(result.navigateTo).toBe("/patients/capture?auto=1");
       expect(setItem).toHaveBeenCalledWith("nexus.clinicalHandoff", expect.stringContaining("Ana Gómez"));
       expect(queue).not.toHaveBeenCalled();
     } finally { vi.unstubAllGlobals(); }
@@ -151,12 +151,56 @@ describe("voice routing", () => {
     try {
       post.mockResolvedValue({ speak: "Lo paso al asistente clínico.", navigateTo: "/patients/capture", handoff: { vertical: "medicine", text: "paciente X" } });
       const result = await handleVoiceCommand("paciente X con fiebre");
-      expect(result).toEqual({ speak: "Lo paso al asistente clínico.", navigateTo: "/patients/capture" });
+      expect(result).toEqual({ speak: "Lo paso al asistente clínico.", navigateTo: "/patients/capture?auto=1" });
       expect(setItem).toHaveBeenCalledWith("nexus.clinicalHandoff", "paciente X");
     } finally { vi.unstubAllGlobals(); }
   });
   it("closes only an explicit goodbye", async () => {
     expect((await handleVoiceCommand("gracias")).close).toBe(true);
     expect(post).not.toHaveBeenCalled();
+  });
+});
+
+describe("cerebro", () => {
+  it("abre lo que Nexus aprendió", async () => {
+    const { navigationCommand } = await import("./voiceCommands");
+    expect(navigationCommand("abrí lo que aprendiste")?.path).toBe("/brain");
+    expect(navigationCommand("mostrame tu cerebro")?.path).toBe("/brain");
+  });
+});
+
+describe("secretario sin IA", () => {
+  // 3 de octubre de 2026, 15:00 en Buenos Aires (UTC-3).
+  const now = new Date("2026-10-03T18:00:00Z");
+  it("resuelve la hora dicha: hoy si no pasó, mañana si ya pasó", () => {
+    expect(resolveSpokenTime("a las 18", now)?.at.toISOString()).toBe("2026-10-03T21:00:00.000Z");
+    expect(resolveSpokenTime("a las 9 y media", now)?.at.toISOString()).toBe("2026-10-04T12:30:00.000Z");
+    expect(resolveSpokenTime("a las 8 de la noche", now)?.at.toISOString()).toBe("2026-10-03T23:00:00.000Z");
+    expect(resolveSpokenTime("comprar pan", now)).toBeNull();
+  });
+  it("arma un título breve sin verbo ni fecha", () => {
+    expect(shortTitle("agendame ateneo el jueves a las 12", "Evento")).toBe("Ateneo");
+    expect(shortTitle("poneme una alarma mañana a las 6:30", "Alarma")).toBe("Alarma");
+    expect(shortTitle("recordame llamar al laboratorio a las 17", "Recordatorio")).toBe("Llamar al laboratorio");
+  });
+  it("crea la alarma aunque la IA no esté configurada", async () => {
+    post.mockImplementation(async (path: string) => {
+      if (path === "/reminders") return { reminder: { id: "r1" } };
+      throw new ApiError(501, "unconfigured");
+    });
+    const result = await handleVoiceCommand("poneme una alarma mañana a las 6:30");
+    expect(post).toHaveBeenCalledWith("/reminders", expect.objectContaining({ title: "Alarma" }));
+    expect(result.alarm?.title).toBe("Alarma");
+    expect(result.speak).toMatch(/^Listo, alarma/);
+  });
+  it("agenda un evento sin IA", async () => {
+    post.mockImplementation(async (path: string, body: { title: string; startAt: string }) => {
+      if (path === "/events") return { event: { id: "e1", title: body.title, startAt: body.startAt, endAt: null } };
+      throw new ApiError(501, "unconfigured");
+    });
+    const result = await handleVoiceCommand("agendame ateneo mañana a las 10");
+    expect(post).toHaveBeenCalledWith("/events", expect.objectContaining({ title: expect.stringMatching(/ateneo/i) }));
+    expect(result.event?.id).toBe("e1");
+    expect(result.speak).toMatch(/^Agendado/);
   });
 });

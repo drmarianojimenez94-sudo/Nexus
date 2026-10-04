@@ -9,7 +9,7 @@ import { useVoice } from "../../lib/voice";
 const pad = (n: number) => String(n).padStart(2, "0");
 const STEP = 15;
 
-/** Ajustes del teléfono: voz, resumen diario de Mi día y sesión. */
+/** Ajustes del teléfono: voz, resumen diario de Mi día, lo que aprendí y sesión. */
 export default function SettingsScreen() {
   const { logout } = useAuth();
   const voice = useVoice();
@@ -74,6 +74,16 @@ export default function SettingsScreen() {
         {message && <Text style={styles.note}>{message}</Text>}
       </View>
 
+      <Pressable
+        onPress={() => router.push("/brain")}
+        style={styles.brain}
+        accessibilityRole="button"
+        accessibilityLabel="Lo que aprendí: conductas habituales, recuerdos y pausa del dictado"
+      >
+        <Text style={styles.brainTitle}>🧠 Lo que aprendí</Text>
+        <Text style={styles.muted}>Tus conductas habituales, lo que me pediste que recuerde y cuánto espero en silencio antes de cortar el dictado.</Text>
+      </Pressable>
+
       <Pressable onPress={() => router.navigate("/today")}>
         <Text style={styles.link}>Abrir Today (tareas y prioridades)</Text>
       </Pressable>
@@ -86,7 +96,7 @@ export default function SettingsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
-  content: { padding: 20, paddingTop: 60, gap: 14 },
+  content: { padding: 20, paddingTop: 60, gap: 14, paddingBottom: 140 },
   title: { color: colors.text, fontSize: 22, fontWeight: "600" },
   card: { backgroundColor: colors.panel, borderRadius: 12, padding: 14, gap: 10, borderColor: colors.border, borderWidth: 1 },
   row: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 12 },
@@ -98,5 +108,7 @@ const styles = StyleSheet.create({
   stepText: { color: colors.cyan, fontSize: 22 },
   time: { color: colors.text, fontSize: 32, fontWeight: "600", fontVariant: ["tabular-nums"] },
   link: { color: colors.cyan, fontSize: 14, paddingVertical: 6 },
+  brain: { backgroundColor: colors.panel, borderRadius: 12, padding: 14, gap: 6, borderColor: colors.violet, borderWidth: 1, minHeight: 64 },
+  brainTitle: { color: colors.text, fontSize: 16, fontWeight: "700" },
   danger: { color: colors.danger, fontSize: 14, paddingVertical: 6 },
 });

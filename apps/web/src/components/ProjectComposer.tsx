@@ -113,7 +113,7 @@ export function ProjectComposer({
           className="rounded-lg border border-nexus-border px-3 py-2 text-sm"
           onClick={() =>
             speech.listening
-              ? speech.stopListening()
+              ? speech.finishListening()
               : speech.startListening((fragment) =>
                   setText((current) =>
                     `${current} ${fragment}`.trim().slice(0, 10000),
@@ -121,7 +121,7 @@ export function ProjectComposer({
                 )
           }
         >
-          {speech.listening ? "Detener dictado" : "Dictar explicación"}
+          {speech.listening ? "■ Listo" : "🎙 Dictar explicación"}
         </button>
         <button
           type="button"

@@ -32,7 +32,7 @@ export default function DocumentPage({
     (!data.encounter.patientSnapshot || !data.encounter.clinicianSnapshot);
   const text =
     data && identity
-      ? `${data.encounter.template.name}\nPaciente: ${identity.name}\nDocumento: ${identity.document || "No registrado"}\nFecha: ${new Date(data.encounter.occurredAt).toLocaleString("es-AR")}\nProfesional: ${clinician}\nEstado: ${data.encounter.status === "FINAL" ? "Validada por el usuario (sin firma digital)" : "BORRADOR"}\n\n${data.encounter.template.fields.map((f) => `${f.label}\n${data.encounter.fields[f.key] || "No registrado"}`).join("\n\n")}${data.encounter.dictation.trim() ? `\n\nTranscripción pendiente de incorporar\n${data.encounter.dictation}` : ""}${historicalIdentityMissing ? "\n\nDatos de identificación actuales; esta consulta no conserva una copia histórica." : ""}`
+      ? `${data.encounter.template.name}\nPaciente: ${identity.name}\nDocumento: ${identity.document || "No registrado"}\nFecha: ${new Date(data.encounter.occurredAt).toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short" })}\nProfesional: ${clinician}\nEstado: ${data.encounter.status === "FINAL" ? "Validada por el usuario (sin firma digital)" : "BORRADOR"}\n\n${data.encounter.template.fields.map((f) => `${f.label}\n${data.encounter.fields[f.key] || "No registrado"}`).join("\n\n")}${data.encounter.dictation.trim() ? `\n\nTranscripción pendiente de incorporar\n${data.encounter.dictation}` : ""}${historicalIdentityMissing ? "\n\nDatos de identificación actuales; esta consulta no conserva una copia histórica." : ""}`
       : "";
   return (
     <div className="flex flex-col gap-4">
@@ -80,14 +80,14 @@ export default function DocumentPage({
             </p>
             <p>
               <strong>Fecha:</strong>{" "}
-              {new Date(data.encounter.occurredAt).toLocaleString("es-AR")}
+              {new Date(data.encounter.occurredAt).toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short" })}
             </p>
             <p>
               <strong>Profesional:</strong> {clinician}
             </p>
             <p className="mt-3 text-sm">
               {data.encounter.status === "FINAL"
-                ? `Validada por el usuario el ${data.encounter.finalizedAt ? new Date(data.encounter.finalizedAt).toLocaleString("es-AR") : ""}. Sin firma digital.`
+                ? `Validada por el usuario el ${data.encounter.finalizedAt ? new Date(data.encounter.finalizedAt).toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short" }) : ""}. Sin firma digital.`
                 : "BORRADOR — pendiente de revisión y validación."}
             </p>
           </header>

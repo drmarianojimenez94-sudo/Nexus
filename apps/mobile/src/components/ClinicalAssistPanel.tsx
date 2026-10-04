@@ -1,3 +1,4 @@
+import { router } from "expo-router";
 import { useState } from "react";
 import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from "react-native";
 import type { AssistResult } from "../lib/clinicalCapture";
@@ -54,6 +55,9 @@ export function ClinicalAssistPanel({ result, loading, error }: { result: Assist
                   ))}
                 </View>
               ))}
+              <Pressable onPress={() => router.push("/brain")} style={styles.brainLink} accessibilityRole="link" accessibilityLabel="Ver y borrar lo que Nexus aprendió de vos">
+                <Text style={styles.toggle}>🧠 Ver lo que aprendí de vos →</Text>
+              </Pressable>
             </Section>
           )}
           {ai && (
@@ -132,6 +136,7 @@ const styles = StyleSheet.create({
   warn: { color: colors.amber, fontSize: 13 },
   danger: { color: colors.danger },
   toggle: { color: colors.cyan, fontSize: 13, paddingVertical: 4 },
+  brainLink: { minHeight: 44, justifyContent: "center" },
   sent: { gap: 4, backgroundColor: colors.bg, borderRadius: 8, padding: 10 },
   mono: { color: colors.muted, fontSize: 12, fontFamily: Platform.select({ ios: "Courier", default: "monospace" }) },
 });

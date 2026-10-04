@@ -56,7 +56,7 @@ export function ClinicalLocalDrafts({
           >
             {value.template?.name || "Consulta"} ·{" "}
             {value.input?.occurredAt
-              ? new Date(value.input.occurredAt).toLocaleString("es-AR")
+              ? new Date(value.input.occurredAt).toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short" })
               : "Sin fecha"}
             {suffix === "new" && " · borrador anterior"}
           </Link>
