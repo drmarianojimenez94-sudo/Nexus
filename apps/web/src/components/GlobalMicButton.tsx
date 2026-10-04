@@ -31,6 +31,16 @@ export function GlobalMicButton({ hidden = false }: { hidden?: boolean }) {
     if (dictation.listening) setPhase("listening");
   }, [dictation.listening]);
 
+  // Escape detiene y descarta desde cualquier parte de la pantalla.
+  useEffect(() => {
+    if (phase === "idle") return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") close();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
+
   async function process(text: string) {
     setHeard(text);
     if (!text.trim()) {
@@ -56,7 +66,6 @@ export function GlobalMicButton({ hidden = false }: { hidden?: boolean }) {
     if (res.navigateTo) {
       const target = res.navigateTo.startsWith("/patients/capture") && !res.navigateTo.includes("auto=") ? clinicalCaptureUrl(path) : res.navigateTo;
       router.push(target);
-      if (!res.alarm && !res.event && !res.emailDraft) setPhase("idle");
     }
   }
 
@@ -86,7 +95,11 @@ export function GlobalMicButton({ hidden = false }: { hidden?: boolean }) {
       {phase !== "idle" && (
         <div
           role="dialog"
+          aria-modal="false"
           aria-label="Dictado"
+          onKeyDown={(e) => {
+            if (e.key === "Escape") close();
+          }}
           className="fixed inset-x-3 bottom-[11.5rem] z-[70] mx-auto max-w-xl rounded-2xl border border-nexus-border bg-nexus-bg/95 p-4 shadow-2xl backdrop-blur sm:bottom-32"
         >
           {phase === "listening" && (
@@ -111,14 +124,14 @@ export function GlobalMicButton({ hidden = false }: { hidden?: boolean }) {
           )}
           {phase !== "listening" && phase !== "working" && (
             <div className="mt-3 flex justify-end gap-2">
-              <button type="button" className="rounded-xl border border-nexus-border px-4 py-2 text-sm" onClick={close}>
+              <button type="button" className="min-h-11 rounded-xl border border-nexus-border px-4 py-2 text-sm" onClick={close}>
                 Cerrar
               </button>
             </div>
           )}
           {phase === "listening" && (
             <div className="mt-3 flex justify-end">
-              <button type="button" className="rounded-xl px-3 py-2 text-sm text-nexus-muted" onClick={close}>
+              <button type="button" className="min-h-11 rounded-xl px-4 py-2 text-sm text-nexus-muted" onClick={close}>
                 Cancelar
               </button>
             </div>

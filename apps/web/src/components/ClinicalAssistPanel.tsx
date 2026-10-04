@@ -275,7 +275,7 @@ export function ClinicalAssistPanel({
 
           {!ai && !data.habits.length && !data.guidelines.length && !data.prevention.length && (
             <p className="text-xs text-nexus-muted">
-              Todavía no hay recordatorios para esta consulta. Cargá motivo, diagnóstico o tratamiento.
+              No encontré guías para lo cargado hasta ahora. Sumá el diagnóstico presuntivo o el tratamiento y vuelvo a buscar solo.
             </p>
           )}
 

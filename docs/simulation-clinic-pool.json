@@ -6,7 +6,7 @@
   "validadas": 35,
   "campos": {
     "reason": "35/35 (100%)",
-    "present": "34/35 (97%)",
+    "present": "32/35 (91%)",
     "treatment": "32/32 (100%)",
     "observations": "26/26 (100%)"
   },
@@ -19,9 +19,11 @@
     "borradores": 0,
     "seguimientosProximos": 4
   },
-  "segundos": 3,
+  "segundos": 4,
   "fallas": [
     "p02#2 guía obesity no detectada",
-    "p20#1 present: esperaba «asado», quedó «Eh, bueno, motivo de consulta dolor en el dedo gordo del pie derecho, desde anoc»"
+    "p08#1 present: esperaba «bolsa de cemento», quedó «—»",
+    "p20#1 present: esperaba «asado», quedó «—»",
+    "p29#1 present: esperaba «fiebre de 38,5», quedó «—»"
   ]
 }

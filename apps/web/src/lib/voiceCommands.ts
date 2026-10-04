@@ -1,7 +1,7 @@
 import type { Event, Memory, Task } from "@nexus/shared";
 import { api, ApiError } from "./api";
 import { queueCapture } from "./offlineQueue";
-import { looksSensitive, medicineVertical } from "@nexus/verticals";
+import { fold, interpretCapture, looksSensitive, medicineVertical, recordStoreAdapter, resolveWhen, zonedParts, zonedToUtc } from "@nexus/verticals";
 import { CLINICAL_HANDOFF_KEY } from "./clinicalCapture";
 
 export interface ConversationTurn {
@@ -97,7 +97,7 @@ export const NAV_COMMANDS: Array<{ patterns: RegExp; path: string; say: string }
   {
     patterns: /^(?:inbox|bandeja(?: de entrada)?)$/,
     path: "/inbox",
-    say: "Abriendo tu inbox",
+    say: "Abriendo tu bandeja",
   },
   {
     patterns: /^(?:calendario|agenda|turnos)$/,
@@ -218,7 +218,12 @@ function clinicalHandoff(
       navigateTo,
     };
   }
-  return { speak, navigateTo };
+  // El texto quedó guardado: la pantalla clínica arma la ficha sola.
+  const auto =
+    navigateTo.startsWith(CLINICAL_CAPTURE_PATH) && !navigateTo.includes("auto=")
+      ? `${navigateTo}${navigateTo.includes("?") ? "&" : "?"}auto=1`
+      : navigateTo;
+  return { speak, navigateTo: auto };
 }
 
 /**
@@ -392,6 +397,10 @@ export async function handleVoiceCommand(
   // aunque la IA no esté configurada.
   if (looksSensitive(text, medicineVertical)) return clinicalHandoff(text);
 
+  // Secretario por reglas: alarmas, recordatorios y turnos funcionan sin IA.
+  const local = await localSecretary(text);
+  if (local) return local;
+
   if (
     !/^(?:anot[aá](?:me)?|guard[aá](?:me)?|nota|captur[aá]|tengo que|record[aá](?:me)?|avis[aá](?:me)?|agend[aá](?:me)?)(?=\s|$)/i.test(
       text,
@@ -409,7 +418,7 @@ export async function handleVoiceCommand(
   // every voice interaction should end up "deploying" a real screen.
   try {
     await api.post("/quick-capture", { rawText: text, source: "VOICE" });
-    return { speak: "Listo, lo anoté en tu inbox.", navigateTo: "/inbox" };
+    return { speak: "Listo, lo anoté en tu bandeja.", navigateTo: "/inbox" };
   } catch (err) {
     if (err instanceof ApiError) {
       return { speak: "No pude guardarlo. Probá de nuevo." };
@@ -421,4 +430,77 @@ export async function handleVoiceCommand(
         : "No pude guardar en el dispositivo. Conservá el texto y reintentá cuando haya conexión.",
     };
   }
+}
+
+
+const TZ = "America/Argentina/Buenos_Aires";
+const fmt = (at: Date) =>
+  new Intl.DateTimeFormat("es-AR", { timeZone: TZ, weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" }).format(at);
+
+/** "a las 6:30" sin día: hoy si todavía no pasó, si no mañana. */
+export function resolveSpokenTime(text: string, now = new Date()): { at: Date; hasTime: boolean } | null {
+  const folded = fold(text);
+  const when = resolveWhen(text, folded, now, TZ);
+  if (when?.hasTime) return { at: when.at, hasTime: true };
+  const t = /\b(?:a\s+las?|las)\s+(\d{1,2})(?:(?::|\.)(\d{2})|\s+y\s+(media|cuarto))?(?:\s*(?:hs|horas))?(?:\s+de\s+la\s+(tarde|noche|manana))?/.exec(folded);
+  if (!t) return when ? { at: when.at, hasTime: false } : null;
+  let hour = Number(t[1]);
+  const minute = t[2] ? Number(t[2]) : t[3] === "media" ? 30 : t[3] === "cuarto" ? 15 : 0;
+  if ((t[4] === "tarde" || t[4] === "noche") && hour < 12) hour += 12;
+  if (hour > 23) return null;
+  const p = zonedParts(now, TZ);
+  let at = zonedToUtc(p.year, p.month, p.day, hour, minute, TZ);
+  if (at.getTime() <= now.getTime()) at = new Date(at.getTime() + 86_400_000);
+  return { at, hasTime: true };
+}
+
+/** Título breve sin el verbo ni la fecha: «agendame ateneo el jueves a las 12» → «Ateneo». */
+export function shortTitle(text: string, fallback: string): string {
+  const cleaned = text
+    .replace(/^(?:por favor\s+)?(?:agend[aá](?:me|lo)?|anot[aá](?:me)?|pon[eé](?:me)?|recordame|record[aá]me|avis[aá]me|creame|cre[aá])\s+/i, "")
+    .replace(/\b(?:una?\s+)?(?:alarma|recordatorio|evento)\b(?:\s+para)?/i, "")
+    .replace(/\b(?:hoy|mañana|pasado mañana|el\s+(?:lunes|martes|miércoles|miercoles|jueves|viernes|sábado|sabado|domingo)|el\s+\d{1,2}(?:\/\d{1,2})?)\b/gi, "")
+    .replace(/\b(?:a\s+las?|las)\s+\d{1,2}(?::\d{2})?(?:\s+y\s+(?:media|cuarto))?(?:\s*(?:hs|horas))?(?:\s+de\s+la\s+(?:tarde|noche|mañana|manana))?/gi, "")
+    .replace(/\s+(?:que|para)\s*$/i, "")
+    .replace(/\s{2,}/g, " ")
+    .trim()
+    .replace(/^(?:que|para)\s+/i, "");
+  return cleaned ? cleaned.charAt(0).toUpperCase() + cleaned.slice(1, 120) : fallback;
+}
+
+async function localSecretary(text: string): Promise<VoiceCommandResult | null> {
+  const folded = fold(text);
+  try {
+    if (/\b(?:alarma|despertame|despertador)\b/.test(folded)) {
+      const when = resolveSpokenTime(text);
+      if (!when?.hasTime) return { speak: "¿A qué hora querés la alarma?" };
+      const title = shortTitle(text, "Alarma");
+      await api.post("/reminders", { title, remindAt: when.at.toISOString() });
+      return { speak: `Listo, alarma para el ${fmt(when.at)}.`, alarm: { at: when.at.toISOString(), title } };
+    }
+    if (/\b(?:turnos?|agend\w*|reunion|cita|ateneo)\b/.test(folded)) {
+      const when = resolveSpokenTime(text);
+      if (!when?.hasTime) return null;
+      // Un turno con paciente usa solo iniciales en la agenda (privacidad).
+      const plan = interpretCapture(text, medicineVertical, recordStoreAdapter, { now: new Date() });
+      const withPatient = plan.steps.some((st) => st.kind === "find_subject" || st.kind === "create_subject");
+      const appt = withPatient ? plan.steps.find((st) => st.kind === "create_appointment") : undefined;
+      const body = appt?.request.body ?? { title: shortTitle(text, "Evento"), startAt: when.at.toISOString(), endAt: new Date(when.at.getTime() + 30 * 60_000).toISOString() };
+      const { event } = await api.post<{ event: { id: string; title: string; startAt: string; endAt: string | null } }>("/events", body);
+      return {
+        speak: `Agendado: ${event.title}, el ${fmt(new Date(event.startAt))}.`,
+        event: { ...event, google: false },
+      };
+    }
+    if (/\b(?:recordame|avisame|recorda me|avisa me)\b/.test(folded)) {
+      const when = resolveSpokenTime(text);
+      if (!when) return null;
+      const title = shortTitle(text, "Recordatorio");
+      await api.post("/reminders", { title, remindAt: when.at.toISOString() });
+      return { speak: `Te lo recuerdo el ${fmt(when.at)}: ${title}.`, alarm: { at: when.at.toISOString(), title } };
+    }
+  } catch {
+    return { speak: "No pude guardarlo. Probá de nuevo." };
+  }
+  return null;
 }

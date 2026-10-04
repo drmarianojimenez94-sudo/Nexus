@@ -114,6 +114,7 @@ export function QuickCaptureModal({
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="Escribí lo que se te ocurra…"
+            aria-label="Captura rápida"
           rows={3}
           className="w-full resize-none rounded-xl border border-nexus-border bg-black/30 p-3 text-nexus-text placeholder:text-nexus-muted focus:border-nexus-cyan focus:outline-none"
         />

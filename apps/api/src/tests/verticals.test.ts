@@ -61,10 +61,8 @@ describe("verticales", () => {
     expect(encounter.status).toBe("DRAFT");
     expect(encounter.folio).toBe(1);
     expect(encounter.fields.plan).toContain("ibuprofeno 400 mg");
-    // La transcripción viaja con el borrador: no se puede validar sin revisarla.
-    expect(encounter.dictation).toContain("Juan Pérez");
-    const blocked = await doctor.post(`/clinical/encounters/${encounter.id}/finalize`).send({ version: encounter.version, confirmed: true });
-    expect(blocked.status).toBe(400);
+    // Todo el dictado quedó en campos: no hay transcripción pendiente y se puede validar tras revisar.
+    expect(encounter.dictation).toBe("");
 
     const day = await doctor.get("/verticals/medicine/day");
     expect(day.status).toBe(200);

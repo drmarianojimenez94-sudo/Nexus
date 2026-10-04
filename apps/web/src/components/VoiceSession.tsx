@@ -259,7 +259,7 @@ export function VoiceSession({
       <div
         className={
           docked
-            ? "relative max-h-[45dvh] overflow-y-auto p-3 sm:p-4"
+            ? "relative max-h-[32dvh] overflow-y-auto p-3 sm:p-4"
             : "relative mx-auto flex min-h-[100dvh] max-w-5xl flex-col px-5 pb-32 pt-6 sm:px-10 sm:pb-8"
         }
       >
@@ -333,6 +333,14 @@ export function VoiceSession({
               <span className="mr-2 inline-block h-1.5 w-1.5 rounded-full bg-current" />
               {status}
             </p>
+            {listening && !muted && (
+              <button
+                onClick={() => finishListening()}
+                className="my-2 inline-flex min-h-14 items-center justify-center rounded-2xl bg-nexus-cyan px-8 text-base font-semibold text-nexus-bg"
+              >
+                ■ Listo, enviar
+              </button>
+            )}
             <p
               className={
                 docked
@@ -426,14 +434,6 @@ export function VoiceSession({
                     : "Activar voz"}
               </button>
             )}
-            {listening && !muted && (
-              <button
-                onClick={() => finishListening()}
-                className="rounded-full bg-nexus-cyan px-5 py-2 text-sm font-semibold text-nexus-bg"
-              >
-                ■ Listo, enviar
-              </button>
-            )}
             <button
               disabled={busy || !reply}
               onClick={() => {
@@ -474,7 +474,7 @@ export function VoiceSession({
                 ? "Sin conexión al servidor"
                 : aiReady
                   ? "IA configurada"
-                  : "IA sin configurar"}{" "}
+                  : "Sin IA: turnos, alarmas y fichas funcionan igual"}{" "}
             · {listening ? "Micrófono activo" : "Micrófono en pausa"}
             {aiReady === false && (
               <button

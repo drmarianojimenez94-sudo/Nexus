@@ -158,7 +158,7 @@ export function ClinicalFollowups({ patientId }: { patientId?: string }) {
             <p
               className={`mt-1 text-xs ${f.status === "PENDING" && Date.parse(f.dueAt) < Date.now() ? "text-nexus-amber" : "text-nexus-muted"}`}
             >
-              {new Date(f.dueAt).toLocaleString("es-AR")}
+              {new Date(f.dueAt).toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short" })}
               {f.status === "PENDING" && Date.parse(f.dueAt) < Date.now()
                 ? " · Vencido"
                 : ""}

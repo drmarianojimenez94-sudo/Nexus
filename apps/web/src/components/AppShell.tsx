@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { flushOfflineQueue } from "@/lib/offlineQueue";
+import { clinicalCaptureUrl } from "@/lib/dictationRouting";
 import { usePreferences } from "@/lib/usePreferences";
 import { BottomNav } from "./BottomNav";
 import { NexusCore } from "./NexusCore";
@@ -48,12 +49,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   } = usePreferences();
   const voiceOpened = useRef(false);
   const openVoice = useCallback(() => {
+    if (clinical) {
+      // En la parte clínica, el orbe lleva directo a dictar la consulta.
+      router.push(clinicalCaptureUrl(path));
+      return;
+    }
     if (focusedDictation) {
       setClinicalVoiceNotice(true);
       return;
     }
     setCaptureOpen(true);
-  }, [focusedDictation]);
+  }, [clinical, focusedDictation, path, router]);
   const closeVoice = useCallback(() => {
     setCaptureOpen(false);
     setVoiceDocked(false);
@@ -63,9 +69,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (!user || preferencesLoading || voiceOpened.current || focusedDictation)
       return;
     voiceOpened.current = true;
-    if (preferences?.[PREFERENCE_KEYS.VOICE_AUTO_START] !== false)
+    // Una vez por sesión del navegador: recargar o abrir un enlace no la
+    // vuelve a poner a pantalla completa.
+    let seen = false;
+    try {
+      seen = sessionStorage.getItem("nexus.console.autoOpened") === "1";
+      sessionStorage.setItem("nexus.console.autoOpened", "1");
+    } catch {
+      // sin almacenamiento: se abre como siempre
+    }
+    if (!seen && path === "/today" && preferences?.[PREFERENCE_KEYS.VOICE_AUTO_START] === true)
       setCaptureOpen(true);
-  }, [user, preferencesLoading, preferences, focusedDictation]);
+  }, [user, preferencesLoading, preferences, focusedDictation, path]);
 
   useEffect(() => {
     if (focusedDictation) closeVoice();
@@ -102,7 +117,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div
-      className={`nexus-app-shell mx-auto flex max-w-7xl gap-5 px-3 pt-4 sm:px-6 sm:pt-5 ${voiceDocked ? "pb-[30rem] sm:pb-[22rem]" : "pb-24 sm:pb-6"}`}
+      className={`nexus-app-shell mx-auto flex max-w-7xl gap-5 px-3 pt-4 sm:px-6 sm:pt-5 ${voiceDocked ? "pb-[30rem] sm:pb-[22rem]" : "pb-48 sm:pb-32"}`}
     >
       <ThemeController mode={preferences?.theme_mode} />
       <Suspense fallback={null}>
@@ -133,7 +148,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <VoiceSession onClose={closeVoice} onDockChange={setVoiceDocked} />
       )}
       {/* Micrófono grande en todas las pantallas (la de dictado clínico tiene el suyo). */}
-      <GlobalMicButton hidden={path === "/patients/capture" || (captureOpen && !clinical && !voiceDocked)} />
+      <GlobalMicButton
+        hidden={
+          path === "/patients/capture" ||
+          /\/consultations\//.test(path) ||
+          (captureOpen && !clinical) ||
+          showOnboarding
+        }
+      />
       {showOnboarding && !captureOpen && (
         <OnboardingTour
           onFinish={() =>

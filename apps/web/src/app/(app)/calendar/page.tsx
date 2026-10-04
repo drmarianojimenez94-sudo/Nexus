@@ -59,6 +59,7 @@ export default function CalendarPage() {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Reunión con Pedro"
+            aria-label="Título del evento"
             className="w-full rounded-lg border border-nexus-border bg-black/30 px-3 py-2 text-sm focus:border-nexus-cyan focus:outline-none"
           />
         </div>
@@ -68,6 +69,7 @@ export default function CalendarPage() {
           </label>
           <input
             type="datetime-local"
+            aria-label="Fecha y hora del evento"
             value={startAt}
             onChange={(e) => setStartAt(e.target.value)}
             className="rounded-lg border border-nexus-border bg-black/30 px-3 py-2 text-sm focus:border-nexus-cyan focus:outline-none"

@@ -123,7 +123,7 @@ export function ClinicalHistory({ patientId }: { patientId: string }) {
             {c.template.name}
           </p>
           <p className="mt-1 text-xs text-nexus-muted">
-            {new Date(c.occurredAt).toLocaleString("es-AR")} ·{" "}
+            {new Date(c.occurredAt).toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short" })} ·{" "}
             {c.status === "FINAL" ? "Validada" : "Borrador"}
           </p>
         </Link>

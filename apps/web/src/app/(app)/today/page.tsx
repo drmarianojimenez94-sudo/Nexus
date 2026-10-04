@@ -64,7 +64,7 @@ export default function TodayPage() {
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <p className="hud-label mb-3 text-nexus-cyan">Tu día, en foco</p>
-            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{greeting()}{user ? `, ${user.name.split(" ")[0]}` : ""}.</h1>
+            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{`${greeting()}${user ? `, ${user.name.split(" ")[0]}` : ""}`.replace(/\.+$/, "")}.</h1>
             <p className="mt-2 max-w-md text-sm leading-relaxed text-nexus-muted">{data?.now ? `Próximo: ${formatTime(data.now.startAt)} · ${data.now.title}` : "Un espacio para ordenar tus ideas y avanzar con lo que importa."}</p>
           </div>
           <NexusCore state={faceState} size={80}/>

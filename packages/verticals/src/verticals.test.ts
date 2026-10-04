@@ -113,7 +113,8 @@ describe("captura clínica", () => {
     const record = plan.steps[1]!;
     expect(record.request.path).toBe("/clinical/patients/:subjectId/encounters");
     expect(record.bind).toEqual({ "path.:subjectId": `$${plan.steps[0]!.id}` });
-    expect(record.request.body?.dictation).toContain("Juan Pérez");
+    // Todo quedó ubicado en campos: no queda transcripción pendiente de revisar.
+    expect(record.request.body?.dictation).toBe("");
     for (const f of record.fields!) {
       expect(f.requiresReview).toBe(true);
       for (const e of f.evidence) expect(plan.transcript.slice(e.start, e.end)).toBe(e.text);

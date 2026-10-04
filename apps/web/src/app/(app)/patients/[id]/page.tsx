@@ -149,7 +149,7 @@ export default function PatientPage({
           ) : (
             <section className="glass-panel grid gap-4 p-4 sm:grid-cols-2">
               {[
-                ["Nacimiento", patient.birthDate],
+                ["Nacimiento", patient.birthDate ? patient.birthDate.split("-").reverse().join("/") : ""],
                 ["Teléfono", patient.phone],
                 ["Núcleo familiar / contacto", patient.familyContact],
                 ["Alergias", patient.allergies],

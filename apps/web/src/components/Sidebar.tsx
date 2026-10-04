@@ -71,7 +71,7 @@ export function Sidebar({ onOrbClick }: { onOrbClick: () => void }) {
         <p className="mt-1 truncate text-xs text-nexus-muted">{user?.email}</p>
         <button
           onClick={() => void logout()}
-          className="mt-3 text-xs text-nexus-muted hover:text-nexus-text"
+          className="mt-3 min-h-11 text-xs text-nexus-muted hover:text-nexus-text"
         >
           Cerrar sesión
         </button>

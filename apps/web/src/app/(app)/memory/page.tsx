@@ -59,6 +59,7 @@ export default function MemoryPage() {
           value={content}
           onChange={(e) => setContent(e.target.value)}
           placeholder="Ej: mi hijo se llama Tomás…"
+          aria-label="Algo para recordar"
           className="flex-1 rounded-lg border border-nexus-border bg-black/30 px-3 py-2 text-sm focus:border-nexus-cyan focus:outline-none"
         />
         <button
@@ -75,6 +76,7 @@ export default function MemoryPage() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Buscar en tu memoria…"
+          aria-label="Buscar en tu memoria"
           className="rounded-lg border border-nexus-border bg-black/30 px-3 py-2 text-sm focus:border-nexus-cyan focus:outline-none"
         />
       )}
@@ -98,6 +100,7 @@ export default function MemoryPage() {
                 <input
                   value={editingText}
                   onChange={(e) => setEditingText(e.target.value)}
+                    aria-label="Editar recuerdo"
                   autoFocus
                   className="flex-1 rounded-lg border border-nexus-border bg-black/30 px-2 py-1 text-sm focus:border-nexus-cyan focus:outline-none"
                 />

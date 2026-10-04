@@ -112,15 +112,15 @@ export default function TemplatesPage() {
               ))}
             </ul>
             <div className="mt-3 flex flex-wrap gap-3 text-sm text-nexus-cyan">
-              <button disabled={busy} onClick={() => populate(t)}>
+              <button className="min-h-11" disabled={busy} onClick={() => populate(t)}>
                 Usar como base
               </button>
               {!t.builtin && !t.archived && (
-                <button disabled={busy} onClick={() => populate(t, true)}>
+                <button className="min-h-11" disabled={busy} onClick={() => populate(t, true)}>
                   Editar: nueva versión
                 </button>
               )}
-              <button
+              <button className="min-h-11"
                 disabled={busy}
                 aria-pressed={Boolean(t.favorite)}
                 onClick={() =>
@@ -134,7 +134,7 @@ export default function TemplatesPage() {
               >
                 {t.favorite ? "Quitar favorita" : "Marcar favorita"}
               </button>
-              <button
+              <button className="min-h-11"
                 disabled={busy}
                 onClick={() =>
                   action(async () => {
@@ -148,7 +148,7 @@ export default function TemplatesPage() {
                 {t.archived ? "Restaurar" : "Archivar"}
               </button>
               {!t.builtin && (
-                <button
+                <button className="min-h-11"
                   disabled={busy}
                   onClick={() =>
                     action(async () => {
@@ -175,7 +175,7 @@ export default function TemplatesPage() {
         <section className="glass-panel p-4">
           <div className="flex justify-between gap-3">
             <h2 className="font-semibold">Historial de versiones</h2>
-            <button onClick={() => setVersions(null)}>Cerrar</button>
+            <button className="min-h-11 px-2" onClick={() => setVersions(null)}>Cerrar</button>
           </div>
           <p className="mt-2 text-sm text-nexus-muted">
             Las consultas existentes mantienen sus campos originales.
@@ -278,6 +278,7 @@ export default function TemplatesPage() {
             <button
               type="button"
               aria-label={`Subir campo ${i + 1}`}
+              className="min-h-11 min-w-11 rounded-lg border border-nexus-border disabled:opacity-40"
               disabled={busy || i === 0}
               onClick={() => {
                 const updated = [...fields];
@@ -290,6 +291,7 @@ export default function TemplatesPage() {
             <button
               type="button"
               aria-label={`Eliminar campo ${i + 1}`}
+              className="min-h-11 min-w-11 rounded-lg border border-nexus-border disabled:opacity-40"
               disabled={busy || fields.length === 1}
               onClick={() => setFields(fields.filter((_, n) => n !== i))}
             >

@@ -62,7 +62,7 @@ export function ClinicalHabits() {
                 onClick={() => void forget(habit.key)}
                 disabled={busyKey === habit.key}
                 aria-label={`Olvidar ${habit.label}`}
-                className="shrink-0 text-xs text-nexus-danger disabled:opacity-50"
+                className="min-h-11 shrink-0 rounded-xl border border-nexus-danger/40 px-4 text-sm text-nexus-danger disabled:opacity-50"
               >
                 {busyKey === habit.key ? "Borrando…" : "Olvidar"}
               </button>

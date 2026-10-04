@@ -42,6 +42,7 @@ export default function AreasPage() {
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="Nueva área…"
+          aria-label="Nombre de la nueva área"
           className="flex-1 rounded-lg border border-nexus-border bg-black/30 px-3 py-2 text-sm focus:border-nexus-cyan focus:outline-none"
         />
         <button

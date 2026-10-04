@@ -60,7 +60,7 @@ export default function PatientsPage() {
       <section className="glass-panel flex flex-col gap-3 p-4 sm:flex-row">
         <input
           aria-label="Buscar paciente"
-          placeholder="Buscar por nombre o documento (2 letras o más)…"
+          placeholder="Nombre o DNI…"
           className={clinicalInput}
           value={q}
           onChange={(e) => {

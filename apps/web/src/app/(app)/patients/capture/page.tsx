@@ -1,5 +1,5 @@
 "use client";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { CLINICAL_TEMPLATES, type Patient } from "@nexus/shared";
@@ -127,7 +127,7 @@ function PatientPicker({
     <div className="flex flex-col gap-2">
       <input
         aria-label="Buscar ficha"
-        placeholder="Buscar por nombre o documento (2 letras o más)…"
+        placeholder="Nombre o DNI…"
         className={clinicalInput}
         value={q}
         onChange={(e) => setQ(e.target.value)}
@@ -168,8 +168,12 @@ function CaptureAssistant() {
     [done, setDone] = useState<Record<string, string> | null>(null),
     [busy, setBusy] = useState(false),
     [templateId, setTemplateId] = useState(DEFAULT_TEMPLATE),
-    [learned, setLearned] = useState(false),
     [error, setError] = useState<string | null>(null);
+  const planTop = useRef<HTMLDivElement>(null);
+  // Al armar la ficha, llevar la vista a lo que se va a guardar.
+  useEffect(() => {
+    if (plan) planTop.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [plan]);
   const template =
     CAPTURE_TEMPLATES.find((t) => t.id === templateId) ?? CAPTURE_TEMPLATES[0]!;
 
@@ -210,7 +214,6 @@ function CaptureAssistant() {
     setRecovery(null);
     setDone(null);
     setChosen(null);
-    setLearned(false);
   };
   const changeText = (value: string) => {
     setText(value);
@@ -252,7 +255,6 @@ function CaptureAssistant() {
       setRecovery(null);
       const saved = { ...base, ...created };
       setDone(saved);
-      void learnFrom(steps, ids, saved);
     } catch (e) {
       if (!(e instanceof PlanExecutionError)) {
         setError(e instanceof Error ? e.message : "No se pudo guardar.");
@@ -279,26 +281,6 @@ function CaptureAssistant() {
       );
     } finally {
       setBusy(false);
-    }
-  }
-
-  /**
-   * El cerebro aprende de lo que confirmaste (cuadro → conducta). El servidor
-   * quita nombre y documento antes de guardarlo; si falla, no afecta lo guardado.
-   */
-  async function learnFrom(steps: PlanStep[], ids: string[], saved: Record<string, string>) {
-    const record = steps.find((s) => s.kind === "create_record" && ids.includes(s.id) && saved[s.id]);
-    if (!record?.fields?.length) return;
-    const subject = steps.find((s) => s.kind === "find_subject" || s.kind === "create_subject");
-    const subjectId = contextId ?? chosen?.id ?? (subject ? saved[subject.id] : undefined);
-    try {
-      await api.post("/verticals/medicine/habits/learn", {
-        fields: Object.fromEntries(record.fields.map((f) => [f.key, f.value])),
-        ...(subjectId ? { subjectId } : {}),
-      });
-      setLearned(true);
-    } catch {
-      // aprendizaje opcional
     }
   }
 
@@ -348,7 +330,9 @@ function CaptureAssistant() {
         title="Asistente clínico"
         detail="Escribí o dictá la atención. Nexus propone qué guardar y vos confirmás cada paso."
       />
-      <p className="rounded-xl border border-nexus-border p-3 text-xs leading-relaxed text-nexus-muted">
+      <details className="rounded-xl border border-nexus-border p-3 text-xs leading-relaxed text-nexus-muted">
+        <summary className="cursor-pointer text-sm">Cómo cuida Nexus tus datos</summary>
+        <p className="mt-2">
         Nada se guarda hasta que toques «Confirmar y guardar». Las consultas
         quedan como borrador: revisalas y validalas en la ficha. Nexus
         transcribe y ordena lo que dijiste; no diagnostica ni prescribe, y la
@@ -356,6 +340,7 @@ function CaptureAssistant() {
         panel «Asistente clínico IA» envía el caso sin nombre ni DNI para
         sugerir; podés ver exactamente qué se envió.
       </p>
+      </details>
       {contextId && (
         <p className="rounded-xl border border-nexus-cyan/40 p-3 text-sm">
           Capturando en la ficha de{" "}
@@ -369,6 +354,98 @@ function CaptureAssistant() {
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
       <div className="flex min-w-0 flex-col gap-4">
       <section className="glass-panel flex flex-col gap-3 p-4">
+        {dictation.listening && (
+          <p role="status" aria-live="polite" className="rounded-xl border border-nexus-danger/40 p-3 text-sm">
+            <span className="mr-2 inline-block h-2 w-2 animate-pulse rounded-full bg-nexus-danger" />
+            Escuchando. Hablá tranquilo: las pausas no cortan. Tocá <strong>Listo</strong> cuando termines.
+            {dictation.text && <span className="mt-2 block text-nexus-muted">{dictation.text}</span>}
+          </p>
+        )}
+        {dictation.error && <p role="alert" className="text-sm text-nexus-amber">{dictation.error}</p>}
+        <div className="flex flex-wrap items-center gap-3">
+          {dictation.supported && (
+            <button
+              type="button"
+              aria-pressed={dictation.listening}
+              className={`inline-flex min-h-16 min-w-44 items-center justify-center gap-2 rounded-2xl px-6 text-lg font-semibold ${
+                dictation.listening ? "bg-nexus-danger text-white" : "bg-nexus-cyan text-nexus-bg"
+              } disabled:opacity-40`}
+              disabled={busy || !micAllowed}
+              onClick={() => {
+                if (dictation.listening) {
+                  const heard = dictation.stop();
+                  const full = [text.trim(), heard].filter(Boolean).join(" ");
+                  setText(full);
+                  void interpret(full);
+                } else {
+                  reset();
+                  dictation.start({
+                    onAutoStop: (heard) => {
+                      const full = [text.trim(), heard].filter(Boolean).join(" ");
+                      setText(full);
+                      void interpret(full);
+                    },
+                  });
+                }
+              }}
+            >
+              {dictation.listening ? "■ Listo" : "🎙 Dictar"}
+            </button>
+          )}
+          <button
+            type="button"
+            className={dictation.supported ? clinicalSecondary : clinicalButton}
+            disabled={busy || dictation.listening || text.trim().length < 2 || (mode === "ambient" && !consent)}
+            onClick={() => void interpret()}
+          >
+            {busy && !plan ? "Armando…" : contextId ? "Armar consulta con el texto" : "Armar ficha con el texto"}
+          </button>
+        </div>
+        <p className="text-xs text-nexus-muted">
+          {dictation.supported
+            ? mode === "typed"
+              ? "Para usar el micrófono elegí «Dicto yo» o «Conversación con el paciente»."
+              : "Dictá todo de corrido; al tocar Listo, Nexus arma la ficha para que la revises. Nada se guarda sin tu confirmación."
+            : "Este navegador no ofrece dictado: usá el micrófono del teclado del celular."}
+        </p>
+        <label className="flex flex-col gap-2 text-sm">
+          Texto de la atención
+          <textarea
+            rows={8}
+            maxLength={8000}
+            className={clinicalInput}
+            value={text}
+            disabled={busy}
+            placeholder="Ej.: Paciente Ana Gómez, DNI 30.123.456. Motivo de consulta: tos de 3 días. Enfermedad actual: niega fiebre. Tratamiento: hidratación. Observaciones: control en una semana."
+            onChange={(e) => changeText(e.target.value)}
+          />
+        </label>
+        <div className="rounded-xl border border-nexus-cyan/30 p-3 text-sm">
+          <p className="font-medium">Dictá por secciones</p>
+          <p className="mt-1 text-xs text-nexus-muted">
+            {template.id === DEFAULT_TEMPLATE
+              ? "Decí: «motivo de consulta… enfermedad actual… tratamiento… observaciones…». También podés decir «examen físico…» y «diagnóstico presuntivo…»."
+              : `Nombrá cada sección antes de dictarla: «${template.fields
+                  .slice(0, 3)
+                  .map((f) => f.label.toLowerCase())
+                  .join("… ")}…».`}
+          </p>
+          <ul className="mt-2 flex flex-wrap gap-2">
+            {template.fields.map((f) => (
+              <li
+                key={f.key}
+                className={`rounded-full border px-3 py-1 text-xs ${["reason", "present", "treatment", "observations"].includes(f.key) ? "border-nexus-cyan/60 text-nexus-cyan" : "border-nexus-border text-nexus-muted"}`}
+              >
+                {f.label}
+              </li>
+            ))}
+          </ul>
+        </div>
+        <details className="rounded-xl border border-nexus-border p-3 text-sm">
+          <summary className="cursor-pointer">
+            Modo y plantilla: {MODES.find((m) => m.id === mode)?.label} · {template.name}
+          </summary>
+          <div className="mt-3 flex flex-col gap-3">
         <fieldset className="flex flex-col gap-2" disabled={busy || dictation.listening}>
           <legend className="mb-2 text-sm font-medium">¿Cómo vas a cargarlo?</legend>
           <div className="grid gap-2 sm:grid-cols-3">
@@ -424,97 +501,13 @@ function CaptureAssistant() {
             ))}
           </select>
         </label>
-        <div className="rounded-xl border border-nexus-cyan/30 p-3 text-sm">
-          <p className="font-medium">Dictá por secciones</p>
-          <p className="mt-1 text-xs text-nexus-muted">
-            {template.id === DEFAULT_TEMPLATE
-              ? "Decí: «motivo de consulta… enfermedad actual… tratamiento… observaciones…». También podés decir «examen físico…» y «diagnóstico presuntivo…»."
-              : `Nombrá cada sección antes de dictarla: «${template.fields
-                  .slice(0, 3)
-                  .map((f) => f.label.toLowerCase())
-                  .join("… ")}…».`}
-          </p>
-          <ul className="mt-2 flex flex-wrap gap-2">
-            {template.fields.map((f) => (
-              <li
-                key={f.key}
-                className={`rounded-full border px-3 py-1 text-xs ${["reason", "present", "treatment", "observations"].includes(f.key) ? "border-nexus-cyan/60 text-nexus-cyan" : "border-nexus-border text-nexus-muted"}`}
-              >
-                {f.label}
-              </li>
-            ))}
-          </ul>
-        </div>
-        <label className="flex flex-col gap-2 text-sm">
-          Texto de la atención
-          <textarea
-            rows={8}
-            maxLength={8000}
-            className={clinicalInput}
-            value={text}
-            disabled={busy}
-            placeholder="Ej.: Paciente Ana Gómez, DNI 30.123.456. Motivo de consulta: tos de 3 días. Enfermedad actual: niega fiebre. Tratamiento: hidratación. Observaciones: control en una semana."
-            onChange={(e) => changeText(e.target.value)}
-          />
-        </label>
-        {dictation.listening && (
-          <p role="status" aria-live="polite" className="rounded-xl border border-nexus-danger/40 p-3 text-sm">
-            <span className="mr-2 inline-block h-2 w-2 animate-pulse rounded-full bg-nexus-danger" />
-            Escuchando. Hablá tranquilo: las pausas no cortan. Tocá <strong>Listo</strong> cuando termines.
-            {dictation.text && <span className="mt-2 block text-nexus-muted">{dictation.text}</span>}
-          </p>
-        )}
-        {dictation.error && <p role="alert" className="text-sm text-nexus-amber">{dictation.error}</p>}
-        <div className="flex flex-wrap items-center gap-3">
-          {dictation.supported && (
-            <button
-              type="button"
-              aria-pressed={dictation.listening}
-              className={`inline-flex min-h-16 min-w-44 items-center justify-center gap-2 rounded-2xl px-6 text-lg font-semibold ${
-                dictation.listening ? "bg-nexus-danger text-white" : "bg-nexus-cyan text-nexus-bg"
-              } disabled:opacity-40`}
-              disabled={busy || !micAllowed}
-              onClick={() => {
-                if (dictation.listening) {
-                  const heard = dictation.stop();
-                  const full = [text.trim(), heard].filter(Boolean).join(" ");
-                  setText(full);
-                  void interpret(full);
-                } else {
-                  reset();
-                  dictation.start({
-                    onAutoStop: (heard) => {
-                      const full = [text.trim(), heard].filter(Boolean).join(" ");
-                      setText(full);
-                      void interpret(full);
-                    },
-                  });
-                }
-              }}
-            >
-              {dictation.listening ? "■ Listo" : "🎙 Dictar"}
-            </button>
-          )}
-          <button
-            type="button"
-            className={dictation.supported ? clinicalSecondary : clinicalButton}
-            disabled={busy || dictation.listening || text.trim().length < 2 || (mode === "ambient" && !consent)}
-            onClick={() => void interpret()}
-          >
-            {busy && !plan ? "Armando la ficha…" : "Armar ficha con el texto"}
-          </button>
-        </div>
-        <p className="text-xs text-nexus-muted">
-          {dictation.supported
-            ? mode === "typed"
-              ? "Para usar el micrófono elegí «Dicto yo» o «Conversación con el paciente»."
-              : "Dictá todo de corrido; al tocar Listo, Nexus arma la ficha para que la revises. Nada se guarda sin tu confirmación."
-            : "Este navegador no ofrece dictado: usá el micrófono del teclado del celular."}
-        </p>
+          </div>
+        </details>
       </section>
 
       <ClinicalError message={error} />
 
+      <div ref={planTop} className="scroll-mt-4" />
       {plan && (
         <>
           {redFlags.length > 0 && (
@@ -683,12 +676,12 @@ function CaptureAssistant() {
                   ? "La consulta quedó como borrador: revisala y validala antes de darla por cerrada."
                   : "Se guardaron los pasos confirmados."}
               </p>
-              {learned && (
+              {encounterId && (
                 <p className="text-xs text-nexus-cyan">
-                  Nexus aprendió tu conducta para este cuadro (sin datos del
-                  paciente).{" "}
-                  <Link href="/memory" className="underline">
-                    Ver lo aprendido
+                  Al validarla, Nexus aprende tu conducta para este cuadro (sin
+                  datos del paciente).{" "}
+                  <Link href="/brain" className="underline">
+                    Ver 🧠 Lo que aprendí
                   </Link>
                 </p>
               )}
