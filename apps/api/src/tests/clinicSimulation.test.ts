@@ -23,6 +23,16 @@ vi.mock("../lib/clinicalAssist.js", () => ({
   },
 }));
 
+// El ordenamiento por IA usa el transporte real de IA: se registra lo enviado
+// y se responde vacío, así la simulación mide las reglas y la privacidad.
+const sentToStructurer: unknown[] = [];
+vi.mock("../lib/aiTransport.js", () => ({
+  requestAI: async (params: { messages: unknown[] }) => {
+    sentToStructurer.push(params.messages);
+    return { content: [] };
+  },
+}));
+
 process.env.API_RATE_LIMIT = "100000";
 const { createApp } = await import("../app.js");
 
@@ -115,7 +125,7 @@ describe.each(pools)("simulación de consultorio ($file)", ({ file, pool }) => {
 
     // Privacidad: nada identificable llegó a la IA.
     const leaks = pool.flatMap((p) => {
-      const blob = JSON.stringify(sentToAi);
+      const blob = JSON.stringify([sentToAi, sentToStructurer]);
       const tokens = [...p.patient.name.split(/\s+/).filter((w) => w.length >= 3), p.patient.document, p.patient.phone.replace(/\D/g, "").slice(-8)];
       return tokens.filter((t) => t && blob.includes(t)).map((t) => `${p.id}: «${t}»`);
     });
@@ -142,6 +152,7 @@ describe.each(pools)("simulación de consultorio ($file)", ({ file, pool }) => {
     console.warn(JSON.stringify({ ...report, fallas: misses.length }, null, 2));
 
     expect(leaks).toEqual([]);
+    expect(sentToStructurer.length).toBeGreaterThan(0);
     expect(saved).toBe(visits);
     expect(validated).toBe(visits);
     expect(habits.length).toBeGreaterThan(0);

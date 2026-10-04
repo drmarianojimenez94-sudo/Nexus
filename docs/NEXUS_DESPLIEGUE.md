@@ -25,6 +25,16 @@ Se cargan en Render → tu servicio `nexus` → **Environment** → *Add Environ
 
 > **No cambies `AUTH_SECRET` ni agregues `CLINICAL_DATA_KEY`** si ya cargaste pacientes. De esa clave salen las claves que cifran las fichas, y cambiarla las vuelve ilegibles. Si querés una clave clínica propia, hacelo con un proceso de recifrado y una copia de seguridad antes.
 
+### 1.2 bis Qué hace la IA (con `GEMINI_API_KEY` o Claude)
+
+- **Dictado de consultas:** todo el relato pasa primero por la IA, que lo reparte en motivo, enfermedad actual, antecedentes, examen físico, diagnóstico, tratamiento y observaciones. El nombre, el DNI y el teléfono los separa Nexus antes y **nunca** se envían. Si la IA no responde, Nexus ordena con reglas y avisa.
+- **Asistente conectado a internet:**
+  - El clima de cualquier ciudad sale de Open-Meteo, que es gratis y no necesita clave.
+  - Las preguntas con datos actuales (noticias, cotizaciones, horarios, resultados) se buscan en internet: con Gemini, por Búsqueda de Google; con Claude, por su búsqueda web.
+  - Las respuestas muestran las fuentes.
+  - Revisá en la consola de tu proveedor si la búsqueda tiene cupo diario o costo extra.
+- **Sin IA configurada**, funcionan igual las alarmas, los turnos, los recordatorios y el dictado con reglas. El clima y las búsquedas necesitan la IA.
+
 ### 1.3 Conectar Gmail y Google Calendar (una vez)
 
 1. Entrá a [Google Cloud Console](https://console.cloud.google.com/) → crear proyecto «Nexus».

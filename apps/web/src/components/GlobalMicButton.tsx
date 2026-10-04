@@ -119,7 +119,7 @@ export function GlobalMicButton({ hidden = false }: { hidden?: boolean }) {
               {dictation.error && <p role="alert" className="text-sm text-nexus-amber">{dictation.error}</p>}
               {heard && <p className="text-xs text-nexus-muted">Dijiste: «{heard}»</p>}
               {result?.speak && <p className="text-base">{result.speak}</p>}
-              <AssistantActionCards alarm={result?.alarm} event={result?.event} emailDraft={result?.emailDraft} />
+              <AssistantActionCards alarm={result?.alarm} event={result?.event} emailDraft={result?.emailDraft} sources={result?.sources} />
             </div>
           )}
           {phase !== "listening" && phase !== "working" && (

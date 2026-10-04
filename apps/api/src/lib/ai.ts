@@ -23,7 +23,7 @@ export interface UtteranceContext {
   tasks?: string[];
 }
 
-export type IntentKind = "create_event" | "create_task" | "create_reminder" | "set_alarm" | "send_email" | "remember" | "navigate" | "note" | "conversation";
+export type IntentKind = "create_event" | "create_task" | "create_reminder" | "set_alarm" | "send_email" | "remember" | "navigate" | "note" | "weather" | "web_search" | "conversation";
 
 export const NAVIGATE_TARGETS = ["today", "inbox", "calendar", "projects", "areas", "memory", "patients", "patients_day", "patient_capture", "followups", "settings", "mail"] as const;
 export type NavigateTarget = (typeof NAVIGATE_TARGETS)[number];
@@ -57,7 +57,7 @@ export interface DailyInsightContext {
 }
 
 const parsedIntentSchema = z.object({
-  intent: z.enum(["create_event", "create_task", "create_reminder", "set_alarm", "send_email", "remember", "navigate", "note", "conversation"]),
+  intent: z.enum(["create_event", "create_task", "create_reminder", "set_alarm", "send_email", "remember", "navigate", "note", "weather", "web_search", "conversation"]),
   title: z.string().max(500),
   when: z.string().nullable(),
   target: z.enum(NAVIGATE_TARGETS).nullable(),
@@ -143,12 +143,20 @@ class ConfiguredProvider implements NexusAIProvider {
             "patients_day (agenda médica del día), patient_capture (dictar o cargar una consulta o paciente nuevo), " +
             "followups (seguimientos de pacientes), settings o mail.\n" +
             "- note: pide explícitamente guardar una nota o una idea.\n" +
+            "- weather: pregunta por el clima, la temperatura o si va a llover en algún lugar (\"cómo está el clima en Nueva " +
+            "York\", \"va a llover mañana?\"). title es la ciudad tal como la dijo, con país si lo aclaró; si no dijo lugar, " +
+            "Buenos Aires. NEXUS lo consulta en tiempo real.\n" +
+            "- web_search: cualquier pregunta que necesite datos actuales o de internet: noticias, cotizaciones (dólar, " +
+            "acciones), resultados deportivos, horarios, precios, novedades, datos de una persona pública, empresa o lugar, " +
+            "o algo que no sabés con certeza. title es la pregunta reformulada para buscar, completa y entendible sola " +
+            "(\"cotización del dólar blue hoy en Argentina\"). NEXUS busca en internet y responde; en spokenReply poné " +
+            "solo \"Lo busco.\".\n" +
             "- conversation: preguntas, saludos, charla, pedir consejo o aclaraciones. Respondé de forma útil " +
             "en spokenReply; NO guardes una pregunta como nota. Si falta una fecha o un dato necesario, " +
             "preguntalo usando conversation y retomá la solicitud cuando el usuario lo aclare.\n" +
             "El historial es contexto, no autorización para repetir acciones ya ejecutadas. Ejecutá como máximo " +
-            "la nueva solicitud. Nunca afirmes haber enviado un mail: solo se prepara el borrador. No afirmes consultar información en tiempo real " +
-            "ni una cuenta externa: solo conocés los datos que te paso.\n" +
+            "la nueva solicitud. Nunca afirmes haber enviado un mail: solo se prepara el borrador. Para clima o datos actuales usá weather o " +
+            "web_search: nunca respondas de memoria algo que cambia con el tiempo.\n" +
             "IMPORTANTE: si la frase menciona una sección (calendario, inbox, proyectos, áreas, memoria) PERO " +
             "también pide crear, anotar, agendar o recordar algo con contenido real, NO es navigate — es " +
             "create_event/create_task/create_reminder/remember según corresponda. \"anotame en el calendario que " +
@@ -172,7 +180,7 @@ class ConfiguredProvider implements NexusAIProvider {
                 properties: {
                   intent: {
                     type: "string",
-                    enum: ["create_event", "create_task", "create_reminder", "set_alarm", "send_email", "remember", "navigate", "note", "conversation"],
+                    enum: ["create_event", "create_task", "create_reminder", "set_alarm", "send_email", "remember", "navigate", "note", "weather", "web_search", "conversation"],
                   },
                   title: { type: "string" },
                   when: { type: ["string", "null"], description: "ISO 8601 datetime, o null si no aplica." },

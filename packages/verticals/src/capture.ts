@@ -14,6 +14,12 @@ export interface CaptureContext {
   templateId?: string;
   /** Para pruebas reproducibles. */
   random?: () => number;
+  /**
+   * Secciones ya ordenadas por la IA a partir del relato (sin identificar al
+   * paciente). Reemplazan a las que deducen las reglas; cada `quote` es un
+   * fragmento literal del dictado que respalda el campo.
+   */
+  structured?: Record<string, { value: string; quotes?: string[] }>;
 }
 
 export interface CaptureSubject {
@@ -34,6 +40,8 @@ export interface CapturePlan {
   warnings: string[];
   /** Cláusulas que no se asignaron a ningún campo: el profesional decide. */
   unmapped: Span[];
+  /** Quién repartió el relato en secciones. */
+  structuredBy: "ai" | "rules";
   requiresConfirmation: true;
 }
 
@@ -115,6 +123,16 @@ function extractSubject(source: string, folded: string, m: VerticalManifest, ctx
       evidence.push(e);
       consumed.push(e);
       return { mode: isNew ? "new" : "lookup", name, document, phone, evidence, consumed };
+    }
+  }
+  // «Laura Fernández, DNI 28.456.789»: nombre propio pegado al documento, sin decir «paciente».
+  if (doc) {
+    const before = /(\p{Lu}[\p{Ll}'-]+(?:\s+(?:de\s+|del\s+)?\p{Lu}[\p{Ll}'-]+){1,3})[\s,:-]*$/u.exec(source.slice(0, doc.index));
+    if (before && !stop.has(fold(before[1]!.split(/\s+/)[0]!))) {
+      const e = span(source, before.index, before.index + before[1]!.length);
+      evidence.push(e);
+      consumed.push(e);
+      return { mode: isNew ? "new" : "lookup", name: before[1]!, document, phone, evidence, consumed };
     }
   }
   return { mode: "missing", document, phone, evidence, consumed };
@@ -358,6 +376,24 @@ export function interpretCapture(source: string, manifest: VerticalManifest, ada
     }
   }
 
+  // La IA entendió el relato completo: sus secciones reemplazan a las de las reglas.
+  const aiFields = ctx.structured
+    ? Object.entries(ctx.structured).filter(([key, f]) => templateKeys.has(key) && f.value.trim())
+    : [];
+  if (aiFields.length) {
+    fields.clear();
+    unmapped.length = 0;
+    const lower = text.toLowerCase();
+    for (const [key, f] of aiFields) {
+      const evidence = (f.quotes ?? []).flatMap((q) => {
+        const at = q.trim().length >= 3 ? lower.indexOf(q.trim().toLowerCase()) : -1;
+        return at >= 0 ? [span(text, at, at + q.trim().length)] : [];
+      });
+      const section = template.sections.find((sct) => sct.key === key)!;
+      fields.set(key, { key, label: section.label, value: f.value.trim(), evidence, source: "ai", requiresReview: true });
+    }
+  }
+
   // 3. Record (draft) step.
   let recordStep: string | null = null;
   if (fields.size) {
@@ -441,7 +477,7 @@ export function interpretCapture(source: string, manifest: VerticalManifest, ada
   for (const c of safety.allergyConflicts) warnings.push(`⚠ Posible conflicto: ${c.medication} con alergia registrada a ${c.allergy}.`);
   if (!steps.length) warnings.push("No encontré nada para registrar. Probá con: «paciente nuevo Ana Gómez, consulta por…».");
 
-  return { verticalId: manifest.id, transcript: text, subject, templateId, steps, safety, warnings, unmapped, requiresConfirmation: true };
+  return { verticalId: manifest.id, transcript: text, subject, templateId, steps, safety, warnings, unmapped, structuredBy: aiFields.length ? "ai" : "rules", requiresConfirmation: true };
 }
 
 export function formatLocal(at: Date, m: VerticalManifest, withTime = true): string {

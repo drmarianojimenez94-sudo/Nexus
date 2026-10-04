@@ -25,6 +25,7 @@ import { expectedOwner } from "../middleware/expectedOwner.js";
 import { HttpError } from "../middleware/errorHandler.js";
 import { isClinicalAiConfigured, suggestForCase } from "../lib/clinicalAssist.js";
 import { learnFromFields, loadHabits, saveHabits } from "../lib/clinicalHabits.js";
+import { structureDictation } from "../lib/clinicalStructure.js";
 import { env } from "../lib/env.js";
 
 /**
@@ -100,20 +101,43 @@ verticalsRouter.post(
       throw new HttpError(400, "Confirmá que el paciente consintió la grabación antes de capturar la conversación.");
     let subjectName: string | undefined;
     let knownAllergies: string[] = [];
+    let context: PatientInput | null = null;
     if (input.subjectId) {
       const row = await prisma.patient.findFirst({ where: { id: input.subjectId, userId } });
       if (!row) throw new HttpError(404, "Paciente no encontrado");
-      const patient = decryptClinical<PatientInput>(row.recordEncrypted, scope(userId, "patient", row.id));
-      subjectName = patient.name;
-      knownAllergies = patient.allergies ? patient.allergies.split(/[,;\n]+/).map((a) => a.trim()).filter(Boolean) : [];
+      context = decryptClinical<PatientInput>(row.recordEncrypted, scope(userId, "patient", row.id));
+      subjectName = context.name;
+      knownAllergies = context.allergies ? context.allergies.split(/[,;\n]+/).map((a) => a.trim()).filter(Boolean) : [];
     }
-    const plan = interpretCapture(input.text, v.manifest, v.adapter, {
-      now: new Date(),
-      subjectId: input.subjectId,
-      subjectName,
-      knownAllergies,
-      templateId: input.templateId,
-    });
+    const ctx = { now: new Date(), subjectId: input.subjectId, subjectName, knownAllergies, templateId: input.templateId };
+    // Las reglas separan quién es el paciente (nombre, DNI, teléfono); eso nunca va a la IA.
+    let plan = interpretCapture(input.text, v.manifest, v.adapter, ctx);
+    // La IA lee el relato completo sin identificar y lo reparte en las secciones.
+    let structuredStatus: "ai" | "rules" | "not_configured" | "error" = isClinicalAiConfigured() ? "rules" : "not_configured";
+    if (isClinicalAiConfigured()) {
+      const template = v.manifest.templates.find((t) => t.id === plan.templateId);
+      try {
+        const structured = template
+          ? await structureDictation(
+              input.text,
+              template.sections.map((sct) => ({ key: sct.key, label: sct.label })),
+              {
+                names: [subjectName, plan.subject.name].filter((n): n is string => Boolean(n)),
+                documents: [context?.document, plan.subject.document].filter((d): d is string => Boolean(d)),
+                phones: [context?.phone, plan.subject.phone].filter((d): d is string => Boolean(d)),
+                familyContact: context?.familyContact,
+              },
+            )
+          : null;
+        if (structured) {
+          plan = interpretCapture(input.text, v.manifest, v.adapter, { ...ctx, templateId: plan.templateId, structured });
+          structuredStatus = "ai";
+        } else structuredStatus = "error";
+      } catch {
+        structuredStatus = "error";
+      }
+      if (structuredStatus === "error") plan.warnings.unshift("La IA no respondió: ordené el dictado con reglas. Revisá las secciones.");
+    }
     // Sin texto clínico en la auditoría: solo el modo y el consentimiento declarado.
     await recordAudit({
       userId,
@@ -123,11 +147,77 @@ verticalsRouter.post(
       metadata: {
         captureMode: input.captureMode,
         consentConfirmed: input.consentConfirmed,
+        structuredBy: structuredStatus,
         steps: plan.steps.length,
         redFlags: plan.safety.redFlags.filter((r) => !r.negated).length,
       },
     });
-    res.set("Cache-Control", "no-store, private").json({ plan });
+    res.set("Cache-Control", "no-store, private").json({ plan, structuredStatus });
+  }),
+);
+
+const structureSchema = z.object({
+  text: z.string().trim().min(2).max(8000),
+  sections: z.array(z.object({ key: z.string().regex(/^[a-z][a-z0-9_]{0,39}$/), label: z.string().trim().min(1).max(120) })).min(1).max(30),
+  templateId: z.string().max(100).optional(),
+  subjectId: z.string().uuid().optional(),
+});
+
+/**
+ * Ordena un dictado dentro de una consulta ya abierta (cualquier plantilla,
+ * también las propias): la IA reparte el relato sin identificar en las
+ * secciones. Sin IA, usa las reglas si la plantilla es de la vertical.
+ */
+verticalsRouter.post(
+  "/:id/structure",
+  asyncHandler(async (req, res) => {
+    const v = vertical(req.params.id!);
+    const input = structureSchema.parse(req.body);
+    const userId = req.userId!;
+    const patient = await ownedPatientRecord(userId, input.subjectId);
+    const keys = new Set(input.sections.map((sct) => sct.key));
+    const rules = () => {
+      if (!input.templateId || !v.manifest.templates.some((t) => t.id === input.templateId)) return null;
+      const plan = interpretCapture(input.text, v.manifest, v.adapter, {
+        now: new Date(),
+        subjectId: input.subjectId,
+        subjectName: patient?.name,
+        templateId: input.templateId,
+      });
+      const record = plan.steps.find((st) => st.kind === "create_record");
+      const fields = Object.fromEntries((record?.fields ?? []).filter((f) => keys.has(f.key)).map((f) => [f.key, f.value]));
+      return Object.keys(fields).length ? fields : null;
+    };
+    let fields: Record<string, string> | null = null;
+    let structuredStatus: "ai" | "rules" | "not_configured" | "error" = "not_configured";
+    if (isClinicalAiConfigured()) {
+      try {
+        const structured = await structureDictation(input.text, input.sections, {
+          names: patient?.name ? [patient.name] : [],
+          documents: patient?.document ? [patient.document] : [],
+          phones: patient?.phone ? [patient.phone] : [],
+          familyContact: patient?.familyContact,
+        });
+        if (structured) {
+          fields = Object.fromEntries(Object.entries(structured).map(([k, f]) => [k, f.value]));
+          structuredStatus = "ai";
+        } else structuredStatus = "error";
+      } catch {
+        structuredStatus = "error";
+      }
+    }
+    if (!fields) {
+      fields = rules();
+      if (fields && structuredStatus === "not_configured") structuredStatus = "rules";
+    }
+    await recordAudit({
+      userId,
+      action: "vertical.structure",
+      entityType: "vertical",
+      entityId: v.manifest.id,
+      metadata: { structuredBy: structuredStatus, sections: input.sections.length },
+    });
+    res.set("Cache-Control", "no-store, private").json({ fields, structuredStatus });
   }),
 );
 

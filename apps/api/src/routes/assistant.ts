@@ -9,6 +9,7 @@ import { recordAudit } from "../lib/audit.js";
 import { env } from "../lib/env.js";
 import { looksSensitive, medicineVertical } from "@nexus/verticals";
 import { prepareEmail, pushGoogleEvent } from "../lib/secretary.js";
+import { answerFromWeb, weatherFor } from "../lib/webAnswer.js";
 
 export const assistantRouter = Router();
 assistantRouter.use(authenticate);
@@ -87,6 +88,26 @@ assistantRouter.post(
     switch (parsed.intent) {
       case "conversation": {
         res.json({ speak: parsed.spokenReply });
+        return;
+      }
+      case "weather":
+      case "web_search": {
+        // Datos en tiempo real: clima (Open-Meteo) o búsqueda en internet con la IA.
+        let answer = null;
+        try {
+          answer =
+            parsed.intent === "weather"
+              ? ((await weatherFor(parsed.title)) ?? (await answerFromWeb(`Clima actual y pronóstico de hoy en ${parsed.title || "Buenos Aires"}`)))
+              : await answerFromWeb(parsed.title || text);
+        } catch {
+          answer = null;
+        }
+        await recordAudit({ userId: req.userId!, action: `assistant.${parsed.intent}`, entityType: "assistant", entityId: parsed.intent, metadata: { ok: Boolean(answer) } });
+        res.json(
+          answer
+            ? { speak: answer.speak, sources: answer.sources }
+            : { speak: "No pude consultar internet ahora. Probá de nuevo en un momento." },
+        );
         return;
       }
       case "create_event": {

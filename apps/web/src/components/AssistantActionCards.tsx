@@ -157,12 +157,15 @@ export function AssistantActionCards({
   alarm,
   event,
   emailDraft,
+  sources,
 }: {
   alarm?: AlarmAction;
   event?: EventAction;
   emailDraft?: EmailDraftAction;
+  /** De dónde salió una respuesta con datos de internet. */
+  sources?: { title: string; url: string }[];
 }) {
-  if (!alarm && !event && !emailDraft) return null;
+  if (!alarm && !event && !emailDraft && !sources?.length) return null;
   return (
     <div className="flex w-full flex-col gap-2">
       {alarm && (
@@ -202,6 +205,19 @@ export function AssistantActionCards({
         </section>
       )}
       {emailDraft && <EmailDraftCard key={emailDraft.id ?? emailDraft.subject} draft={emailDraft} />}
+      {!!sources?.length && (
+        <p className="text-xs text-nexus-muted">
+          🌐 Fuentes:{" "}
+          {sources.map((src, i) => (
+            <span key={src.url}>
+              {i > 0 && " · "}
+              <a href={src.url} target="_blank" rel="noopener noreferrer" className="text-nexus-cyan underline">
+                {src.title}
+              </a>
+            </span>
+          ))}
+        </p>
+      )}
     </div>
   );
 }

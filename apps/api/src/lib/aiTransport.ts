@@ -17,7 +17,13 @@ const geminiResponse = z.object({
 export async function requestAI(params: Anthropic.MessageCreateParamsNonStreaming, options: { timeout: number }): Promise<Completion> {
   if (env.aiProvider === "anthropic") {
     if (!client) throw new Error("AI is not configured");
-    const result = await client.messages.create(params, options);
+    // Los modelos más nuevos no aceptan forzar una herramienta: se pide por instrucción.
+    const forced = params.tool_choice && "name" in params.tool_choice ? params.tool_choice.name : null;
+    const request =
+      forced && /opus-5-5|sonnet-5-5|fable-5-1|mythos-5-1/.test(params.model)
+        ? { ...params, tool_choice: { type: "auto" as const }, system: `${params.system ?? ""}\nRespondé siempre llamando a la herramienta ${forced}.` }
+        : params;
+    const result = await client.messages.create(request, options);
     return { content: result.content.flatMap((block): Completion["content"] => {
       if (block.type === "text") return [{ type: "text", text: block.text }];
       if (block.type === "tool_use") return [{ type: "tool_use", input: block.input }];

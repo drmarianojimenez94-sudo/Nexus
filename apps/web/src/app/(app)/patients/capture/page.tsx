@@ -421,14 +421,10 @@ function CaptureAssistant() {
           />
         </label>
         <div className="rounded-xl border border-nexus-cyan/30 p-3 text-sm">
-          <p className="font-medium">Dictá por secciones</p>
+          <p className="font-medium">Dictá libre, como se lo contarías a un colega</p>
           <p className="mt-1 text-xs text-nexus-muted">
-            {template.id === DEFAULT_TEMPLATE
-              ? "Decí: «motivo de consulta… enfermedad actual… tratamiento… observaciones…». También podés decir «examen físico…» y «diagnóstico presuntivo…»."
-              : `Nombrá cada sección antes de dictarla: «${template.fields
-                  .slice(0, 3)
-                  .map((f) => f.label.toLowerCase())
-                  .join("… ")}…».`}
+            Empezá por el nombre y el DNI del paciente. Después contá la consulta en el orden que quieras: la IA
+            reparte lo que dijiste en estas secciones.
           </p>
           <ul className="mt-2 flex flex-wrap gap-2">
             {template.fields.map((f) => (
@@ -594,6 +590,11 @@ function CaptureAssistant() {
 
           <section className="flex flex-col gap-3" aria-label="Pasos propuestos">
             <h2 className="font-semibold">Qué se va a guardar</h2>
+            <p className={`text-xs ${plan.structuredBy === "ai" ? "text-nexus-cyan" : "text-nexus-muted"}`}>
+              {plan.structuredBy === "ai"
+                ? "🧠 La IA entendió tu relato y lo ordenó en las secciones (sin tu paciente: nombre y DNI no salen de Nexus). Revisá y confirmá."
+                : "Ordenado con reglas: la IA no está configurada o no respondió. Revisá las secciones."}
+            </p>
             {!plan.steps.length && (
               <p className="text-sm text-nexus-muted">
                 No encontré nada para guardar. Revisá el texto.

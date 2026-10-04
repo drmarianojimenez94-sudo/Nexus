@@ -49,6 +49,8 @@ export interface VoiceCommandResult {
   alarm?: AlarmAction;
   event?: EventAction;
   emailDraft?: EmailDraftAction;
+  /** Respuestas con datos de internet: de dónde salió la información. */
+  sources?: { title: string; url: string }[];
 }
 
 // Full utterance matching prevents "abrí el calendario y agendá..." losing its action.
@@ -193,6 +195,7 @@ interface InterpretResponse {
   alarm?: AlarmAction;
   event?: EventAction;
   emailDraft?: EmailDraftAction;
+  sources?: { title: string; url: string }[];
   /** Datos de pacientes: se derivan al asistente clínico, nunca al inbox. */
   handoff?: { vertical: string; text: string };
 }
@@ -265,6 +268,7 @@ async function tryBrain(
     if (result.alarm) out.alarm = result.alarm;
     if (result.event) out.event = result.event;
     if (result.emailDraft) out.emailDraft = result.emailDraft;
+    if (result.sources?.length) out.sources = result.sources;
     return out;
   } catch (err) {
     if (err instanceof ApiError && err.status === 501) return null;

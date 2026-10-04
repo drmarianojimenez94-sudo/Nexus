@@ -46,7 +46,7 @@ export function VoiceSession({
   const voiceMutedRef = useRef(voiceMuted);
   voiceMutedRef.current = voiceMuted;
   const [actions, setActions] = useState<
-    Pick<VoiceCommandResult, "alarm" | "event" | "emailDraft">
+    Pick<VoiceCommandResult, "alarm" | "event" | "emailDraft" | "sources">
   >({});
   const {
     sttSupported,
@@ -119,6 +119,7 @@ export function VoiceSession({
         alarm: result.alarm,
         event: result.event,
         emailDraft: result.emailDraft,
+        sources: result.sources,
       });
       if (result.navigateTo && FOCUSED.test(result.navigateTo)) {
         // Pacientes y Proyectos cierran esta consola: la confirmación se dice

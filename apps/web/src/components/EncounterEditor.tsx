@@ -289,6 +289,54 @@ export function EncounterEditor({
       stopListening();
     };
   }, [stopListening]);
+  const [organizing, setOrganizing] = useState(false),
+    [organizeNote, setOrganizeNote] = useState("");
+  /**
+   * La IA reparte el dictado en los campos de la plantilla. Si no puede, el
+   * texto queda en «Transcripción para revisar»: nunca se pierde.
+   */
+  async function organize(text: string) {
+    if (!text.trim()) return;
+    const keep = () =>
+      setInput((prev) => ({
+        ...prev,
+        dictation: `${prev.dictation}${prev.dictation ? "\n" : ""}${text}`.slice(0, 40000),
+      }));
+    setOrganizing(true);
+    setDirty(true);
+    try {
+      const { fields } = await api.post<{ fields: Record<string, string> | null; structuredStatus: string }>(
+        "/verticals/medicine/structure",
+        {
+          text,
+          sections: template.fields.map((f) => ({ key: f.key, label: f.label })),
+          templateId: template.id,
+          ...(patientId ? { subjectId: patientId } : {}),
+        },
+      );
+      if (!fields || !Object.keys(fields).length) {
+        keep();
+        setOrganizeNote("No pude ordenarlo solo: quedó en «Transcripción para revisar».");
+        return;
+      }
+      setInput((prev) => {
+        const merged = { ...prev.fields };
+        for (const [key, value] of Object.entries(fields)) {
+          const before = merged[key]?.trim();
+          merged[key] = (before ? `${before}\n${value}` : value).slice(0, 10000);
+        }
+        return { ...prev, fields: merged };
+      });
+      const labels = template.fields.filter((f) => fields[f.key]).map((f) => f.label.toLowerCase());
+      setOrganizeNote(`Ordenado en: ${labels.join(", ")}. Revisá los campos.`);
+      setServerStatus("Cambios pendientes de guardar en Nexus");
+    } catch {
+      keep();
+      setOrganizeNote("Sin conexión con la IA: el dictado quedó en «Transcripción para revisar».");
+    } finally {
+      setOrganizing(false);
+    }
+  }
   const change = useCallback((next: EncounterInput) => {
     setInput(next);
     setDirty(true);
@@ -659,10 +707,8 @@ export function EncounterEditor({
         <section className="glass-panel flex flex-col gap-3 p-4">
           <h2 className="font-semibold">Dictado clínico</h2>
           <p className="text-xs leading-relaxed text-nexus-muted">
-            El dictado se incorpora al borrador, sin enviarlo al asistente de IA
-            de Nexus. El reconocimiento del navegador puede procesar audio en un
-            servicio externo. Activá el micrófono solo en un entorno adecuado;
-            también podés escribir.
+            Dictá libre: la IA reparte lo que decís en los campos de la
+            consulta (sin nombre ni DNI del paciente). Revisá antes de validar.
           </p>
           <div className="flex flex-wrap gap-3">
             <button
@@ -674,17 +720,7 @@ export function EncounterEditor({
                   finishListening();
                   return;
                 }
-                startListening((text) => {
-                  setInput((prev) => ({
-                    ...prev,
-                    dictation:
-                      `${prev.dictation}${prev.dictation ? "\n" : ""}${text}`.slice(
-                        0,
-                        40000,
-                      ),
-                  }));
-                  setDirty(true);
-                });
+                startListening((text) => void organize(text));
               }}
             >
               {listening ? "■ Listo" : "🎙 Dictar"}
@@ -701,6 +737,14 @@ export function EncounterEditor({
             <p className="text-sm text-nexus-cyan">{interimTranscript}</p>
           )}
           <ClinicalError message={speechError} />
+          {organizing && (
+            <p role="status" className="text-sm text-nexus-cyan">
+              🧠 Ordenando lo que dictaste en los campos…
+            </p>
+          )}
+          {organizeNote && !organizing && (
+            <p role="status" className="text-xs text-nexus-muted">{organizeNote}</p>
+          )}
           <label className="text-sm">
             Transcripción para revisar
             <textarea
@@ -758,6 +802,17 @@ export function EncounterEditor({
               onClick={() => change({ ...input, dictation: "" })}
             >
               Descartar (ya está en los campos)
+            </button>
+            <button
+              className={`${clinicalButton} shrink-0`}
+              disabled={!input.dictation.trim() || readonly || organizing}
+              onClick={() => {
+                const text = input.dictation;
+                setInput((prev) => ({ ...prev, dictation: "" }));
+                void organize(text);
+              }}
+            >
+              🧠 Ordenar en los campos
             </button>
           </div>
         </section>
