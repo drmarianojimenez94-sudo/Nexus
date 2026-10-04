@@ -56,6 +56,11 @@ export interface VoiceCommandResult {
 // leading verb ("abrí", "mostrame", "ir a"…) and articles ("el", "mis"…).
 export const NAV_COMMANDS: Array<{ patterns: RegExp; path: string; say: string }> = [
   {
+    patterns: /^(?:lo que (?:aprendiste|aprendi|sabes de mi)|que aprendiste(?: de mi)?|tu cerebro|cerebro|mi cerebro)$/,
+    path: "/brain",
+    say: "Abriendo lo que aprendí de vos",
+  },
+  {
     patterns:
       /^(?:(?:crear|crea|agregar|agrega|dar de alta|alta de)\s+(?:(?:un|una|el|la)\s+)?)?(?:nuevo paciente|paciente nuevo|nueva ficha|ficha nueva)$/,
     path: "/patients/new",

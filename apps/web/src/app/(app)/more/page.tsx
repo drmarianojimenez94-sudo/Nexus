@@ -8,6 +8,7 @@ const LINKS = [
   { href: "/patients", label: "Pacientes" },
   { href: "/inbox", label: "Bandeja" },
   { href: "/areas", label: "Áreas" },
+  { href: "/brain", label: "🧠 Lo que aprendí de vos" },
   { href: "/memory", label: "Memoria" },
   { href: "/settings", label: "Ajustes" },
 ];

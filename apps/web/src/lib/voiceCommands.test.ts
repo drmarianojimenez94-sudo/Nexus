@@ -160,3 +160,11 @@ describe("voice routing", () => {
     expect(post).not.toHaveBeenCalled();
   });
 });
+
+describe("cerebro", () => {
+  it("abre lo que Nexus aprendió", async () => {
+    const { navigationCommand } = await import("./voiceCommands");
+    expect(navigationCommand("abrí lo que aprendiste")?.path).toBe("/brain");
+    expect(navigationCommand("mostrame tu cerebro")?.path).toBe("/brain");
+  });
+});

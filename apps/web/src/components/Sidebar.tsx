@@ -11,6 +11,7 @@ const LINKS: { href: string; label: string; icon: IconName }[] = [
   { href: "/patients", label: "Pacientes", icon: "patients" },
   { href: "/projects", label: "Proyectos", icon: "projects" },
   { href: "/areas", label: "Áreas", icon: "areas" },
+  { href: "/brain", label: "Lo que aprendí", icon: "memory" },
   { href: "/memory", label: "Memoria", icon: "memory" },
   { href: "/settings", label: "Ajustes", icon: "settings" },
 ];

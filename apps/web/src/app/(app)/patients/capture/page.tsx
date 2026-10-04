@@ -11,7 +11,7 @@ import {
   type Span,
 } from "@nexus/verticals";
 import { api } from "@/lib/api";
-import { useSpeech } from "@/lib/useSpeech";
+import { useDictation } from "@/lib/dictation";
 import {
   apiFetcher,
   bindSubject,
@@ -156,8 +156,8 @@ function PatientPicker({
 function CaptureAssistant() {
   const params = useSearchParams();
   const contextId = params.get("patient") || undefined;
-  const speech = useSpeech();
-  const [mode, setMode] = useState<CaptureMode>("typed"),
+  const dictation = useDictation();
+  const [mode, setMode] = useState<CaptureMode>("dictated"),
     [consent, setConsent] = useState(false),
     [text, setText] = useState(""),
     [plan, setPlan] = useState<CapturePlan | null>(null),
@@ -181,6 +181,8 @@ function CaptureAssistant() {
         sessionStorage.removeItem(CLINICAL_HANDOFF_KEY);
         setText(handoff);
         setMode("dictated");
+        // Desde el micrófono global se arma la ficha directo, sin otro toque.
+        if (params.get("auto") === "1") void interpret(handoff);
       }
     } catch {
       // almacenamiento no disponible: se escribe a mano
@@ -216,7 +218,9 @@ function CaptureAssistant() {
   };
   const micAllowed = mode === "dictated" || (mode === "ambient" && consent);
 
-  async function interpret() {
+  async function interpret(override?: string) {
+    const source = override ?? text;
+    if (source.trim().length < 2) return;
     setError(null);
     reset();
     setBusy(true);
@@ -224,7 +228,7 @@ function CaptureAssistant() {
       const { plan } = await api.post<{ plan: CapturePlan }>(
         "/verticals/medicine/capture",
         {
-          text,
+          text: source,
           templateId,
           ...(contextId ? { subjectId: contextId } : {}),
           captureMode: mode,
@@ -365,7 +369,7 @@ function CaptureAssistant() {
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
       <div className="flex min-w-0 flex-col gap-4">
       <section className="glass-panel flex flex-col gap-3 p-4">
-        <fieldset className="flex flex-col gap-2" disabled={busy || speech.listening}>
+        <fieldset className="flex flex-col gap-2" disabled={busy || dictation.listening}>
           <legend className="mb-2 text-sm font-medium">¿Cómo vas a cargarlo?</legend>
           <div className="grid gap-2 sm:grid-cols-3">
             {MODES.map((m) => (
@@ -453,45 +457,59 @@ function CaptureAssistant() {
             onChange={(e) => changeText(e.target.value)}
           />
         </label>
-        {speech.listening && (
-          <p role="status" className="text-sm text-nexus-cyan">
-            Escuchando… {speech.interimTranscript}
+        {dictation.listening && (
+          <p role="status" aria-live="polite" className="rounded-xl border border-nexus-danger/40 p-3 text-sm">
+            <span className="mr-2 inline-block h-2 w-2 animate-pulse rounded-full bg-nexus-danger" />
+            Escuchando. Hablá tranquilo: las pausas no cortan. Tocá <strong>Listo</strong> cuando termines.
+            {dictation.text && <span className="mt-2 block text-nexus-muted">{dictation.text}</span>}
           </p>
         )}
-        {speech.error && <p role="alert" className="text-sm text-nexus-amber">{speech.error}</p>}
-        <div className="flex flex-wrap gap-3">
-          {speech.sttSupported && (
+        {dictation.error && <p role="alert" className="text-sm text-nexus-amber">{dictation.error}</p>}
+        <div className="flex flex-wrap items-center gap-3">
+          {dictation.supported && (
             <button
               type="button"
-              className={clinicalSecondary}
+              aria-pressed={dictation.listening}
+              className={`inline-flex min-h-16 min-w-44 items-center justify-center gap-2 rounded-2xl px-6 text-lg font-semibold ${
+                dictation.listening ? "bg-nexus-danger text-white" : "bg-nexus-cyan text-nexus-bg"
+              } disabled:opacity-40`}
               disabled={busy || !micAllowed}
-              onClick={() =>
-                speech.listening
-                  ? speech.stopListening()
-                  : speech.startListening((heard) => {
-                      setText((prev) => (prev ? `${prev.trimEnd()} ${heard}` : heard));
-                      reset();
-                    })
-              }
+              onClick={() => {
+                if (dictation.listening) {
+                  const heard = dictation.stop();
+                  const full = [text.trim(), heard].filter(Boolean).join(" ");
+                  setText(full);
+                  void interpret(full);
+                } else {
+                  reset();
+                  dictation.start({
+                    onAutoStop: (heard) => {
+                      const full = [text.trim(), heard].filter(Boolean).join(" ");
+                      setText(full);
+                      void interpret(full);
+                    },
+                  });
+                }
+              }}
             >
-              {speech.listening ? "Detener dictado" : "🎙 Dictar"}
+              {dictation.listening ? "■ Listo" : "🎙 Dictar"}
             </button>
           )}
           <button
             type="button"
-            className={clinicalButton}
-            disabled={busy || text.trim().length < 2 || (mode === "ambient" && !consent)}
+            className={dictation.supported ? clinicalSecondary : clinicalButton}
+            disabled={busy || dictation.listening || text.trim().length < 2 || (mode === "ambient" && !consent)}
             onClick={() => void interpret()}
           >
-            {busy && !plan ? "Interpretando…" : "Interpretar"}
+            {busy && !plan ? "Armando la ficha…" : "Armar ficha con el texto"}
           </button>
         </div>
         <p className="text-xs text-nexus-muted">
-          {speech.sttSupported
+          {dictation.supported
             ? mode === "typed"
               ? "Para usar el micrófono elegí «Dicto yo» o «Conversación con el paciente»."
-              : "El dictado del navegador puede procesar el audio en servicios del fabricante del navegador. El texto no se envía solo: revisalo y tocá Interpretar."
-            : "Este navegador no ofrece dictado: podés usar el micrófono del teclado."}
+              : "Dictá todo de corrido; al tocar Listo, Nexus arma la ficha para que la revises. Nada se guarda sin tu confirmación."
+            : "Este navegador no ofrece dictado: usá el micrófono del teclado del celular."}
         </p>
       </section>
 

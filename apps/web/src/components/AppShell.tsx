@@ -12,6 +12,7 @@ import { SystemHeader } from "./SystemHeader";
 import { OnboardingTour } from "./OnboardingTour";
 import { Sidebar } from "./Sidebar";
 import { VoiceSession } from "./VoiceSession";
+import { GlobalMicButton } from "./GlobalMicButton";
 import { ThemeController } from "./ThemeController";
 import { SyncStatus } from "./SyncStatus";
 
@@ -131,6 +132,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {captureOpen && !clinical && (
         <VoiceSession onClose={closeVoice} onDockChange={setVoiceDocked} />
       )}
+      {/* Micrófono grande en todas las pantallas (la de dictado clínico tiene el suyo). */}
+      <GlobalMicButton hidden={path === "/patients/capture" || (captureOpen && !clinical && !voiceDocked)} />
       {showOnboarding && !captureOpen && (
         <OnboardingTour
           onFinish={() =>

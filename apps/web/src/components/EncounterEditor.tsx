@@ -100,6 +100,7 @@ export function EncounterEditor({
   const {
     startListening,
     stopListening,
+    finishListening,
     listening,
     sttSupported,
     interimTranscript,
@@ -671,7 +672,8 @@ export function EncounterEditor({
               className={clinicalSecondary}
               onClick={() => {
                 if (listening) {
-                  stopListening();
+                  // «Listo»: entrega todo lo dictado al borrador.
+                  finishListening();
                   return;
                 }
                 startListening((text) => {
@@ -687,7 +689,7 @@ export function EncounterEditor({
                 });
               }}
             >
-              {listening ? "Detener dictado" : "Dictar un fragmento"}
+              {listening ? "■ Listo" : "🎙 Dictar"}
             </button>
             <p className="self-center text-sm text-nexus-muted">
               {listening

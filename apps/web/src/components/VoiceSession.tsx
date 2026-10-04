@@ -18,6 +18,7 @@ const MEDICAL_CHIPS = [
   ["🩺 Pacientes", "abrí pacientes"],
   ["🎙 Dictar paciente", "dictar paciente"],
   ["Mi día médico", "mi día médico"],
+  ["🧠 Lo que aprendí", "lo que aprendiste"],
 ] as const;
 const GENERAL_CHIPS = [
   ["Calendario", "abrí el calendario"],
@@ -56,6 +57,7 @@ export function VoiceSession({
     speak,
     startListening,
     stopListening,
+    finishListening,
     cancelSpeech,
   } = useSpeech();
   const [reply, setReply] = useState(
@@ -418,10 +420,18 @@ export function VoiceSession({
                 className="rounded-full border border-nexus-cyan/50 px-4 py-2 text-xs text-nexus-cyan disabled:opacity-50"
               >
                 {listening && !muted
-                  ? "Pausar micrófono"
+                  ? "Pausar micrófono (descarta)"
                   : speaking
                     ? "Interrumpir y hablar"
                     : "Activar voz"}
+              </button>
+            )}
+            {listening && !muted && (
+              <button
+                onClick={() => finishListening()}
+                className="rounded-full bg-nexus-cyan px-5 py-2 text-sm font-semibold text-nexus-bg"
+              >
+                ■ Listo, enviar
               </button>
             )}
             <button

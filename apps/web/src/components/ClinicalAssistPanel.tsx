@@ -227,7 +227,7 @@ export function ClinicalAssistPanel({
           )}
 
           {data.habits.length > 0 && (
-            <Block title="Tu conducta habitual">
+            <Block title="Tu conducta habitual (aprendida de vos)">
               <ul className="flex flex-col gap-2">
                 {data.habits.map((h) => (
                   <li key={h.key}>
@@ -242,6 +242,7 @@ export function ClinicalAssistPanel({
                   </li>
                 ))}
               </ul>
+              <a href="/brain" className="mt-2 inline-block text-xs text-nexus-cyan">Ver todo lo que aprendí →</a>
             </Block>
           )}
 
