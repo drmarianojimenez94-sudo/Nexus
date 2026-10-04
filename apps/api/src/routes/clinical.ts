@@ -23,6 +23,7 @@ import {
   normalizeDocument,
 } from "../lib/clinicalCrypto.js";
 import { recordAudit } from "../lib/audit.js";
+import { learnFromFields } from "../lib/clinicalHabits.js";
 import { authenticate } from "../middleware/authenticate.js";
 import { asyncHandler } from "../middleware/asyncHandler.js";
 import { HttpError } from "../middleware/errorHandler.js";
@@ -530,6 +531,15 @@ clinicalRouter.post(
         entityId: row.id,
       },
       tx,
+    );
+    // El cerebro aprende de lo validado: cuadro → conducta, sin identificadores.
+    const identity = patientView(patient);
+    setImmediate(() =>
+      void learnFromFields(row.userId, record.fields, {
+        names: [identity.name],
+        documents: identity.document ? [identity.document] : [],
+        phones: identity.phone ? [identity.phone] : [],
+      }),
     );
     return {
       status: 200,

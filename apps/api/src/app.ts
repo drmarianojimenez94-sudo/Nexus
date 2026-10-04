@@ -21,6 +21,7 @@ import { todayRouter } from "./routes/today.js";
 import { googleWorkspaceRouter } from "./routes/googleWorkspace.js";
 import { clinicalRouter } from "./routes/clinical.js";
 import { verticalsRouter } from "./routes/verticals.js";
+import { voiceRouter } from "./routes/voice.js";
 
 import { authenticate } from "./middleware/authenticate.js";
 import { expectedOwner } from "./middleware/expectedOwner.js";
@@ -67,6 +68,7 @@ export function createApp() {
   app.use("/today", todayRouter);
   app.use("/clinical", clinicalRouter);
   app.use("/verticals", verticalsRouter);
+  app.use("/voice", voiceRouter);
   app.use("/google-workspace", googleWorkspaceRouter);
   app.use("/preferences", preferencesRouter);
   app.use("/memories", memoryRouter);

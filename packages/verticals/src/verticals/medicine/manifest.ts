@@ -29,6 +29,7 @@ const CANONICAL: Record<string, "S" | "O" | "A" | "P"> = {
   warnings: "P",
   destination: "P",
   priority: "P",
+  observations: "P",
 };
 
 /**
@@ -344,6 +345,7 @@ export const medicineVertical = defineVertical({
       { field: "appointment.startAt", source: "rules", requiresHumanReview: true, initialStatus: "proposed" },
       { field: "patient.name", source: "rules", requiresHumanReview: true, initialStatus: "proposed" },
       { field: "medication.dosage", source: "rules", requiresHumanReview: true, initialStatus: "draft" },
+      { field: "assist.suggestions", source: "ai", requiresHumanReview: true, initialStatus: "proposed" },
     ],
     provisionalCategories: ["diagnosis"],
     provenance: true,
@@ -525,6 +527,8 @@ export const medicineVertical = defineVertical({
       { id: "tests", targets: ["tests", "objective", "summary"], patterns: ["\\b(?:trae|aporta)\\b", "\\bresultado de\\b"] },
       { id: "plan", targets: ["plan", "treatment", "interventions", "instructions"], patterns: ["\\b(?:le |se )?indic(?:o|a|amos)\\b", "\\bindicaciones:?", "\\bplan:?", "\\btratamiento:?", "\\b(?:receto|recete|roto|suspendo|inicio|inicie|agrego|agregue|continua con|sigue con|arranca con|le doy|le damos|le deje|le subi|le baje|indique|pido|pedi|solicito|solicite)\\b"] },
       { id: "warnings", targets: ["warnings", "instructions", "plan"], patterns: ["\\bpautas de alarma:?", "\\bconsultar si\\b", "\\bvolver si\\b"] },
+      { id: "observations", targets: ["observations", "warnings", "followup", "plan"], patterns: ["\\bobservacion(?:es)?:?", "\\bnota:", "\\bcomentario:?", "\\bdejo asentado\\b"] },
+      { id: "currentIllness", targets: ["present", "subjective", "evolution", "initial", "summary"], patterns: ["\\benfermedad actual:?"] },
       { id: "destination", targets: ["destination", "plan"], patterns: ["\\bderivo a\\b", "\\bderivar a\\b", "\\binterconsulta con\\b"] },
       { id: "present", targets: ["present", "subjective", "evolution", "initial", "summary"], patterns: ["\\brefiere\\b", "\\bcuenta que\\b", "\\bcomenta\\b", "\\bcursa con\\b", "\\bpresenta\\b"] },
     ],

@@ -25,6 +25,8 @@ export async function requestAI(params: Anthropic.MessageCreateParamsNonStreamin
     }) };
   }
   if (!env.aiApiKey) throw new Error("AI is not configured");
+  // The forced tool comes from the caller (record_intent, clinical_suggestions…).
+  const forcedTool = params.tool_choice && "name" in params.tool_choice ? params.tool_choice.name : params.tools?.[0]?.name;
   const tools = params.tools?.map((tool) => ({ type: "function", function: {
     name: tool.name, description: tool.description, parameters: tool.input_schema,
   } }));
@@ -36,7 +38,7 @@ export async function requestAI(params: Anthropic.MessageCreateParamsNonStreamin
       model: env.aiModel,
       max_tokens: params.max_tokens,
       messages: [{ role: "system", content: params.system }, ...params.messages],
-      ...(tools ? { tools, tool_choice: { type: "function", function: { name: "record_intent" } } } : {}),
+      ...(tools ? { tools, tool_choice: { type: "function", function: { name: forcedTool } } } : {}),
     }),
   });
   // Do not log the response body or request headers: either may contain private data.
@@ -45,7 +47,7 @@ export async function requestAI(params: Anthropic.MessageCreateParamsNonStreamin
   const content: Completion["content"] = [];
   if (message?.content) content.push({ type: "text", text: message.content });
   for (const call of message?.tool_calls ?? []) {
-    if (call.function.name === "record_intent") content.push({ type: "tool_use", input: JSON.parse(call.function.arguments) });
+    if (call.function.name === forcedTool) content.push({ type: "tool_use", input: JSON.parse(call.function.arguments) });
   }
   return { content };
 }

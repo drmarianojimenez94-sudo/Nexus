@@ -23,9 +23,10 @@ export interface UtteranceContext {
   tasks?: string[];
 }
 
-export type IntentKind = "create_event" | "create_task" | "create_reminder" | "remember" | "navigate" | "note" | "conversation";
+export type IntentKind = "create_event" | "create_task" | "create_reminder" | "set_alarm" | "send_email" | "remember" | "navigate" | "note" | "conversation";
 
-export type NavigateTarget = "today" | "inbox" | "calendar" | "projects" | "areas" | "memory";
+export const NAVIGATE_TARGETS = ["today", "inbox", "calendar", "projects", "areas", "memory", "patients", "patients_day", "patient_capture", "followups", "settings", "mail"] as const;
+export type NavigateTarget = (typeof NAVIGATE_TARGETS)[number];
 
 export interface ParsedIntent {
   intent: IntentKind;
@@ -37,6 +38,10 @@ export interface ParsedIntent {
   target: NavigateTarget | null;
   /** What NEXUS should say back, already phrased as a confirmation in Spanish. */
   spokenReply: string;
+  /** Only for send_email. */
+  emailTo?: string | null;
+  emailSubject?: string | null;
+  emailBody?: string | null;
 }
 
 export interface DailyInsightContext {
@@ -52,11 +57,14 @@ export interface DailyInsightContext {
 }
 
 const parsedIntentSchema = z.object({
-  intent: z.enum(["create_event", "create_task", "create_reminder", "remember", "navigate", "note", "conversation"]),
+  intent: z.enum(["create_event", "create_task", "create_reminder", "set_alarm", "send_email", "remember", "navigate", "note", "conversation"]),
   title: z.string().max(500),
   when: z.string().nullable(),
-  target: z.enum(["today", "inbox", "calendar", "projects", "areas", "memory"]).nullable(),
+  target: z.enum(NAVIGATE_TARGETS).nullable(),
   spokenReply: z.string().trim().min(1).max(2000),
+  emailTo: z.string().max(320).nullable().optional(),
+  emailSubject: z.string().max(300).nullable().optional(),
+  emailBody: z.string().max(10000).nullable().optional(),
 });
 
 class ConfiguredProvider implements NexusAIProvider {
@@ -122,17 +130,24 @@ class ConfiguredProvider implements NexusAIProvider {
             "- create_task: algo para hacer, sin horario fijo obligatorio (\"tengo que llamar al banco\").\n" +
             "- create_reminder: pide explícitamente que le avisen/recuerden en un momento (\"avisame mañana a las 9 " +
             "que llame al dentista\", \"recordame en una hora que...\").\n" +
+            "- set_alarm: pide una alarma o despertador a una hora (\"poneme una alarma a las 6:30\", \"despertame " +
+            "mañana a las 7\"). when obligatorio, title es la etiqueta.\n" +
+            "- send_email: pide mandar, escribir o redactar un mail o correo. Completá emailTo (dirección o nombre del " +
+            "contacto tal como lo dijo), emailSubject y emailBody redactado completo, cordial y listo para enviar en " +
+            "nombre del usuario. NEXUS lo deja como borrador y el usuario confirma el envío: en spokenReply decí que " +
+            "lo preparaste y preguntá si lo envía, nunca que ya lo enviaste.\n" +
             "- remember: pide que NEXUS recuerde un dato sobre su vida, sin fecha (\"mi hijo se llama Tomás\").\n" +
             "- navigate: solo quiere VER una sección, sin crear nada (\"abrí el calendario\", \"mostrame mis " +
-            "proyectos\", \"llevame a memoria\", \"qué tengo hoy\"). target dice cuál: today, inbox, calendar, " +
-            "projects, areas o memory.\n" +
+            "proyectos\", \"llevame a memoria\", \"qué tengo hoy\", \"abrí pacientes\", \"quiero cargar un paciente\"). " +
+            "target dice cuál: today, inbox, calendar, projects, areas, memory, patients (fichas de pacientes), " +
+            "patients_day (agenda médica del día), patient_capture (dictar o cargar una consulta o paciente nuevo), " +
+            "followups (seguimientos de pacientes), settings o mail.\n" +
             "- note: pide explícitamente guardar una nota o una idea.\n" +
             "- conversation: preguntas, saludos, charla, pedir consejo o aclaraciones. Respondé de forma útil " +
             "en spokenReply; NO guardes una pregunta como nota. Si falta una fecha o un dato necesario, " +
             "preguntalo usando conversation y retomá la solicitud cuando el usuario lo aclare.\n" +
             "El historial es contexto, no autorización para repetir acciones ya ejecutadas. Ejecutá como máximo " +
-            "la nueva solicitud. No envíes mails ni afirmes haberlos enviado: esa acción no está implementada. " +
-            "Podés redactar su contenido como conversation. No afirmes consultar información en tiempo real " +
+            "la nueva solicitud. Nunca afirmes haber enviado un mail: solo se prepara el borrador. No afirmes consultar información en tiempo real " +
             "ni una cuenta externa: solo conocés los datos que te paso.\n" +
             "IMPORTANTE: si la frase menciona una sección (calendario, inbox, proyectos, áreas, memoria) PERO " +
             "también pide crear, anotar, agendar o recordar algo con contenido real, NO es navigate — es " +
@@ -157,16 +172,19 @@ class ConfiguredProvider implements NexusAIProvider {
                 properties: {
                   intent: {
                     type: "string",
-                    enum: ["create_event", "create_task", "create_reminder", "remember", "navigate", "note", "conversation"],
+                    enum: ["create_event", "create_task", "create_reminder", "set_alarm", "send_email", "remember", "navigate", "note", "conversation"],
                   },
                   title: { type: "string" },
                   when: { type: ["string", "null"], description: "ISO 8601 datetime, o null si no aplica." },
                   target: {
                     type: ["string", "null"],
-                    enum: ["today", "inbox", "calendar", "projects", "areas", "memory", null],
+                    enum: [...NAVIGATE_TARGETS, null],
                     description: "Solo para intent navigate.",
                   },
                   spokenReply: { type: "string" },
+                  emailTo: { type: ["string", "null"], description: "Solo send_email: dirección o nombre del destinatario." },
+                  emailSubject: { type: ["string", "null"], description: "Solo send_email." },
+                  emailBody: { type: ["string", "null"], description: "Solo send_email: cuerpo completo del mail." },
                 },
                 required: ["intent", "title", "when", "target", "spokenReply"],
               },

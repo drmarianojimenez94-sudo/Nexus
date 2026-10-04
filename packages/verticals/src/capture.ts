@@ -10,6 +10,8 @@ export interface CaptureContext {
   subjectName?: string;
   knownAllergies?: string[];
   appointmentMinutes?: number;
+  /** Plantilla elegida por el profesional (por ejemplo "visit"); si no, se infiere. */
+  templateId?: string;
   /** Para pruebas reproducibles. */
   random?: () => number;
 }
@@ -136,7 +138,7 @@ export function interpretCapture(source: string, manifest: VerticalManifest, ada
   const subject = extractSubject(text, folded, manifest, ctx);
   const consumed: Span[] = [...subject.consumed];
   const safety = analyzeSafety(text, manifest, ctx.knownAllergies);
-  const templateId = pickTemplate(folded, manifest, subject.mode === "new");
+  const templateId = ctx.templateId && manifest.templates.some((t) => t.id === ctx.templateId) ? ctx.templateId : pickTemplate(folded, manifest, subject.mode === "new");
   const template = manifest.templates.find((t) => t.id === templateId)!;
   const templateKeys = new Set(template.sections.map((s) => s.key));
   const target = (targets: string[]) => targets.find((t) => templateKeys.has(t));

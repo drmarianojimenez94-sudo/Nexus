@@ -7,6 +7,8 @@ export const isGoogleConfigured = Boolean(
 /** Read-only for V1 (spec §7 lists write access too, but least-privilege first — expands when NexusBrain gets a createEvent tool). */
 export const GOOGLE_SCOPES = {
   calendar: "https://www.googleapis.com/auth/calendar.readonly",
+  /** Crear turnos y recordatorios en el calendario de Google. */
+  calendarEvents: "https://www.googleapis.com/auth/calendar.events",
   gmailRead: "https://www.googleapis.com/auth/gmail.readonly",
   gmailCompose: "https://www.googleapis.com/auth/gmail.compose",
   contacts: "https://www.googleapis.com/auth/contacts.readonly",
