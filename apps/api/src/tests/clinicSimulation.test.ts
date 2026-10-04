@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import request from "supertest";
 import { describe, expect, it, vi } from "vitest";
@@ -41,15 +41,17 @@ interface PoolPatient {
   visits: { dictation: string; expect: Expect }[];
 }
 
-const poolPath = join(__dirname, "fixtures/clinic-pool.json");
-const pool: PoolPatient[] = existsSync(poolPath) ? JSON.parse(readFileSync(poolPath, "utf8")) : [];
+const fixtures = join(__dirname, "fixtures");
+const pools = readdirSync(fixtures)
+  .filter((f) => /^clinic-pool(?:-\d+)?\.json$/.test(f))
+  .map((file) => ({ file, pool: JSON.parse(readFileSync(join(fixtures, file), "utf8")) as PoolPatient[] }));
 const contains = (haystack: string | undefined, needle: string) => fold(haystack ?? "").includes(fold(needle));
 
-describe.skipIf(pool.length === 0)("simulación de consultorio (lote ciego)", () => {
+describe.each(pools)("simulación de consultorio ($file)", ({ file, pool }) => {
   it(`atiende ${pool.length} pacientes de punta a punta`, async () => {
     const app = createApp();
     const doctor = request.agent(app);
-    await doctor.post("/auth/register").send({ name: "Dr. Simulación", email: "sim@example.test", password: "supersecret123" });
+    await doctor.post("/auth/register").send({ name: "Dr. Simulación", email: `sim-${file}@example.test`, password: "supersecret123" });
     const fetcher = async (r: ApiRequest) => {
       const res = await doctor[r.method.toLowerCase() as "get" | "post"](r.path).send(r.body ?? {});
       if (res.status >= 400) throw new Error(`${r.method} ${r.path} → ${res.status} ${JSON.stringify(res.body)}`);
@@ -121,6 +123,7 @@ describe.skipIf(pool.length === 0)("simulación de consultorio (lote ciego)", ()
     const day = (await doctor.get("/verticals/medicine/day")).body.brief;
     const pct = (a: number, b: number) => (b ? Math.round((a / b) * 100) : 100);
     const report = {
+      lote: file,
       pacientes: pool.length,
       consultas: visits,
       guardadas: saved,
@@ -135,7 +138,7 @@ describe.skipIf(pool.length === 0)("simulación de consultorio (lote ciego)", ()
       segundos: Math.round((Date.now() - started) / 1000),
       fallas: misses,
     };
-    writeFileSync(join(__dirname, "../../../../docs/simulation-report.json"), `${JSON.stringify(report, null, 2)}\n`);
+    writeFileSync(join(__dirname, `../../../../docs/simulation-${file.replace(/\.json$/, "")}.json`), `${JSON.stringify(report, null, 2)}\n`);
     console.warn(JSON.stringify({ ...report, fallas: misses.length }, null, 2));
 
     expect(leaks).toEqual([]);
