@@ -57,7 +57,7 @@ export const CLINICAL_GUIDELINES: GuidelineCondition[] = [
   {
     id: "dyslipidemia",
     label: "Dislipemia",
-    patterns: ["dislipem", "colesterol", "\\bldl\\b", "triglicerid", "hipercolesterol"],
+    patterns: ["dislipem", "colesterol", "\\bldl\\b", "triglicerid", "hipercolesterol", "\\b(?:atorva|rosuva|simva|prava)statina\\b"],
     checks: ["Calcular riesgo cardiovascular global.", "Perfil lipídico a las 6–12 semanas de iniciar o ajustar estatina y luego anual.", "Hepatograma basal; CPK si hay síntomas musculares."],
     approach: ["Objetivo de LDL según riesgo (muy alto riesgo < 55 mg/dL).", "Estatina de intensidad acorde al riesgo; agregar ezetimibe si no alcanza el objetivo."],
     sources: ["ESC/EAS 2019 (actualización 2025)"],

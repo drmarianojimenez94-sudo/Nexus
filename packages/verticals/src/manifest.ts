@@ -294,6 +294,11 @@ export const captureSchema = z.object({
   ),
   /** Mediciones con unidades (signos vitales, montos, superficies…). */
   measurements: z.array(z.object({ id: key, label, pattern: z.string().min(2), unit: z.string(), targets: z.array(key).min(1) })),
+  /**
+   * Rótulos que el profesional dicta ("Motivo de consulta: …"). Todo lo que
+   * sigue al rótulo, hasta el próximo, va entero a ese campo.
+   */
+  sectionLabels: z.array(z.object({ targets: z.array(key).min(1), pattern: z.string().min(2), requiresColon: z.boolean().default(false), sentenceStart: z.boolean().default(false) })).default([]),
   /** Campo de la plantilla que resume los pendientes dictados. */
   followupTargets: z.array(key).default([]),
   /** Dónde van las cláusulas sin señal explícita (relato libre). */

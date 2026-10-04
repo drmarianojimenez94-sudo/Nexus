@@ -211,7 +211,9 @@ verticalsRouter.post(
     const age = patient ? ageFrom(patient.birthDate) : (input.subject?.age ?? null);
     const sex = patient?.sex || input.subject?.sex || "";
     const history = patient ? deidentify(patient.history, ids).text : "";
-    const all = [Object.values(fields).join(" "), history, patient?.medication ?? ""].join(" ");
+    // La edad registrada también activa recordatorios (adulto mayor, pediatría).
+    const ageContext = age === null ? "" : age >= 75 ? " adulto mayor" : age < 14 ? " control pediatrico" : "";
+    const all = [Object.values(fields).join(" "), history, patient?.medication ?? "", ageContext].join(" ");
     const habits = habitsFor(await loadHabits(userId), all);
     const casePayload = {
       age,

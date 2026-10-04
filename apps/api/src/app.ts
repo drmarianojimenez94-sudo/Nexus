@@ -48,7 +48,8 @@ export function createApp() {
     "/",
     rateLimit({
       windowMs: 60 * 1000,
-      limit: 120,
+      // Dictado + sugerencias en vivo hacen más pedidos que la app clásica.
+      limit: Number(process.env.API_RATE_LIMIT ?? 300),
       standardHeaders: true,
       legacyHeaders: false,
     }),

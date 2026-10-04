@@ -23,6 +23,7 @@ vi.mock("../lib/clinicalAssist.js", () => ({
   },
 }));
 
+process.env.API_RATE_LIMIT = "100000";
 const { createApp } = await import("../app.js");
 
 interface Expect {
