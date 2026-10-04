@@ -7,6 +7,7 @@ export const emptyPatient: PatientInput = {
   document: "",
   birthDate: "",
   phone: "",
+  sex: "",
   familyContact: "",
   allergies: "",
   medication: "",
@@ -19,7 +20,11 @@ export function PatientForm({
   initial?: PatientInput;
   onSave: (input: PatientInput) => Promise<void>;
 }) {
-  const [data, setData] = useState(initial),
+  const [data, setData] = useState<PatientInput>({
+      ...initial,
+      // Fichas anteriores no tenían sexo registrado.
+      sex: initial.sex ?? "",
+    }),
     [busy, setBusy] = useState(false),
     [error, setError] = useState<string | null>(null);
   const change = (key: keyof PatientInput, value: string) =>
@@ -68,6 +73,22 @@ export function PatientForm({
               />
             </label>
           ))}
+          <label className="flex min-w-0 flex-col gap-2 text-sm">
+            Sexo
+            <select
+              className={clinicalInput}
+              value={data.sex}
+              onChange={(e) => change("sex", e.target.value)}
+            >
+              <option value="">— Sin registrar</option>
+              <option value="F">F · Femenino</option>
+              <option value="M">M · Masculino</option>
+              <option value="X">X · No binario / otro</option>
+            </select>
+            <span className="text-xs text-nexus-muted">
+              Se usa para recordatorios de prevención por edad y sexo.
+            </span>
+          </label>
         </div>
         {(
           [

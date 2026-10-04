@@ -40,6 +40,7 @@ async function request<T>(
   path: string,
   options: RequestInit = {},
   retried = false,
+  raw = false,
 ): Promise<T> {
   if (
     ["/clinical/", "/projects", "/tasks", "/google-workspace/", "/verticals/"].some((prefix) =>
@@ -71,7 +72,7 @@ async function request<T>(
     (!path.startsWith("/auth/") || path === "/auth/me") &&
     (await refreshSession())
   ) {
-    return request<T>(path, options, true);
+    return request<T>(path, options, true, raw);
   }
 
   if (!res.ok) {
@@ -85,6 +86,7 @@ async function request<T>(
     throw new ApiError(res.status, message);
   }
 
+  if (raw) return (await res.blob()) as T;
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
 }
@@ -107,4 +109,12 @@ export const api = {
       body: body ? JSON.stringify(body) : undefined,
     }),
   delete: <T>(path: string) => request<T>(path, { method: "DELETE" }),
+  /** POST que devuelve el cuerpo binario (por ejemplo, audio de /voice/tts). */
+  postBlob: (path: string, body?: unknown) =>
+    request<Blob>(
+      path,
+      { method: "POST", body: body ? JSON.stringify(body) : undefined },
+      false,
+      true,
+    ),
 };

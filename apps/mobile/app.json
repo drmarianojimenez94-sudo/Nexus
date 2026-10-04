@@ -17,7 +17,7 @@
             "com.google.android.as",
             "com.google.android.googlequicksearchbox"
           ],
-          "microphonePermission": "Nexus usa el micrófono solo mientras tocás Dictar, para transcribir lo que decís sobre tus consultas y pendientes. No escucha en segundo plano ni guarda el audio.",
+          "microphonePermission": "Nexus usa el micrófono solo con la app abierta, cuando le hablás en Inicio o en Dictar, para transcribir tus pedidos, consultas y pendientes. No escucha en segundo plano ni guarda el audio.",
           "speechRecognitionPermission": "El reconocimiento de voz convierte tu dictado en texto, en el dispositivo cuando está disponible, para preparar borradores que siempre revisás antes de guardar."
         }
       ],
@@ -32,7 +32,15 @@
         {
           "faceIDPermission": "Face ID o la huella protegen el acceso a las fichas de tus pacientes cuando abrís Nexus en este teléfono."
         }
-      ]
+      ],
+      [
+        "expo-calendar",
+        {
+          "remindersPermission": "Nexus no lee ni modifica tus Recordatorios: solo usa el calendario para tus turnos.",
+          "calendarPermission": "Con tu permiso, Nexus copia tus turnos al calendario del teléfono usando solo iniciales, nunca datos clínicos, y muestra tus próximos eventos junto a los de Nexus en la Agenda."
+        }
+      ],
+      "expo-notifications"
     ],
     "ios": {
       "supportsTablet": false,
@@ -48,9 +56,13 @@
       "predictiveBackGestureEnabled": false,
       "package": "com.nexus.app",
       "permissions": [
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.READ_CALENDAR",
         "android.permission.READ_CONTACTS",
         "android.permission.RECORD_AUDIO",
-        "android.permission.USE_BIOMETRIC"
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.WRITE_CALENDAR",
+        "com.android.alarm.permission.SET_ALARM"
       ]
     },
     "web": {

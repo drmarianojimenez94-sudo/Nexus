@@ -79,3 +79,11 @@ services:
         sync: false
       - key: INTERNAL_DISPATCH_SECRET
         sync: false
+      # Optional: neural voice (google | elevenlabs | openai). Without it the
+      # app speaks with the phone/browser voice.
+      - key: VOICE_PROVIDER
+        sync: false
+      - key: VOICE_API_KEY
+        sync: false
+      - key: VOICE_NAME
+        sync: false

@@ -1,0 +1,34 @@
+{
+  "lote": "clinic-pool-2.json",
+  "pacientes": 30,
+  "consultas": 35,
+  "guardadas": 35,
+  "validadas": 35,
+  "campos": {
+    "reason": "34/35 (97%)",
+    "present": "34/35 (97%)",
+    "treatment": "33/34 (97%)",
+    "observations": "11/14 (79%)"
+  },
+  "guias": "51/52 (98%)",
+  "alarmas": "35/35 (100%)",
+  "seguimientos": "43/45 (96%)",
+  "fugasDeIdentidadHaciaIA": 0,
+  "conductasAprendidas": 33,
+  "miDia": {
+    "borradores": 0,
+    "seguimientosProximos": 7
+  },
+  "segundos": 4,
+  "fallas": [
+    "q03#1 observations: esperaba «guardia obstétrica», quedó «—»",
+    "q05#1 observations: esperaba «reposo laboral», quedó «—»",
+    "q07#1 observations: esperaba «en ayunas», quedó «—»",
+    "q08#1 reason: esperaba «hipoglucemia», quedó «anoche tuvo un episodio de sudoración, temblor y confusión, la esposa le midió g»",
+    "q09#1 present: esperaba «exudado», quedó «Lo traen por fiebre de 39 y dolor de garganta desde hace dos días, no quiere com»",
+    "q17#1 treatment: esperaba «amoxicilina-clavulánico», quedó «—»",
+    "q19#1 seguimiento RESULT faltante",
+    "q23#1 guía anxiety no detectada",
+    "q26#2 seguimiento RESULT faltante"
+  ]
+}

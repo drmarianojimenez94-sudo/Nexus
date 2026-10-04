@@ -304,7 +304,9 @@ export function interpretCapture(source: string, manifest: VerticalManifest, ada
         if (!cm) continue;
         const startInClause = cm.index + cm[0].length;
         const tail = masked.slice(startInClause);
-        const lead = tail.length - tail.replace(/^[\s:,-]+/, "").length;
+        // El valor sale del texto original: lo enmascarado (mediciones) también es parte del relato.
+        const original = f.slice(startInClause);
+        const lead = original.length - original.replace(/^[\s:,-]+/, "").length;
         const absStart = clause.start + startInClause + lead;
         const value = text.slice(absStart, clause.end).trim();
         if (value.length < 2 || !tail.trim()) continue;
@@ -320,6 +322,16 @@ export function interpretCapture(source: string, manifest: VerticalManifest, ada
         // Relato libre (incluidas negaciones pertinentes): va a la sección subjetiva/motivo.
         if (!put(target(manifest.capture.fallbackTargets), rest, span(text, restStart, clause.end))) unmapped.push(span(text, restStart, clause.end));
       }
+    }
+  }
+
+  // Sin señal de motivo, la primera oración con contenido es el motivo.
+  if (templateKeys.has("reason") && !fields.has("reason")) {
+    const first = segments(text, folded, manifest).find((s) => !subject.evidence.some((e) => e.start >= s.start && e.end <= s.end) && s.text.replace(new RegExp(`\\b(?:${FILLER})\\b`, "gi"), "").replace(/[\s,.;:]+/g, "").length >= 6);
+    if (first) {
+      const sentence = sentences(text).find((s) => first.start >= s.start && first.start < s.end) ?? first;
+      const value = sentence.text.replace(new RegExp(`^(?:(?:${FILLER})[\\s,]*)+`, "i"), "");
+      put("reason", value, span(text, sentence.end - value.length, sentence.end));
     }
   }
 
@@ -371,7 +383,10 @@ export function interpretCapture(source: string, manifest: VerticalManifest, ada
   for (const fu of followupSpans) {
     const prev = merged[merged.length - 1];
     const sameSentence = prev && !/[.;\n]/.test(text.slice(prev.clause.end, fu.clause.start));
-    const weak = /\b(?:la|lo|los|las) (?:vemos|veo)\b|^\s*(?:vemos\s+(?:los\s+)?)?resultados?\b/.test(fold(fu.clause.text));
+    // "los vemos", "vemos los resultados": hablan de los estudios pedidos.
+    // "la/lo veo" en otra oración es un control de la persona, no del estudio.
+    const ff = fold(fu.clause.text);
+    const weak = /\b(?:los|las) (?:vemos|veo)\b|^\s*(?:vemos\s+(?:los\s+)?)?resultados?\b/.test(ff) || (sameSentence && /\b(?:la|lo) (?:vemos|veo)\b/.test(ff));
     if (prev && !prev.when && fu.when && ((sameSentence && prev.kind === fu.kind) || (weak && prev.kind === "RESULT"))) {
       prev.when = fu.when;
       prev.clause = span(text, prev.clause.start, fu.clause.end);

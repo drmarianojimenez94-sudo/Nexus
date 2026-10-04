@@ -1,11 +1,33 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { FaceState } from "./NexusFace";
 import { NexusCore } from "./NexusCore";
 import { useSpeech } from "@/lib/useSpeech";
-import { handleVoiceCommand, type ConversationTurn } from "@/lib/voiceCommands";
+import {
+  handleVoiceCommand,
+  type ConversationTurn,
+  type VoiceCommandResult,
+} from "@/lib/voiceCommands";
+import { announce, useVoiceMuted } from "@/lib/voice";
+import { AssistantActionCards } from "./AssistantActionCards";
+
+/** Atajos de un toque: lo médico primero, para llegar al consultorio sin buscar. */
+const MEDICAL_CHIPS = [
+  ["🩺 Pacientes", "abrí pacientes"],
+  ["🎙 Dictar paciente", "dictar paciente"],
+  ["Mi día médico", "mi día médico"],
+] as const;
+const GENERAL_CHIPS = [
+  ["Calendario", "abrí el calendario"],
+  ["Hoy", "abrí mi panel"],
+  ["Correo", "abrí el correo"],
+  ["Proyectos", "abrí proyectos"],
+] as const;
+
+/** Pantallas con dictado propio: el asistente general se cierra al entrar. */
+const FOCUSED = /^\/(?:patients|projects)(?:[/?#]|$)/;
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 
@@ -17,7 +39,14 @@ export function VoiceSession({
   onDockChange: (docked: boolean) => void;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const { user } = useAuth();
+  const [voiceMuted, setVoiceMuted] = useVoiceMuted();
+  const voiceMutedRef = useRef(voiceMuted);
+  voiceMutedRef.current = voiceMuted;
+  const [actions, setActions] = useState<
+    Pick<VoiceCommandResult, "alarm" | "event" | "emailDraft">
+  >({});
   const {
     sttSupported,
     listening,
@@ -29,7 +58,9 @@ export function VoiceSession({
     stopListening,
     cancelSpeech,
   } = useSpeech();
-  const [reply, setReply] = useState("Hola. Soy Nexus. ¿Qué hacemos hoy?");
+  const [reply, setReply] = useState(
+    "Hola. Soy Nexus, tu secretario. ¿Vamos a pacientes, a la agenda o al correo?",
+  );
   const [heard, setHeard] = useState("");
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
@@ -50,6 +81,15 @@ export function VoiceSession({
   const processing = useRef(false);
   const sessionVersion = useRef(0);
   const handler = useRef<(text: string) => void>(() => {});
+  const lastPath = useRef(pathname);
+
+  // Tocar la barra de navegación con la consola abierta: se acomoda abajo
+  // para que la pantalla elegida quede a la vista.
+  useEffect(() => {
+    if (lastPath.current === pathname) return;
+    lastPath.current = pathname;
+    dock(true);
+  }, [pathname, dock]);
 
   const listen = useCallback(() => {
     if (active.current && !document.hidden && !micMuted.current)
@@ -73,12 +113,25 @@ export function VoiceSession({
         { role: "assistant" as const, content: result.speak.slice(0, 2000) },
       ].slice(-12);
       setReply(result.speak);
+      setActions({
+        alarm: result.alarm,
+        event: result.event,
+        emailDraft: result.emailDraft,
+      });
+      if (result.navigateTo && FOCUSED.test(result.navigateTo)) {
+        // Pacientes y Proyectos cierran esta consola: la confirmación se dice
+        // por el canal global para que no se corte al cambiar de pantalla.
+        announce(result.speak);
+        active.current = false; // la consola se cierra: no reabrir el micrófono
+        router.push(result.navigateTo);
+        return;
+      }
       if (result.navigateTo) {
         dock(true);
         router.push(result.navigateTo);
       }
       setBusy(false);
-      await speak(result.speak);
+      if (!voiceMutedRef.current) await speak(result.speak);
       if (!active.current || version !== sessionVersion.current) return;
       if (result.close) {
         onClose();
@@ -197,15 +250,15 @@ export function VoiceSession({
       aria-label="Asistente Nexus"
       className={
         docked
-          ? "voice-console voice-dock fixed inset-x-3 bottom-3 z-50 mx-auto max-w-3xl rounded-2xl border border-nexus-cyan/30"
+          ? "voice-console voice-dock fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+6.25rem)] z-50 mx-auto max-w-3xl rounded-2xl border border-nexus-cyan/30 sm:bottom-3"
           : "voice-console fixed inset-0 z-50 overflow-y-auto"
       }
     >
       <div
         className={
           docked
-            ? "relative p-3 sm:p-4"
-            : "relative mx-auto flex min-h-[100dvh] max-w-5xl flex-col px-5 pb-8 pt-6 sm:px-10"
+            ? "relative max-h-[45dvh] overflow-y-auto p-3 sm:p-4"
+            : "relative mx-auto flex min-h-[100dvh] max-w-5xl flex-col px-5 pb-32 pt-6 sm:px-10 sm:pb-8"
         }
       >
         <header className="flex flex-wrap items-center justify-between gap-3">
@@ -220,6 +273,18 @@ export function VoiceSession({
             )}
           </div>
           <div className="ml-auto flex shrink-0 gap-2">
+            <button
+              type="button"
+              aria-pressed={voiceMuted}
+              onClick={() => {
+                if (!voiceMuted) cancelSpeech();
+                setVoiceMuted(!voiceMuted);
+              }}
+              title={voiceMuted ? "Nexus no habla las respuestas" : "Nexus habla las respuestas"}
+              className="whitespace-nowrap rounded-full border border-nexus-border px-3 py-2 text-xs"
+            >
+              {voiceMuted ? "🔇 Voz silenciada" : "🔊 Voz activada"}
+            </button>
             <button
               autoFocus
               onClick={() => dock(!docked)}
@@ -280,30 +345,44 @@ export function VoiceSession({
               <p className="mt-4 min-h-6 text-sm text-nexus-muted">
                 {interimTranscript || heard
                   ? `“${interimTranscript || heard}”`
-                  : "Decime ‘abrime el calendario’ o elegí un panel."}
+                  : "Decime ‘abrí pacientes’, ‘dictar paciente’ o ‘abrime el calendario’."}
               </p>
             )}
           </div>
           {!docked && (
-            <div className="flex flex-wrap justify-center gap-2">
-              {(
-                [
-                  ["Calendario", "abrí el calendario"],
-                  ["Hoy", "abrí mi panel"],
-                  ["Proyectos", "abrí proyectos"],
-                ] as const
-              ).map(([label, command]) => (
-                <button
-                  key={label}
-                  disabled={busy}
-                  onClick={() => handler.current(command)}
-                  className="rounded-full border border-nexus-cyan/30 px-4 py-2 text-sm text-nexus-cyan disabled:opacity-50"
-                >
-                  {label}
-                </button>
-              ))}
+            <div className="flex w-full max-w-xl flex-col items-center gap-3">
+              <div
+                className="grid w-full grid-cols-1 gap-2 sm:grid-cols-3"
+                aria-label="Consultorio"
+              >
+                {MEDICAL_CHIPS.map(([label, command]) => (
+                  <button
+                    key={label}
+                    disabled={busy}
+                    onClick={() => handler.current(command)}
+                    className="min-h-12 rounded-2xl bg-nexus-cyan px-4 py-3 text-base font-medium text-nexus-bg shadow-glow disabled:opacity-50"
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <div className="flex flex-wrap justify-center gap-2">
+                {GENERAL_CHIPS.map(([label, command]) => (
+                  <button
+                    key={label}
+                    disabled={busy}
+                    onClick={() => handler.current(command)}
+                    className="rounded-full border border-nexus-cyan/30 px-4 py-2 text-sm text-nexus-cyan disabled:opacity-50"
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
+        </div>
+        <div className={docked ? "mb-2" : "mx-auto mb-4 w-full max-w-xl"}>
+          <AssistantActionCards {...actions} />
         </div>
         {error && (
           <p

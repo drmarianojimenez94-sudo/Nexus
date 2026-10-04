@@ -253,8 +253,20 @@ describe("Mi día", () => {
 describe("permisos nativos", () => {
   it("se derivan del manifiesto: solo capacidades implementadas, con justificación", () => {
     const native = nativePermissions(medicineVertical);
-    expect(native.androidPermissions).toEqual(["android.permission.READ_CONTACTS", "android.permission.RECORD_AUDIO", "android.permission.USE_BIOMETRIC"]);
-    expect(native.planned).toEqual(expect.arrayContaining(["camera", "calendar", "notifications"]));
+    expect(native.androidPermissions).toEqual([
+      "android.permission.POST_NOTIFICATIONS",
+      "android.permission.READ_CALENDAR",
+      "android.permission.READ_CONTACTS",
+      "android.permission.RECORD_AUDIO",
+      "android.permission.USE_BIOMETRIC",
+      "android.permission.WRITE_CALENDAR",
+      "com.android.alarm.permission.SET_ALARM",
+    ]);
+    expect(native.planned).toEqual(expect.arrayContaining(["camera", "photos"]));
+    expect(native.planned).not.toContain("calendar");
+    const calendar = native.plugins.find((p) => Array.isArray(p) && p[0] === "expo-calendar") as [string, Record<string, string>];
+    expect(calendar[1].calendarPermission).toMatch(/calendario/);
+    expect(calendar[1].remindersPermission).toMatch(/Recordatorios/);
     const speech = native.plugins.find((p) => Array.isArray(p) && p[0] === "expo-speech-recognition") as [string, Record<string, string>];
     expect(speech[1].microphonePermission).toMatch(/micrófono/);
   });

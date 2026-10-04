@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { speak as speakText, type SpeechHandle } from "./voice";
 
 const ERRORS: Record<string, string> = {
   "not-allowed": "Permití el micrófono en el navegador y tocá Activar voz.",
@@ -22,9 +23,9 @@ export function useSpeech() {
   const wanted = useRef(false);
   const generation = useRef(0);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const speechDone = useRef<(() => void) | null>(null);
+  const speechHandle = useRef<SpeechHandle | null>(null);
   const sttSupported = typeof window !== "undefined" && Boolean(window.SpeechRecognition ?? window.webkitSpeechRecognition);
-  const ttsSupported = typeof window !== "undefined" && "speechSynthesis" in window;
+  const ttsSupported = typeof window !== "undefined" && ("speechSynthesis" in window || typeof Audio !== "undefined");
 
   const stopListening = useCallback(() => {
     wanted.current = false;
@@ -38,8 +39,11 @@ export function useSpeech() {
   }, []);
 
   const cancelSpeech = useCallback(() => {
-    speechDone.current?.();
-    if (typeof window !== "undefined" && "speechSynthesis" in window) window.speechSynthesis.cancel();
+    // Solo corta lo que dijo este componente: una confirmación global
+    // («Abriendo pacientes») sigue sonando aunque la pantalla anterior se cierre.
+    const handle = speechHandle.current;
+    speechHandle.current = null;
+    handle?.cancel();
     setSpeaking(false);
   }, []);
 
@@ -47,26 +51,12 @@ export function useSpeech() {
     stopListening();
     cancelSpeech();
     if (!ttsSupported || !text.trim()) return Promise.resolve();
-    return new Promise((resolve) => {
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = "es-AR";
-      // Some browsers never send onend when autoplay is blocked. Bound the wait.
-      const watchdog = setTimeout(() => {
-        finish();
-        window.speechSynthesis.cancel();
-      }, Math.min(60000, Math.max(8000, text.length * 100)));
-      function finish() {
-        if (speechDone.current !== finish) return;
-        clearTimeout(watchdog);
-        speechDone.current = null;
-        setSpeaking(false);
-        resolve();
-      }
-      speechDone.current = finish;
-      utterance.onstart = () => setSpeaking(true);
-      utterance.onend = finish;
-      utterance.onerror = finish;
-      try { window.speechSynthesis.speak(utterance); } catch { finish(); }
+    const handle = speakText(text, { onStart: () => setSpeaking(true) });
+    speechHandle.current = handle;
+    return handle.done.then(() => {
+      if (speechHandle.current !== handle && speechHandle.current) return;
+      speechHandle.current = null;
+      setSpeaking(false);
     });
   }, [ttsSupported, stopListening, cancelSpeech]);
 

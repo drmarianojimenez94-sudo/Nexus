@@ -17,61 +17,125 @@ interface TodayResponse {
   insight: string | null;
 }
 
+export interface AlarmAction {
+  at: string;
+  title: string;
+}
+export interface EventAction {
+  id: string;
+  title: string;
+  startAt: string;
+  endAt: string | null;
+  /** También quedó en Google Calendar. */
+  google: boolean;
+}
+export interface EmailDraftAction {
+  to: string;
+  subject: string;
+  body: string;
+  /** Presentes solo si quedó como borrador en Gmail y puede enviarse con confirmación. */
+  id?: string;
+  confirmationToken?: string;
+  connected: boolean;
+  note?: string;
+}
+
 export interface VoiceCommandResult {
   speak: string;
   /** Client-side path to navigate to, if any. */
   navigateTo?: string;
   /** True when the utterance means "stop listening" — closes the session. */
   close?: boolean;
+  alarm?: AlarmAction;
+  event?: EventAction;
+  emailDraft?: EmailDraftAction;
 }
 
 // Full utterance matching prevents "abrí el calendario y agendá..." losing its action.
-const NAV_COMMANDS = [
+// Patterns run on normalized text (lowercase, no accents), after removing a
+// leading verb ("abrí", "mostrame", "ir a"…) and articles ("el", "mis"…).
+export const NAV_COMMANDS: Array<{ patterns: RegExp; path: string; say: string }> = [
   {
-    patterns: /^(pacientes|consultorio|historias clinicas)$/,
+    patterns:
+      /^(?:(?:crear|crea|agregar|agrega|dar de alta|alta de)\s+(?:(?:un|una|el|la)\s+)?)?(?:nuevo paciente|paciente nuevo|nueva ficha|ficha nueva)$/,
+    path: "/patients/new",
+    say: "Abriendo una ficha nueva",
+  },
+  {
+    patterns:
+      /^(?:(?:cargar|carga|cargame|dictar|dicta|dictame|anotar|registrar|registra|nueva|nuevo)\s+(?:(?:un|una|el|la)\s+)?(?:paciente|consulta|atencion|evolucion)|dictado(?: clinico)?|asistente clinico)$/,
+    path: "/patients/capture",
+    say: "Abriendo el dictado clínico",
+  },
+  {
+    patterns:
+      /^(?:dia(?: medico| de consultorio| de hoy en el consultorio)?|agenda medica|consultorio de hoy)$/,
+    path: "/patients/day",
+    say: "Abriendo tu día médico",
+  },
+  {
+    patterns: /^(?:seguimientos?|controles pendientes|pendientes de pacientes)$/,
+    path: "/patients/followups",
+    say: "Abriendo seguimientos",
+  },
+  {
+    patterns:
+      /^(?:pacientes|paciente|consultorio|historias clinicas|historia clinica|fichas|lista de pacientes|parte medica|medicina)$/,
     path: "/patients",
-    label: "tus pacientes",
+    say: "Abriendo pacientes",
   },
   {
-    patterns: /^(inbox|bandeja(?: de entrada)?)$/,
+    patterns: /^(?:mails?|e-?mails?|correos?(?: electronico)?|gmail|bandeja de correo)$/,
+    path: "/settings#google",
+    say: "Abriendo tu correo",
+  },
+  {
+    patterns: /^(?:inbox|bandeja(?: de entrada)?)$/,
     path: "/inbox",
-    label: "tu inbox",
+    say: "Abriendo tu inbox",
   },
   {
-    patterns: /^(calendario|agenda)$/,
+    patterns: /^(?:calendario|agenda|turnos)$/,
     path: "/calendar",
-    label: "tu calendario",
+    say: "Abriendo calendario",
   },
-  { patterns: /^proyectos?$/, path: "/projects", label: "tus proyectos" },
-  { patterns: /^areas?$/, path: "/areas", label: "tus áreas" },
-  { patterns: /^memoria$/, path: "/memory", label: "tu memoria" },
+  { patterns: /^proyectos?$/, path: "/projects", say: "Abriendo proyectos" },
+  { patterns: /^areas?$/, path: "/areas", say: "Abriendo tus áreas" },
+  { patterns: /^memoria$/, path: "/memory", say: "Abriendo tu memoria" },
   {
-    patterns: /^(ajustes|configuracion)$/,
+    patterns: /^(?:ajustes|configuracion|preferencias)$/,
     path: "/settings",
-    label: "la configuración",
+    say: "Abriendo ajustes",
   },
   {
-    patterns: /^(hoy|inicio|panel)$/,
+    patterns: /^(?:hoy|inicio|panel)$/,
     path: "/today",
-    label: "tu panel de hoy",
+    say: "Abriendo tu panel de hoy",
   },
 ];
 
-function navigationCommand(text: string) {
-  const normalized = text
+const NAV_VERB =
+  /^(?:(?:abri(?:me)?|abrir|abre(?:me)?|mostra(?:me)?|mostrar|muestra(?:me)?|llevame a|lleva(?:me)? al|ir a|ir al|anda a|anda al|vamos a|vamos al|entrar a|entra a|ver|quiero ver|quiero ir a|quiero que (?:me )?abras|quiero|necesito)\s+)/;
+const NAV_ARTICLE = /^(?:(?:el|la|los|las|mi|mis|un|una|al|a|del)\s+)+/;
+
+/** Normalized nav target, or undefined when the utterance is more than navigation. */
+export function navigationCommand(text: string) {
+  let rest = text
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
-    .replace(/^nexus[, ]+/, "")
-    .replace(/[.!?]+$/, "")
+    .replace(/^(?:hola,? )?nexus[, ]+/, "")
+    .replace(/[.!?¡¿]+/g, "")
+    .replace(/^por favor,? /, "")
+    .replace(/,? por favor$/, "")
+    .replace(/\s+/g, " ")
     .trim();
-  const match = normalized.match(
-    /^(?:por favor,? )?(?:abri(?:me)?|abrir|abre(?:me)?|mostra(?:me)?|mostrar|muestra(?:me)?|llevame a|ver|quiero ver|quiero que (?:me )?abras)\s+(?:(?:el|la|los|las|mi|mis)\s+)?(.+?)(?:,? por favor)?$/,
-  );
-  return match
-    ? NAV_COMMANDS.find((command) => command.patterns.test(match[1] ?? ""))
-    : undefined;
+  rest = rest.replace(NAV_VERB, "").replace(NAV_ARTICLE, "").trim();
+  return NAV_COMMANDS.find((command) => command.patterns.test(rest));
 }
+
+const CLINICAL_DICTATION =
+  /^(?:nexus[, ]+)?(?:dict[aá](?:r|me)?|carg[aá](?:r|me)?|registr[aá]r?)\s+(?:(?:un|una|el|la)\s+)?(?:paciente|consulta)\b/i;
 
 const CLOSE_PATTERN =
   /^(?:(?:nexus)[, ]+)?(?:listo|gracias|cerrar|terminar|chau|nada m[aá]s|hasta luego)[.!?]*$/i;
@@ -120,7 +184,10 @@ export async function speakTodaySummary(): Promise<string> {
 interface InterpretResponse {
   speak: string;
   navigateTo?: string;
-  target?: "today" | "inbox" | "calendar" | "projects" | "areas" | "memory";
+  target?: string;
+  alarm?: AlarmAction;
+  event?: EventAction;
+  emailDraft?: EmailDraftAction;
   /** Datos de pacientes: se derivan al asistente clínico, nunca al inbox. */
   handoff?: { vertical: string; text: string };
 }
@@ -183,7 +250,12 @@ async function tryBrain(
         result.speak,
         result.navigateTo ?? CLINICAL_CAPTURE_PATH,
       );
-    return { speak: result.speak, navigateTo: result.navigateTo };
+    const out: VoiceCommandResult = { speak: result.speak };
+    if (result.navigateTo) out.navigateTo = result.navigateTo;
+    if (result.alarm) out.alarm = result.alarm;
+    if (result.event) out.event = result.event;
+    if (result.emailDraft) out.emailDraft = result.emailDraft;
+    return out;
   } catch (err) {
     if (err instanceof ApiError && err.status === 501) return null;
     throw err;
@@ -213,10 +285,10 @@ export async function handleVoiceCommand(
   if (HELP_PATTERN.test(text)) {
     return {
       speak:
-        'Podés decir "qué tengo hoy", "abrí el inbox", "abrí el calendario", "abrí proyectos", "abrí áreas" o ' +
-        '"abrí memoria". También "recordá que…" para que guarde algo, o "qué sabés sobre…" para preguntarte lo ' +
-        "que ya te dije. Cualquier otra cosa la interpreto — pedime que agende algo, cree una tarea o te avise " +
-        "en un momento cuando la IA esté conectada. Para configurar la IA, decime ‘abrí ajustes’.",
+        'Podés decir "abrí pacientes", "dictar paciente", "mi día médico", "seguimientos", "qué tengo hoy", ' +
+        '"abrí el calendario", "abrí el correo", "abrí proyectos" o "abrí memoria". También "recordá que…" para que guarde algo, o "qué sabés sobre…" para preguntarte lo ' +
+        "que ya te dije. Cualquier otra cosa la interpreto — pedime que agende algo, ponga una alarma, " +
+        "redacte un mail o te avise en un momento cuando la IA esté conectada. Para configurar la IA, decime ‘abrí ajustes’.",
     };
   }
 
@@ -286,8 +358,15 @@ export async function handleVoiceCommand(
   }
   // Navigation must work immediately even if the AI is unavailable or misconfigured.
   const nav = navigationCommand(text);
-  if (nav)
-    return { speak: `Listo, te muestro ${nav.label}.`, navigateTo: nav.path };
+  if (nav) return { speak: `${nav.say}.`, navigateTo: nav.path };
+
+  // "Dictá paciente Ana Gómez, tos de tres días…": intención clínica explícita.
+  // Va directo al asistente clínico, sin pasar por la IA general.
+  if (CLINICAL_DICTATION.test(text))
+    return clinicalHandoff(
+      text,
+      "Abriendo el dictado clínico. Revisá lo que entendí antes de guardar.",
+    );
 
   try {
     const brainResult = await tryBrain(text, history);

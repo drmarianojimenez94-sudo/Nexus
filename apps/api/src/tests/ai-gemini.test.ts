@@ -28,7 +28,7 @@ describe("Gemini intent pipeline", () => {
   });
   it("rejects invalid model actions", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(reply({ ...intent, intent: "send_email" })));
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(reply({ ...intent, intent: "delete_account" })));
     expect(await aiProvider.interpretUtterance("hola", context)).toBeNull();
   });
   it("falls back on quota errors without retrying or using a paid provider", async () => {

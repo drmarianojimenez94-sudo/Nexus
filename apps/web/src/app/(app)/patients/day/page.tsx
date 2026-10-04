@@ -1,9 +1,10 @@
 "use client";
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import Link from "next/link";
 import type { DayBrief } from "@nexus/verticals";
 import { useApiData } from "@/lib/useApiData";
 import { useSpeech } from "@/lib/useSpeech";
+import { isVoiceMuted } from "@/lib/voice";
 import {
   ClinicalHeader,
   ClinicalError,
@@ -34,6 +35,14 @@ export default function MyDayPage() {
   );
   const speech = useSpeech();
   const brief = data?.brief;
+  const { speak } = speech;
+  const spoken = useRef(false);
+  // Al abrir, Nexus lee el resumen del día (salvo que la voz esté silenciada).
+  useEffect(() => {
+    if (!brief || spoken.current) return;
+    spoken.current = true;
+    if (!isVoiceMuted()) void speak(brief.spoken);
+  }, [brief, speak]);
   const suggestions = [...(brief?.suggestions ?? [])].sort(
     (a, b) => a.priority - b.priority,
   );

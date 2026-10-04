@@ -121,7 +121,7 @@ export const CLINICAL_GUIDELINES: GuidelineCondition[] = [
   {
     id: "obesity",
     label: "Obesidad",
-    patterns: ["obesidad", "sobrepeso", "\\bimc\\b"],
+    patterns: ["obesidad", "sobrepeso", "\\bimc\\b", "indice de masa corporal", "bajar de peso"],
     checks: ["Registrar IMC y circunferencia de cintura.", "Detectar comorbilidades: glucemia, perfil lipídico, TA, hígado graso, apnea del sueño."],
     approach: ["Plan nutricional y actividad física; considerar farmacoterapia (arGLP-1) o cirugía bariátrica según IMC y comorbilidades."],
     sources: ["Guía de práctica clínica nacional de obesidad (MSAL)"],
@@ -137,7 +137,7 @@ export const CLINICAL_GUIDELINES: GuidelineCondition[] = [
   {
     id: "depression",
     label: "Depresión",
-    patterns: ["depresi", "animo bajo", "anhedonia"],
+    patterns: ["depresi", "animo bajo", "anhedonia", "\\btriste\\b", "tristeza", "no disfruta", "sertralina", "escitalopram", "fluoxetina"],
     checks: ["Evaluar riesgo suicida en cada consulta.", "PHQ-9 para seguimiento.", "Reevaluar a las 4–6 semanas de iniciar antidepresivo."],
     approach: ["Psicoterapia y/o ISRS; derivar a salud mental si es grave, hay riesgo o no responde."],
     sources: ["NICE NG222", "Ley de Salud Mental 26.657"],
@@ -145,7 +145,7 @@ export const CLINICAL_GUIDELINES: GuidelineCondition[] = [
   {
     id: "anxiety",
     label: "Ansiedad",
-    patterns: ["ansiedad", "ataque de panico", "angustia"],
+    patterns: ["ansiedad", "ataque de panico", "angustia", "ansios", "nervios", "preocupacion constante"],
     checks: ["GAD-7 para seguimiento.", "Evitar el uso prolongado de benzodiacepinas."],
     approach: ["Psicoterapia (TCC); ISRS o IRSN si corresponde."],
     sources: ["NICE CG113"],
@@ -182,7 +182,7 @@ export const CLINICAL_GUIDELINES: GuidelineCondition[] = [
   {
     id: "pharyngitis",
     label: "Faringitis",
-    patterns: ["faringitis", "odinofagia", "anginas", "amigdalitis"],
+    patterns: ["faringitis", "odinofagia", "anginas", "amigdalitis", "estreptococ", "exudado (?:blanquecino |purulento )?(?:en )?amigdal"],
     checks: ["Score de Centor/McIsaac y test rápido o cultivo para estreptococo.", "Antibiótico solo si se confirma estreptococo."],
     approach: ["Estreptocócica: amoxicilina o penicilina; si hay alergia, macrólido según el tipo de alergia."],
     sources: ["SADI / SAP — Consenso de faringitis"],

@@ -1,11 +1,20 @@
 import { assignSubject, PlanExecutionError, type CapturePlan, type PlanStep } from "@nexus/verticals";
 import { Contact } from "expo-contacts";
-import { Link } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useFocusEffect, useLocalSearchParams } from "expo-router";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View } from "react-native";
-import { LockGate } from "../../components/LockGate";
+import { ClinicalAssistPanel } from "../../components/ClinicalAssistPanel";
 import { api } from "../../lib/api";
-import { confirmPlan, interpret, vertical, type CaptureMode } from "../../lib/clinicalCapture";
+import {
+  assist,
+  confirmPlan,
+  DEFAULT_TEMPLATE_ID,
+  interpret,
+  learnHabits,
+  vertical,
+  type AssistResult,
+  type CaptureMode,
+} from "../../lib/clinicalCapture";
 import { colors } from "../../lib/theme";
 import { useDictation } from "../../lib/useDictation";
 
@@ -21,50 +30,107 @@ const MODES: { id: CaptureMode; label: string }[] = [
   { id: "typed", label: "Escribo" },
 ];
 
+/** Campos propuestos para la consulta (paso create_record), como `{ clave: valor }`. */
+function recordFields(steps: PlanStep[]): Record<string, string> {
+  const record = steps.find((s) => s.kind === "create_record");
+  return Object.fromEntries((record?.fields ?? []).filter((f) => f.value.trim()).map((f) => [f.key, f.value]));
+}
+
 /**
- * Asistente clínico nativo. Al entrar ya escucha (modo "Dicto yo", sin el
- * paciente): dictás, Nexus propone ficha, borrador de consulta, seguimientos
- * y turnos, y no guarda nada hasta que confirmás. La interpretación es
- * determinística en el servidor de Nexus: no usa IA externa.
+ * Dictar: asistente clínico nativo. Al entrar a la pestaña ya escucha
+ * (modo "Dicto yo", sin el paciente): dictás, Nexus propone ficha, consulta
+ * (plantilla "visit"), seguimientos y turnos, y no guarda nada hasta que
+ * confirmás. La interpretación es determinística en el servidor; el
+ * asistente clínico IA trabaja aparte sobre el caso desidentificado.
  */
-function AssistantScreen() {
+export default function AssistantScreen() {
+  const params = useLocalSearchParams<{ subjectId?: string; subjectName?: string; text?: string }>();
   const dictation = useDictation({ contextualStrings: vertical.vocabulary.domainTerms });
   const [mode, setMode] = useState<CaptureMode>("dictated");
   const [consent, setConsent] = useState(false);
   const [text, setText] = useState("");
+  const [subject, setSubject] = useState<{ id: string; name: string } | null>(null);
   const [plan, setPlan] = useState<CapturePlan | null>(null);
   const [steps, setSteps] = useState<PlanStep[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [chosenId, setChosenId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [hits, setHits] = useState<PatientHit[]>([]);
-  const started = useRef(false);
+  const [help, setHelp] = useState<AssistResult | null>(null);
+  const [helpLoading, setHelpLoading] = useState(false);
+  const [helpError, setHelpError] = useState<string | null>(null);
+  const dictationRef = useRef(dictation);
+  dictationRef.current = dictation;
+  const stateRef = useRef({ mode, text, plan });
+  stateRef.current = { mode, text, plan };
 
-  // "Apenas entrando": empieza a escuchar sola en modo dictado del profesional.
+  // Desde Pacientes ("Dictar en esta ficha") o derivado por la secretaria (texto ya dicho).
   useEffect(() => {
-    if (!started.current && dictation.available && mode === "dictated") {
-      started.current = true;
-      void dictation.start();
+    if (params.subjectId) {
+      setSubject({ id: params.subjectId, name: params.subjectName ?? "Paciente" });
+      setPlan(null);
+      setDone(null);
     }
-  }, [dictation, mode]);
+  }, [params.subjectId, params.subjectName]);
+  useEffect(() => {
+    if (params.text) {
+      setText(params.text);
+      dictationRef.current.reset(params.text);
+      setPlan(null);
+      setDone(null);
+    }
+  }, [params.text]);
+
+  // "Apenas entrando": escucha al tomar foco (modo dictado, sin plan pendiente) y suelta el micrófono al salir.
+  useFocusEffect(
+    useCallback(() => {
+      const d = dictationRef.current;
+      const s = stateRef.current;
+      if (d.available && s.mode === "dictated" && !s.plan && !d.listening) void d.start();
+      return () => dictationRef.current.stop();
+    }, []),
+  );
   useEffect(() => {
     if (dictation.text) setText(dictation.text);
   }, [dictation.text]);
 
   const canListen = dictation.available && mode !== "typed" && (mode !== "ambient" || consent);
 
+  async function loadAssist(nextSteps: PlanStep[], subjectId: string | undefined) {
+    const fields = recordFields(nextSteps);
+    if (Object.keys(fields).length === 0) {
+      setHelp(null);
+      return;
+    }
+    const created = nextSteps.find((s) => s.kind === "create_subject");
+    const newName = typeof created?.request.body?.name === "string" ? created.request.body.name : "";
+    setHelpLoading(true);
+    setHelpError(null);
+    try {
+      setHelp(await assist({ fields, subjectId, subject: !subjectId && newName ? { name: newName, age: null, sex: "" } : undefined }));
+    } catch (e) {
+      setHelpError(e instanceof Error ? e.message : "El asistente clínico no respondió.");
+    } finally {
+      setHelpLoading(false);
+    }
+  }
+
   async function onInterpret() {
     if (dictation.listening) dictation.stop();
     setBusy(true);
     setError(null);
     setDone(null);
+    setHelp(null);
+    setChosenId(null);
     try {
-      const p = await interpret(text, { captureMode: mode, consentConfirmed: consent });
+      const p = await interpret(text, { captureMode: mode, consentConfirmed: consent, subjectId: subject?.id, templateId: DEFAULT_TEMPLATE_ID });
       setPlan(p);
       setSteps(p.steps);
       setSelected(new Set(p.steps.map((s) => s.id)));
+      void loadAssist(p.steps, subject?.id);
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo interpretar.");
     } finally {
@@ -78,9 +144,17 @@ function AssistantScreen() {
     setError(null);
     try {
       const ids = steps.filter((s) => selected.has(s.id)).map((s) => s.id);
-      await confirmPlan({ ...plan, steps }, ids);
+      const created = await confirmPlan({ ...plan, steps }, ids);
+      const record = steps.find((s) => s.kind === "create_record" && selected.has(s.id));
+      if (record) {
+        // Aprende diagnóstico → tratamiento de lo que efectivamente guardaste.
+        const subjectStep = steps.find((s) => s.kind === "create_subject" || s.kind === "find_subject");
+        const subjectId = subject?.id ?? chosenId ?? (subjectStep ? created[subjectStep.id] : undefined);
+        void learnHabits(recordFields([record]), subjectId).catch(() => undefined);
+      }
       setDone(`Guardado: ${ids.length} paso${ids.length === 1 ? "" : "s"}. Revisá y validá el borrador antes de cerrarlo.`);
       setPlan(null);
+      setHelp(null);
       setText("");
       dictation.reset();
     } catch (e) {
@@ -98,8 +172,12 @@ function AssistantScreen() {
   async function search(q: string) {
     setQuery(q);
     if (q.trim().length < 2) return setHits([]);
-    const res = await api.get<{ patients: PatientHit[] }>(`/clinical/patients?q=${encodeURIComponent(q)}`);
-    setHits(res.patients);
+    try {
+      const res = await api.get<{ patients: PatientHit[] }>(`/clinical/patients?q=${encodeURIComponent(q)}`);
+      setHits(res.patients);
+    } catch {
+      setHits([]);
+    }
   }
 
   function choose(patient: PatientHit) {
@@ -113,6 +191,8 @@ function AssistantScreen() {
     setSelected(new Set(rebound.map((s) => s.id)));
     setHits([]);
     setQuery(patient.name);
+    setChosenId(patient.id);
+    void loadAssist(rebound, patient.id);
   }
 
   async function attachContact() {
@@ -128,8 +208,17 @@ function AssistantScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-      <Text style={styles.title}>Asistente clínico</Text>
+      <Text style={styles.title}>Dictar consulta</Text>
       <Text style={styles.muted}>Nada se guarda hasta que confirmes. Nexus no diagnostica ni prescribe.</Text>
+
+      {subject && (
+        <View style={styles.subject}>
+          <Text style={styles.subjectText}>Ficha: {subject.name}</Text>
+          <Pressable onPress={() => setSubject(null)} hitSlop={10}>
+            <Text style={styles.link}>Quitar</Text>
+          </Pressable>
+        </View>
+      )}
 
       <View style={styles.row}>
         {MODES.map((m) => (
@@ -153,16 +242,17 @@ function AssistantScreen() {
       {dictation.listening && <Text style={styles.muted}>Escuchando{dictation.onDevice ? " (en el dispositivo)" : ""}…</Text>}
       {!dictation.available && mode !== "typed" && <Text style={styles.muted}>Dictado no disponible en este dispositivo: escribí la nota.</Text>}
       {dictation.error && <Text style={styles.warn}>{dictation.error}</Text>}
+      <Text style={styles.hint}>Decí: «motivo de consulta…, enfermedad actual…, examen…, diagnóstico presuntivo…, tratamiento…, observaciones…»</Text>
 
       <TextInput
         value={text}
         onChangeText={(v) => { setText(v); dictation.reset(v); }}
         multiline
-        placeholder="Ej.: Paciente nuevo Juan Pérez, DNI 30.123.456, consulta por cefalea… Control en 2 semanas."
+        placeholder={subject ? "Motivo de consulta: cefalea de 3 días. Enfermedad actual: … Tratamiento: … Observaciones: …" : "Ej.: Paciente nuevo Juan Pérez, DNI 30.123.456, motivo de consulta cefalea… Control en 2 semanas."}
         placeholderTextColor={colors.muted}
         style={styles.input}
       />
-      <Pressable disabled={busy || text.trim().length < 2} onPress={() => void onInterpret()} style={styles.primary}>
+      <Pressable disabled={busy || text.trim().length < 2} onPress={() => void onInterpret()} style={[styles.primary, (busy || text.trim().length < 2) && styles.disabled]}>
         {busy ? <ActivityIndicator color={colors.bg} /> : <Text style={styles.primaryText}>Interpretar</Text>}
       </Pressable>
 
@@ -206,21 +296,15 @@ function AssistantScreen() {
               <Text style={styles.link}>📇 Completar teléfono desde contactos</Text>
             </Pressable>
           )}
-          <Pressable disabled={busy || selected.size === 0} onPress={() => void onConfirm()} style={styles.primary}>
+
+          <ClinicalAssistPanel result={help} loading={helpLoading} error={helpError} />
+
+          <Pressable disabled={busy || selected.size === 0} onPress={() => void onConfirm()} style={[styles.primary, (busy || selected.size === 0) && styles.disabled]}>
             <Text style={styles.primaryText}>Confirmar y guardar ({selected.size})</Text>
           </Pressable>
         </View>
       )}
-      <Link href="/day" style={styles.link}>← Mi día</Link>
     </ScrollView>
-  );
-}
-
-export default function Assistant() {
-  return (
-    <LockGate>
-      <AssistantScreen />
-    </LockGate>
   );
 }
 
@@ -229,6 +313,9 @@ const styles = StyleSheet.create({
   content: { padding: 20, paddingTop: 60, gap: 12, paddingBottom: 60 },
   title: { color: colors.text, fontSize: 22, fontWeight: "600" },
   muted: { color: colors.muted, fontSize: 13 },
+  hint: { color: colors.muted, fontSize: 13, fontStyle: "italic" },
+  subject: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: colors.panel, borderColor: colors.cyan, borderWidth: 1, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 6 },
+  subjectText: { color: colors.text, fontWeight: "600", fontSize: 15, flex: 1 },
   row: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
   chip: { borderColor: colors.border, borderWidth: 1, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 },
   chipOn: { borderColor: colors.cyan, backgroundColor: colors.panel },
@@ -242,6 +329,7 @@ const styles = StyleSheet.create({
   input: { minHeight: 140, color: colors.text, backgroundColor: colors.panel, borderRadius: 12, padding: 12, fontSize: 15, textAlignVertical: "top" },
   search: { color: colors.text, borderColor: colors.border, borderWidth: 1, borderRadius: 8, padding: 8 },
   primary: { backgroundColor: colors.cyan, borderRadius: 12, paddingVertical: 14, alignItems: "center" },
+  disabled: { opacity: 0.5 },
   primaryText: { color: colors.bg, fontWeight: "700", fontSize: 16 },
   plan: { gap: 10 },
   flag: { color: colors.danger, fontWeight: "600", fontSize: 14 },

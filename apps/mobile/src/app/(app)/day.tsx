@@ -1,11 +1,11 @@
 import type { DayBrief } from "@nexus/verticals";
-import { Link } from "expo-router";
+import { Link, router } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
-import { LockGate } from "../../components/LockGate";
 import { loadDay } from "../../lib/clinicalCapture";
 import { colors } from "../../lib/theme";
-import { useSpeech } from "../../lib/useSpeech";
+import { enableDailySummary, getDailySummary, supported as notificationsSupported } from "../../lib/notifications";
+import { useVoice } from "../../lib/voice";
 
 const hhmm = (iso: string) => new Date(iso).toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Argentina/Buenos_Aires" });
 
@@ -13,8 +13,10 @@ const hhmm = (iso: string) => new Date(iso).toLocaleTimeString("es-AR", { hour: 
  * Mi día: lo primero que ve el médico al abrir Nexus. Turnos, vencidos,
  * resultados, borradores sin validar y sugerencias, leído en voz alta.
  */
-function DayScreen() {
-  const { speak, speaking } = useSpeech();
+export default function DayScreen() {
+  const { speak, speaking } = useVoice();
+  const [offerDaily, setOfferDaily] = useState(false);
+  const [dailyNote, setDailyNote] = useState<string | null>(null);
   const [brief, setBrief] = useState<DayBrief | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -31,7 +33,14 @@ function DayScreen() {
 
   useEffect(() => {
     void load();
+    if (notificationsSupported) void getDailySummary().then((s) => setOfferDaily(!s.enabled));
   }, [load]);
+
+  async function activateDaily() {
+    const ok = await enableDailySummary({ hour: 8, minute: 0 });
+    setOfferDaily(!ok);
+    setDailyNote(ok ? "Listo: te aviso todos los días a las 8:00. Cambiá la hora en Ajustes." : "Sin permiso de notificaciones: activalas en los ajustes del teléfono.");
+  }
   useEffect(() => {
     if (brief && !spoken.current) {
       spoken.current = true;
@@ -51,6 +60,17 @@ function DayScreen() {
           <Text style={styles.dictateText}>Dictar / anotar</Text>
         </Pressable>
       </Link>
+      {offerDaily && (
+        <View style={styles.offer}>
+          <Text style={styles.item}>¿Querés que te avise cada mañana a las 8:00 para revisar tu día? (sin nombres de pacientes)</Text>
+          <View style={styles.offerRow}>
+            <Pressable onPress={() => void activateDaily()}><Text style={styles.link}>Activar</Text></Pressable>
+            <Pressable onPress={() => router.push("/settings")}><Text style={styles.link}>Elegir hora</Text></Pressable>
+            <Pressable onPress={() => setOfferDaily(false)}><Text style={styles.mutedLink}>Ahora no</Text></Pressable>
+          </View>
+        </View>
+      )}
+      {dailyNote && <Text style={styles.muted}>{dailyNote}</Text>}
       {!brief && !error && <ActivityIndicator color={colors.cyan} />}
       {error && <Text style={styles.danger}>{error}</Text>}
       {brief && (
@@ -105,13 +125,6 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-export default function Day() {
-  return (
-    <LockGate>
-      <DayScreen />
-    </LockGate>
-  );
-}
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
@@ -122,6 +135,9 @@ const styles = StyleSheet.create({
   title: { color: colors.text, fontSize: 24, fontWeight: "600" },
   muted: { color: colors.muted, fontSize: 14 },
   link: { color: colors.cyan, fontSize: 14, paddingVertical: 6 },
+  mutedLink: { color: colors.muted, fontSize: 14, paddingVertical: 6 },
+  offer: { backgroundColor: colors.panel, borderRadius: 12, padding: 12, gap: 4, borderColor: colors.border, borderWidth: 1 },
+  offerRow: { flexDirection: "row", gap: 18 },
   danger: { color: colors.danger },
   section: { gap: 6, borderTopColor: colors.border, borderTopWidth: 1, paddingTop: 12 },
   sectionTitle: { color: colors.muted, fontSize: 11, fontWeight: "600", letterSpacing: 1.5 },

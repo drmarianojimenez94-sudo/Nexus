@@ -178,7 +178,7 @@ export function GoogleWorkspacePanel() {
   const input =
     "w-full rounded-xl border border-nexus-border bg-nexus-bg p-3 text-sm";
   return (
-    <section className="glass-panel space-y-4 p-4">
+    <section id="google" className="glass-panel scroll-mt-4 space-y-4 p-4">
       <h2 className="text-lg font-medium">Correo, contactos y archivos</h2>
       <p className="text-sm text-nexus-muted">
         Buscá tus correos, contactos y archivos personales. El contenido se

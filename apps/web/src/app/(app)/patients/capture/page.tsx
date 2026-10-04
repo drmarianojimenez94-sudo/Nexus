@@ -2,7 +2,7 @@
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import type { Patient } from "@nexus/shared";
+import { CLINICAL_TEMPLATES, type Patient } from "@nexus/shared";
 import {
   executePlan,
   PlanExecutionError,
@@ -26,6 +26,10 @@ import {
   clinicalInput,
   clinicalSecondary,
 } from "@/components/ClinicalUi";
+import { ClinicalAssistPanel } from "@/components/ClinicalAssistPanel";
+
+const DEFAULT_TEMPLATE = "visit";
+const CAPTURE_TEMPLATES = CLINICAL_TEMPLATES.filter((t) => !t.archived);
 
 type CaptureMode = "typed" | "dictated" | "ambient";
 type PatientChoice = Pick<Patient, "id" | "name"> & { document?: string };
@@ -163,7 +167,11 @@ function CaptureAssistant() {
     [recovery, setRecovery] = useState<Recovery | null>(null),
     [done, setDone] = useState<Record<string, string> | null>(null),
     [busy, setBusy] = useState(false),
+    [templateId, setTemplateId] = useState(DEFAULT_TEMPLATE),
+    [learned, setLearned] = useState(false),
     [error, setError] = useState<string | null>(null);
+  const template =
+    CAPTURE_TEMPLATES.find((t) => t.id === templateId) ?? CAPTURE_TEMPLATES[0]!;
 
   // Texto derivado del asistente general: se usa una vez y se borra.
   useEffect(() => {
@@ -200,6 +208,7 @@ function CaptureAssistant() {
     setRecovery(null);
     setDone(null);
     setChosen(null);
+    setLearned(false);
   };
   const changeText = (value: string) => {
     setText(value);
@@ -216,6 +225,7 @@ function CaptureAssistant() {
         "/verticals/medicine/capture",
         {
           text,
+          templateId,
           ...(contextId ? { subjectId: contextId } : {}),
           captureMode: mode,
           ...(mode === "ambient" ? { consentConfirmed: consent } : {}),
@@ -236,7 +246,9 @@ function CaptureAssistant() {
     try {
       const created = await executePlan(steps, apiFetcher(api), ids);
       setRecovery(null);
-      setDone({ ...base, ...created });
+      const saved = { ...base, ...created };
+      setDone(saved);
+      void learnFrom(steps, ids, saved);
     } catch (e) {
       if (!(e instanceof PlanExecutionError)) {
         setError(e instanceof Error ? e.message : "No se pudo guardar.");
@@ -263,6 +275,26 @@ function CaptureAssistant() {
       );
     } finally {
       setBusy(false);
+    }
+  }
+
+  /**
+   * El cerebro aprende de lo que confirmaste (cuadro → conducta). El servidor
+   * quita nombre y documento antes de guardarlo; si falla, no afecta lo guardado.
+   */
+  async function learnFrom(steps: PlanStep[], ids: string[], saved: Record<string, string>) {
+    const record = steps.find((s) => s.kind === "create_record" && ids.includes(s.id) && saved[s.id]);
+    if (!record?.fields?.length) return;
+    const subject = steps.find((s) => s.kind === "find_subject" || s.kind === "create_subject");
+    const subjectId = contextId ?? chosen?.id ?? (subject ? saved[subject.id] : undefined);
+    try {
+      await api.post("/verticals/medicine/habits/learn", {
+        fields: Object.fromEntries(record.fields.map((f) => [f.key, f.value])),
+        ...(subjectId ? { subjectId } : {}),
+      });
+      setLearned(true);
+    } catch {
+      // aprendizaje opcional
     }
   }
 
@@ -301,6 +333,9 @@ function CaptureAssistant() {
     contextId ?? chosen?.id ?? (subjectStep && done ? done[subjectStep.id] : undefined);
   const encounterId = recordStep && done ? done[recordStep.id] : undefined;
   const redFlags = plan?.safety.redFlags.filter((r) => !r.negated) ?? [];
+  const proposedFields = recordStep?.fields
+    ? Object.fromEntries(recordStep.fields.map((f) => [f.key, f.value]))
+    : {};
   const negated = plan?.safety.redFlags.filter((r) => r.negated) ?? [];
 
   return (
@@ -313,7 +348,9 @@ function CaptureAssistant() {
         Nada se guarda hasta que toques «Confirmar y guardar». Las consultas
         quedan como borrador: revisalas y validalas en la ficha. Nexus
         transcribe y ordena lo que dijiste; no diagnostica ni prescribe, y la
-        interpretación se hace en el servidor de Nexus, sin IA externa.
+        interpretación se hace en el servidor de Nexus, sin IA externa. El
+        panel «Asistente clínico IA» envía el caso sin nombre ni DNI para
+        sugerir; podés ver exactamente qué se envió.
       </p>
       {contextId && (
         <p className="rounded-xl border border-nexus-cyan/40 p-3 text-sm">
@@ -325,6 +362,8 @@ function CaptureAssistant() {
         </p>
       )}
 
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
+      <div className="flex min-w-0 flex-col gap-4">
       <section className="glass-panel flex flex-col gap-3 p-4">
         <fieldset className="flex flex-col gap-2" disabled={busy || speech.listening}>
           <legend className="mb-2 text-sm font-medium">¿Cómo vas a cargarlo?</legend>
@@ -364,6 +403,45 @@ function CaptureAssistant() {
         </fieldset>
 
         <label className="flex flex-col gap-2 text-sm">
+          Plantilla
+          <select
+            className={clinicalInput}
+            value={templateId}
+            disabled={busy}
+            onChange={(e) => {
+              setTemplateId(e.target.value);
+              if (plan && !done) reset();
+            }}
+          >
+            {CAPTURE_TEMPLATES.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <div className="rounded-xl border border-nexus-cyan/30 p-3 text-sm">
+          <p className="font-medium">Dictá por secciones</p>
+          <p className="mt-1 text-xs text-nexus-muted">
+            {template.id === DEFAULT_TEMPLATE
+              ? "Decí: «motivo de consulta… enfermedad actual… tratamiento… observaciones…». También podés decir «examen físico…» y «diagnóstico presuntivo…»."
+              : `Nombrá cada sección antes de dictarla: «${template.fields
+                  .slice(0, 3)
+                  .map((f) => f.label.toLowerCase())
+                  .join("… ")}…».`}
+          </p>
+          <ul className="mt-2 flex flex-wrap gap-2">
+            {template.fields.map((f) => (
+              <li
+                key={f.key}
+                className={`rounded-full border px-3 py-1 text-xs ${["reason", "present", "treatment", "observations"].includes(f.key) ? "border-nexus-cyan/60 text-nexus-cyan" : "border-nexus-border text-nexus-muted"}`}
+              >
+                {f.label}
+              </li>
+            ))}
+          </ul>
+        </div>
+        <label className="flex flex-col gap-2 text-sm">
           Texto de la atención
           <textarea
             rows={8}
@@ -371,7 +449,7 @@ function CaptureAssistant() {
             className={clinicalInput}
             value={text}
             disabled={busy}
-            placeholder="Ej.: Paciente Ana Gómez, DNI 30.123.456, consulta por tos de 3 días. Niega fiebre. TA 120/80. Indico control en una semana."
+            placeholder="Ej.: Paciente Ana Gómez, DNI 30.123.456. Motivo de consulta: tos de 3 días. Enfermedad actual: niega fiebre. Tratamiento: hidratación. Observaciones: control en una semana."
             onChange={(e) => changeText(e.target.value)}
           />
         </label>
@@ -587,6 +665,15 @@ function CaptureAssistant() {
                   ? "La consulta quedó como borrador: revisala y validala antes de darla por cerrada."
                   : "Se guardaron los pasos confirmados."}
               </p>
+              {learned && (
+                <p className="text-xs text-nexus-cyan">
+                  Nexus aprendió tu conducta para este cuadro (sin datos del
+                  paciente).{" "}
+                  <Link href="/memory" className="underline">
+                    Ver lo aprendido
+                  </Link>
+                </p>
+              )}
               <div className="flex flex-wrap gap-3">
                 {patientId && encounterId && (
                   <Link
@@ -627,6 +714,14 @@ function CaptureAssistant() {
           )}
         </>
       )}
+      </div>
+      <ClinicalAssistPanel
+        fields={proposedFields}
+        text={plan ? "" : text}
+        subjectId={contextId ?? chosen?.id}
+        subjectName={plan?.subject.mode === "new" ? plan.subject.name : undefined}
+      />
+      </div>
     </div>
   );
 }
