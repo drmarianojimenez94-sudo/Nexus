@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { joinTranscript } from "./dictation";
-import { clinicalCaptureUrl, isClinicalDictation } from "../components/GlobalMicButton";
+import { clinicalCaptureUrl, isClinicalDictation } from "./dictationRouting";
 
 describe("dictado continuo", () => {
   it("une fragmentos sin duplicar espacios ni separar la puntuación", () => {

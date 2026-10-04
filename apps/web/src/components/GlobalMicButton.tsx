@@ -1,27 +1,14 @@
 "use client";
 
-import { looksSensitive, medicineVertical } from "@nexus/verticals";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { CLINICAL_HANDOFF_KEY } from "@/lib/clinicalCapture";
 import { useDictation } from "@/lib/dictation";
+import { clinicalCaptureUrl, isClinicalDictation } from "@/lib/dictationRouting";
 import { announce, stopSpeaking } from "@/lib/voice";
 import { handleVoiceCommand, type VoiceCommandResult } from "@/lib/voiceCommands";
 import { AssistantActionCards } from "./AssistantActionCards";
-
-const UUID = /\/patients\/([0-9a-f-]{36})(?:\/|$)/i;
-
-/** ¿Lo dictado es clínico? En una ficha o pantalla de pacientes, siempre. */
-export function isClinicalDictation(text: string, path: string): boolean {
-  return path.startsWith("/patients") || looksSensitive(text, medicineVertical);
-}
-
-/** Pantalla de dictado clínico con el texto, lista para armar la ficha. */
-export function clinicalCaptureUrl(path: string): string {
-  const patient = UUID.exec(path)?.[1];
-  return `/patients/capture?auto=1${patient ? `&patient=${patient}` : ""}`;
-}
 
 type Phase = "idle" | "listening" | "working" | "done";
 
