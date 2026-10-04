@@ -37,14 +37,15 @@ function recordFields(steps: PlanStep[]): Record<string, string> {
 }
 
 /**
- * Dictar: asistente clínico nativo. Al entrar a la pestaña ya escucha
- * (modo "Dicto yo", sin el paciente): dictás, Nexus propone ficha, consulta
- * (plantilla "visit"), seguimientos y turnos, y no guarda nada hasta que
- * confirmás. La interpretación es determinística en el servidor; el
+ * Dictar: asistente clínico nativo. Tocás «🎙 Dictar», hablás con las pausas
+ * que necesites y tocás «■ Listo»: Nexus arma solo la propuesta de ficha,
+ * consulta (plantilla "visit"), seguimientos y turnos, y no guarda nada
+ * hasta que confirmás. También llega acá lo dictado con el micrófono global
+ * (`text` + `auto`), ya interpretado. La interpretación es determinística en el servidor; el
  * asistente clínico IA trabaja aparte sobre el caso desidentificado.
  */
 export default function AssistantScreen() {
-  const params = useLocalSearchParams<{ subjectId?: string; subjectName?: string; text?: string }>();
+  const params = useLocalSearchParams<{ subjectId?: string; subjectName?: string; text?: string; auto?: string; nonce?: string }>();
   const dictation = useDictation({ contextualStrings: vertical.vocabulary.domainTerms });
   const [mode, setMode] = useState<CaptureMode>("dictated");
   const [consent, setConsent] = useState(false);
@@ -64,38 +65,49 @@ export default function AssistantScreen() {
   const [helpError, setHelpError] = useState<string | null>(null);
   const dictationRef = useRef(dictation);
   dictationRef.current = dictation;
-  const stateRef = useRef({ mode, text, plan });
-  stateRef.current = { mode, text, plan };
+  const interpretRef = useRef<(source: string, subjectId?: string | null) => Promise<void>>(async () => undefined);
 
-  // Desde Pacientes ("Dictar en esta ficha") o derivado por la secretaria (texto ya dicho).
+  // Desde Pacientes ("Dictar en esta ficha"), el micrófono global o la secretaria (texto ya dicho).
   useEffect(() => {
-    if (params.subjectId) {
-      setSubject({ id: params.subjectId, name: params.subjectName ?? "Paciente" });
-      setPlan(null);
-      setDone(null);
+    if (!params.subjectId) return;
+    const id = params.subjectId;
+    setSubject({ id, name: params.subjectName ?? "Paciente" });
+    setPlan(null);
+    setDone(null);
+    if (!params.subjectName) {
+      void api
+        .get<{ patient: { id: string; name: string } }>(`/clinical/patients/${encodeURIComponent(id)}`)
+        .then((r) => setSubject((prev) => (prev?.id === id ? { id, name: r.patient.name } : prev)))
+        .catch(() => undefined);
     }
   }, [params.subjectId, params.subjectName]);
   useEffect(() => {
-    if (params.text) {
-      setText(params.text);
-      dictationRef.current.reset(params.text);
-      setPlan(null);
-      setDone(null);
+    if (!params.text) return;
+    setText(params.text);
+    dictationRef.current.reset(params.text);
+    setPlan(null);
+    setDone(null);
+    // Dictado con el micrófono global: la ficha queda armada para revisar.
+    if (params.auto === "1") {
+      // Sin ficha en el dictado: no se cuelga de la ficha que quedó abierta antes.
+      if (!params.subjectId) setSubject(null);
+      void interpretRef.current(params.text, params.subjectId ?? null);
     }
-  }, [params.text]);
+  // Solo cuando llega un dictado nuevo (nonce), no al cambiar otros parámetros.
+  }, [params.text, params.nonce]);
 
-  // "Apenas entrando": escucha al tomar foco (modo dictado, sin plan pendiente) y suelta el micrófono al salir.
+  // No escucha sola: el micrófono se abre solo cuando lo tocás. Al salir, se suelta sin perder el texto.
   useFocusEffect(
-    useCallback(() => {
-      const d = dictationRef.current;
-      const s = stateRef.current;
-      if (d.available && s.mode === "dictated" && !s.plan && !d.listening) void d.start();
-      return () => dictationRef.current.stop();
-    }, []),
+    useCallback(
+      () => () => {
+        if (dictationRef.current.listening) void dictationRef.current.stop();
+      },
+      [],
+    ),
   );
   useEffect(() => {
-    if (dictation.text) setText(dictation.text);
-  }, [dictation.text]);
+    if (dictation.listening && dictation.text) setText(dictation.text);
+  }, [dictation.listening, dictation.text]);
 
   const canListen = dictation.available && mode !== "typed" && (mode !== "ambient" || consent);
 
@@ -118,24 +130,48 @@ export default function AssistantScreen() {
     }
   }
 
-  async function onInterpret() {
-    if (dictation.listening) dictation.stop();
+  /** `subjectId`: sin pasar = la ficha elegida en pantalla; `null` = ninguna. */
+  async function onInterpret(source: string = text, subjectArg: string | null | undefined = subject?.id) {
+    if (source.trim().length < 2) return;
+    const subjectId = subjectArg ?? undefined;
     setBusy(true);
     setError(null);
     setDone(null);
     setHelp(null);
     setChosenId(null);
     try {
-      const p = await interpret(text, { captureMode: mode, consentConfirmed: consent, subjectId: subject?.id, templateId: DEFAULT_TEMPLATE_ID });
+      const p = await interpret(source, { captureMode: mode, consentConfirmed: consent, subjectId, templateId: DEFAULT_TEMPLATE_ID });
       setPlan(p);
       setSteps(p.steps);
       setSelected(new Set(p.steps.map((s) => s.id)));
-      void loadAssist(p.steps, subject?.id);
+      void loadAssist(p.steps, subjectId);
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo interpretar.");
     } finally {
       setBusy(false);
     }
+  }
+
+  interpretRef.current = onInterpret;
+
+  /** «🎙 Dictar» ↔ «■ Listo». Al terminar (botón o pausa larga) arma la ficha sola. */
+  async function onMic() {
+    if (dictation.listening) {
+      const spoken = await dictation.stop();
+      setText(spoken);
+      void interpretRef.current(spoken);
+      return;
+    }
+    setPlan(null);
+    setDone(null);
+    dictation.reset(text);
+    await dictation.start({
+      keep: true,
+      onAutoStop: (spoken) => {
+        setText(spoken);
+        void interpretRef.current(spoken);
+      },
+    });
   }
 
   async function onConfirm() {
@@ -222,7 +258,16 @@ export default function AssistantScreen() {
 
       <View style={styles.row}>
         {MODES.map((m) => (
-          <Pressable key={m.id} onPress={() => { setMode(m.id); if (dictation.listening) dictation.stop(); }} style={[styles.chip, mode === m.id && styles.chipOn]}>
+          <Pressable
+            key={m.id}
+            onPress={() => {
+              setMode(m.id);
+              if (dictation.listening) void dictation.stop().then(setText);
+            }}
+            style={[styles.chip, mode === m.id && styles.chipOn]}
+            accessibilityRole="button"
+            accessibilityState={{ selected: mode === m.id }}
+          >
             <Text style={[styles.chipText, mode === m.id && styles.chipTextOn]}>{m.label}</Text>
           </Pressable>
         ))}
@@ -235,11 +280,21 @@ export default function AssistantScreen() {
       )}
 
       {canListen && (
-        <Pressable onPress={() => (dictation.listening ? dictation.stop() : void dictation.start())} style={[styles.mic, dictation.listening && styles.micOn]}>
-          <Text style={styles.micText}>{dictation.listening ? "■ Detener" : "🎙 Dictar"}</Text>
+        <Pressable
+          onPress={() => void onMic()}
+          disabled={busy && !dictation.listening}
+          style={({ pressed }) => [styles.mic, dictation.listening && styles.micOn, pressed && styles.pressed]}
+          accessibilityRole="button"
+          accessibilityLabel={dictation.listening ? "Listo: terminar de dictar y armar la ficha" : "Dictar: tocá y hablá, escucho hasta que toques Listo"}
+        >
+          <Text style={[styles.micText, dictation.listening && styles.micTextOn]}>{dictation.listening ? "■ Listo" : "🎙 Dictar"}</Text>
         </Pressable>
       )}
-      {dictation.listening && <Text style={styles.muted}>Escuchando{dictation.onDevice ? " (en el dispositivo)" : ""}…</Text>}
+      {dictation.listening && (
+        <Text style={styles.listening} accessibilityLiveRegion="polite">
+          Te escucho{dictation.onDevice ? " (en el dispositivo)" : ""}. Hablá tranquilo, las pausas no cortan: tocá «Listo» al terminar.
+        </Text>
+      )}
       {!dictation.available && mode !== "typed" && <Text style={styles.muted}>Dictado no disponible en este dispositivo: escribí la nota.</Text>}
       {dictation.error && <Text style={styles.warn}>{dictation.error}</Text>}
       <Text style={styles.hint}>Decí: «motivo de consulta…, enfermedad actual…, examen…, diagnóstico presuntivo…, tratamiento…, observaciones…»</Text>
@@ -252,8 +307,20 @@ export default function AssistantScreen() {
         placeholderTextColor={colors.muted}
         style={styles.input}
       />
-      <Pressable disabled={busy || text.trim().length < 2} onPress={() => void onInterpret()} style={[styles.primary, (busy || text.trim().length < 2) && styles.disabled]}>
-        {busy ? <ActivityIndicator color={colors.bg} /> : <Text style={styles.primaryText}>Interpretar</Text>}
+      {busy && (
+        <View style={styles.busy} accessibilityLiveRegion="polite">
+          <ActivityIndicator color={colors.cyan} />
+          <Text style={styles.muted}>Armando la ficha con lo que dijiste…</Text>
+        </View>
+      )}
+      <Pressable
+        disabled={busy || dictation.listening || text.trim().length < 2}
+        onPress={() => void onInterpret()}
+        style={[styles.secondary, (busy || dictation.listening || text.trim().length < 2) && styles.disabled]}
+        accessibilityRole="button"
+        accessibilityLabel="Armar ficha con el texto escrito"
+      >
+        <Text style={styles.secondaryText}>Armar ficha con el texto</Text>
       </Pressable>
 
       {error && <Text style={styles.danger}>{error}</Text>}
@@ -323,9 +390,15 @@ const styles = StyleSheet.create({
   chipTextOn: { color: colors.cyan },
   consent: { flexDirection: "row", gap: 10, alignItems: "center" },
   consentText: { color: colors.text, fontSize: 13, flex: 1 },
-  mic: { alignItems: "center", paddingVertical: 16, borderRadius: 16, borderWidth: 1, borderColor: colors.cyan },
-  micOn: { backgroundColor: colors.panel, borderColor: colors.danger },
-  micText: { color: colors.text, fontSize: 18, fontWeight: "600" },
+  mic: { alignItems: "center", justifyContent: "center", minHeight: 88, borderRadius: 20, borderWidth: 3, borderColor: colors.text, backgroundColor: colors.cyan },
+  micOn: { backgroundColor: colors.danger, borderColor: "#ffffff" },
+  pressed: { opacity: 0.8 },
+  micText: { color: colors.bg, fontSize: 26, fontWeight: "800" },
+  micTextOn: { color: "#ffffff" },
+  listening: { color: colors.text, fontSize: 15, lineHeight: 21 },
+  busy: { flexDirection: "row", gap: 10, alignItems: "center" },
+  secondary: { borderColor: colors.cyan, borderWidth: 1, borderRadius: 12, minHeight: 52, alignItems: "center", justifyContent: "center" },
+  secondaryText: { color: colors.cyan, fontWeight: "600", fontSize: 16 },
   input: { minHeight: 140, color: colors.text, backgroundColor: colors.panel, borderRadius: 12, padding: 12, fontSize: 15, textAlignVertical: "top" },
   search: { color: colors.text, borderColor: colors.border, borderWidth: 1, borderRadius: 8, padding: 8 },
   primary: { backgroundColor: colors.cyan, borderRadius: 12, paddingVertical: 14, alignItems: "center" },

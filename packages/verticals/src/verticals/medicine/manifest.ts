@@ -387,7 +387,7 @@ export const medicineVertical = defineVertical({
       ios: { infoPlistKeys: ["NSMicrophoneUsageDescription"] },
       android: { permissions: ["android.permission.RECORD_AUDIO"] },
       expoPlugin: { name: "expo-speech-recognition", option: "microphonePermission" },
-      rationale: "Nexus usa el micrófono solo con la app abierta, cuando le hablás en Inicio o en Dictar, para transcribir tus pedidos, consultas y pendientes. No escucha en segundo plano ni guarda el audio.",
+      rationale: "Nexus usa el micrófono solo con la app abierta, cuando tocás el botón de micrófono y hasta que tocás «Listo», para transcribir tus pedidos, consultas y pendientes. No escucha en segundo plano ni guarda el audio.",
       fallback: "Escribir con el teclado o usar el dictado del teclado del sistema.",
       status: "implemented",
     },

@@ -3,6 +3,7 @@ import { Redirect, router } from "expo-router";
 import { Tabs } from "expo-router/js-tabs";
 import { useEffect, type ComponentProps } from "react";
 import { ActivityIndicator, View, type ColorValue } from "react-native";
+import { GlobalMicProvider } from "../../components/GlobalMic";
 import { LockGate } from "../../components/LockGate";
 import { useAuth } from "../../lib/auth-context";
 import { onNotificationOpen } from "../../lib/notifications";
@@ -14,12 +15,14 @@ const icon = (name: IconName) =>
     return <Ionicons name={name} color={color} size={size} />;
   };
 
-const OPENABLE = new Set(["/home", "/day", "/agenda", "/patients", "/assistant"]);
+const OPENABLE = new Set(["/home", "/day", "/agenda", "/patients", "/assistant", "/brain"]);
 
 /**
  * Pestañas de la secretaria: Inicio (consola de voz), Pacientes, Dictar,
  * Mi día y Agenda. Todo queda detrás del bloqueo biométrico una sola vez
- * (no en cada pestaña). Today y Ajustes existen como rutas sin pestaña.
+ * (no en cada pestaña). Today, Ajustes y «Lo que aprendí» existen como
+ * rutas sin pestaña. El micrófono grande global flota sobre la barra de
+ * pestañas en todas las pantallas.
  */
 export default function AppLayout() {
   const { user, loading } = useAuth();
@@ -43,6 +46,7 @@ export default function AppLayout() {
 
   return (
     <LockGate>
+      <GlobalMicProvider>
       <Tabs
         initialRouteName="home"
         backBehavior="history"
@@ -61,7 +65,9 @@ export default function AppLayout() {
         <Tabs.Screen name="agenda" options={{ title: "Agenda", tabBarIcon: icon("calendar-outline") }} />
         <Tabs.Screen name="today" options={{ href: null }} />
         <Tabs.Screen name="settings" options={{ href: null }} />
+        <Tabs.Screen name="brain" options={{ href: null }} />
       </Tabs>
+      </GlobalMicProvider>
     </LockGate>
   );
 }
