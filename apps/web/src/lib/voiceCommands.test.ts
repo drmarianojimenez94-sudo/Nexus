@@ -32,6 +32,61 @@ describe("voice routing", () => {
     expect((await handleVoiceCommand(command)).navigateTo).toBe(path);
     expect(post).not.toHaveBeenCalled();
   });
+  it.each([
+    ["pacientes", "/patients"],
+    ["Pacientes.", "/patients"],
+    ["abrí pacientes", "/patients"],
+    ["abrime los pacientes", "/patients"],
+    ["mostrame mis pacientes", "/patients"],
+    ["ir a pacientes", "/patients"],
+    ["Nexus, andá a pacientes", "/patients"],
+    ["nuevo paciente", "/patients/new"],
+    ["crear un paciente nuevo", "/patients/new"],
+    ["cargar paciente", "/patients/capture"],
+    ["cargar un paciente", "/patients/capture"],
+    ["dictar consulta", "/patients/capture"],
+    ["dictá una consulta", "/patients/capture"],
+    ["quiero dictar un paciente", "/patients/capture"],
+    ["mi día", "/patients/day"],
+    ["abrí mi día médico", "/patients/day"],
+    ["seguimientos", "/patients/followups"],
+    ["mostrame los seguimientos", "/patients/followups"],
+    ["agenda", "/calendar"],
+    ["calendario", "/calendar"],
+    ["abrí el mail", "/settings#google"],
+    ["correo", "/settings#google"],
+    ["ajustes", "/settings"],
+    ["ir a ajustes", "/settings"],
+  ])("understands the natural phrase %s", async (command, path) => {
+    post.mockRejectedValue(new ApiError(501, "unconfigured"));
+    const result = await handleVoiceCommand(command);
+    expect(result.navigateTo).toBe(path);
+    expect(result.speak).toMatch(/^Abriendo /);
+    expect(post).not.toHaveBeenCalled();
+  });
+  it("speaks a short confirmation when opening a section", async () => {
+    expect((await handleVoiceCommand("abrime el calendario")).speak).toBe("Abriendo calendario.");
+    expect((await handleVoiceCommand("pacientes")).speak).toBe("Abriendo pacientes.");
+  });
+  it("does not treat dictated patient content as navigation", async () => {
+    const setItem = vi.fn(); vi.stubGlobal("sessionStorage", { setItem });
+    try {
+      const text = "dictar paciente Juan Pérez con fiebre de tres días";
+      const result = await handleVoiceCommand(text);
+      expect(result.navigateTo).toBe("/patients/capture");
+      expect(setItem).toHaveBeenCalledWith("nexus.clinicalHandoff", text);
+      // Intención clínica explícita: no pasa por la IA general.
+      expect(post).not.toHaveBeenCalled();
+    } finally { vi.unstubAllGlobals(); }
+  });
+  it("passes alarms, events and email drafts from the assistant", async () => {
+    const emailDraft = { to: "pedro@example.com", subject: "Turno", body: "Hola", id: "d1", confirmationToken: "t", connected: true };
+    post.mockResolvedValue({ speak: "Te redacté el mail.", emailDraft, alarm: { at: "2026-10-05T09:30:00.000Z", title: "Guardia" } });
+    const result = await handleVoiceCommand("mandale un mail a Pedro diciendo hola");
+    expect(result.emailDraft).toEqual(emailDraft);
+    expect(result.alarm?.title).toBe("Guardia");
+    expect(result.navigateTo).toBeUndefined();
+  });
   it("preserves actions attached to a navigation request", async () => {
     post.mockResolvedValue({ speak: "Evento creado", navigateTo: "/calendar" });
     await handleVoiceCommand("abrí el calendario y agendá una reunión mañana");

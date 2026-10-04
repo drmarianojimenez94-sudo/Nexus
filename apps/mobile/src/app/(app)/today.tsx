@@ -14,7 +14,7 @@ import { NexusFace, type FaceState } from "../../components/NexusFace";
 import { api } from "../../lib/api";
 import { useAuth } from "../../lib/auth-context";
 import { colors } from "../../lib/theme";
-import { useSpeech } from "../../lib/useSpeech";
+import { useVoice } from "../../lib/voice";
 
 interface TodayResponse {
   now: Event | null;
@@ -66,7 +66,7 @@ const { height: SCREEN_HEIGHT } = Dimensions.get("window");
  */
 export default function TodayScreen() {
   const { user, logout } = useAuth();
-  const { speak, speaking } = useSpeech();
+  const { speak, speaking } = useVoice();
   const [data, setData] = useState<TodayResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);

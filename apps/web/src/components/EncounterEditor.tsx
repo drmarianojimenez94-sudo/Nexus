@@ -39,6 +39,7 @@ import {
   reconcileClinicalDraft,
 } from "./ClinicalDraftConflict";
 import { ClinicalLocalDrafts } from "./ClinicalLocalDrafts";
+import { ClinicalAssistPanel } from "./ClinicalAssistPanel";
 
 export function EncounterEditor({
   patientId,
@@ -64,7 +65,7 @@ export function EncounterEditor({
       CLINICAL_TEMPLATES[0]!,
     );
   const [input, setInput] = useState<EncounterInput>({
-    templateId: "first",
+    templateId: CLINICAL_TEMPLATES[0]!.id,
     occurredAt: new Date().toISOString(),
     fields: {},
     dictation: "",
@@ -567,6 +568,14 @@ export function EncounterEditor({
           Recuperé un borrador local. Revisalo antes de guardarlo.
         </p>
       )}
+      <div
+        className={
+          status !== "FINAL"
+            ? "grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start"
+            : "flex flex-col gap-4"
+        }
+      >
+      <div className="flex min-w-0 flex-col gap-4">
       <section className="glass-panel flex flex-col gap-4 p-4">
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="text-sm">
@@ -746,6 +755,15 @@ export function EncounterEditor({
           </div>
         </section>
       )}
+      </div>
+      {status !== "FINAL" && (
+        <ClinicalAssistPanel
+          fields={input.fields}
+          text={input.dictation}
+          subjectId={patientId}
+        />
+      )}
+      </div>
       <p
         role="status"
         className={`text-xs ${localStatus.startsWith("No se pudo") ? "text-nexus-amber" : "text-nexus-muted"}`}

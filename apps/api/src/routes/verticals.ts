@@ -2,9 +2,14 @@ import { Router } from "express";
 import { z } from "zod";
 import type { PatientInput } from "@nexus/shared";
 import {
+  ageFrom,
   buildDayBrief,
   dayBounds,
+  deidentify,
   evaluateVertical,
+  habitsFor,
+  matchGuidelines,
+  preventiveReminders,
   getVertical,
   interpretCapture,
   scoreVertical,
@@ -18,6 +23,9 @@ import { asyncHandler } from "../middleware/asyncHandler.js";
 import { authenticate } from "../middleware/authenticate.js";
 import { expectedOwner } from "../middleware/expectedOwner.js";
 import { HttpError } from "../middleware/errorHandler.js";
+import { isClinicalAiConfigured, suggestForCase } from "../lib/clinicalAssist.js";
+import { learnFromFields, loadHabits, saveHabits } from "../lib/clinicalHabits.js";
+import { env } from "../lib/env.js";
 
 /**
  * Fábrica de verticales: cada profesión es un manifiesto (@nexus/verticals).
@@ -79,6 +87,7 @@ const captureSchema = z.object({
   /** typed: escrito; dictated: dictado del profesional; ambient: conversación con el paciente. */
   captureMode: z.enum(["typed", "dictated", "ambient"]).default("typed"),
   consentConfirmed: z.boolean().default(false),
+  templateId: z.string().max(100).optional(),
 });
 
 verticalsRouter.post(
@@ -103,6 +112,7 @@ verticalsRouter.post(
       subjectId: input.subjectId,
       subjectName,
       knownAllergies,
+      templateId: input.templateId,
     });
     // Sin texto clínico en la auditoría: solo el modo y el consentimiento declarado.
     await recordAudit({
@@ -155,5 +165,126 @@ verticalsRouter.get(
     });
     await recordAudit({ userId, action: "vertical.day.read", entityType: "vertical", entityId: v.manifest.id });
     res.set("Cache-Control", "no-store, private").json({ brief });
+  }),
+);
+
+async function ownedPatientRecord(userId: string, subjectId: string | undefined) {
+  if (!subjectId) return null;
+  const row = await prisma.patient.findFirst({ where: { id: subjectId, userId } });
+  if (!row) throw new HttpError(404, "Paciente no encontrado");
+  return decryptClinical<PatientInput & { sex?: string; familyContact?: string }>(row.recordEncrypted, scope(userId, "patient", row.id));
+}
+
+const assistSchema = z.object({
+  fields: z.record(z.string().max(10000)).refine((f) => Object.keys(f).length <= 30).default({}),
+  text: z.string().max(8000).default(""),
+  subjectId: z.string().uuid().optional(),
+  /** Datos del paciente nuevo que todavía no tiene ficha (para desidentificar y contextualizar). */
+  subject: z.object({ name: z.string().max(160).default(""), age: z.number().int().min(0).max(130).nullable().default(null), sex: z.string().max(1).default("") }).optional(),
+  includeAi: z.boolean().default(true),
+});
+
+/**
+ * Asistencia clínica en vivo mientras se carga la consulta:
+ * recordatorios de guías (siempre, sin IA), prevención por edad y sexo,
+ * conducta habitual del profesional y, si hay IA configurada, sugerencias
+ * sobre el caso desidentificado. Devuelve exactamente lo que se envió.
+ */
+verticalsRouter.post(
+  "/:id/assist",
+  asyncHandler(async (req, res) => {
+    const v = vertical(req.params.id!);
+    const input = assistSchema.parse(req.body);
+    const userId = req.userId!;
+    const patient = await ownedPatientRecord(userId, input.subjectId);
+    const ids = {
+      names: [patient?.name, input.subject?.name].filter((n): n is string => Boolean(n)),
+      documents: patient?.document ? [patient.document] : [],
+      phones: patient?.phone ? [patient.phone] : [],
+      familyContact: patient?.familyContact,
+    };
+    const fields = Object.fromEntries(
+      Object.entries({ ...input.fields, ...(input.text ? { dictado: input.text } : {}) })
+        .filter(([, value]) => value.trim())
+        .map(([key, value]) => [key, deidentify(value, ids).text]),
+    );
+    const age = patient ? ageFrom(patient.birthDate) : (input.subject?.age ?? null);
+    const sex = patient?.sex || input.subject?.sex || "";
+    const history = patient ? deidentify(patient.history, ids).text : "";
+    // La edad registrada también activa recordatorios (adulto mayor, pediatría).
+    const ageContext = age === null ? "" : age >= 75 ? " adulto mayor" : age < 14 ? " control pediatrico" : "";
+    const all = [Object.values(fields).join(" "), history, patient?.medication ?? "", ageContext].join(" ");
+    const habits = habitsFor(await loadHabits(userId), all);
+    const casePayload = {
+      age,
+      sex,
+      allergies: patient?.allergies ?? "",
+      medication: patient ? deidentify(patient.medication, ids).text : "",
+      history,
+      fields,
+      habits: habits.flatMap((h) => h.treatments.slice(0, 2).map((t) => `${h.label}: ${t.text} (${t.count} veces)`)),
+    };
+    let ai = null;
+    let aiStatus: "ok" | "not_configured" | "disabled" | "error" = "disabled";
+    const hasContent = Object.values(fields).join(" ").trim().length >= 12;
+    if (input.includeAi && hasContent) {
+      if (!isClinicalAiConfigured()) aiStatus = "not_configured";
+      else
+        try {
+          ai = await suggestForCase(casePayload);
+          aiStatus = ai ? "ok" : "error";
+        } catch {
+          aiStatus = "error";
+        }
+    }
+    await recordAudit({
+      userId,
+      action: "vertical.assist",
+      entityType: "vertical",
+      entityId: v.manifest.id,
+      metadata: { aiStatus, provider: env.aiProvider, deidentified: true },
+    });
+    res.set("Cache-Control", "no-store, private").json({
+      guidelines: matchGuidelines(all),
+      prevention: preventiveReminders(age, sex),
+      habits,
+      ai,
+      aiStatus,
+      aiProvider: isClinicalAiConfigured() ? env.aiProvider : null,
+      sent: casePayload,
+    });
+  }),
+);
+
+verticalsRouter.get(
+  "/:id/habits",
+  asyncHandler(async (req, res) => {
+    vertical(req.params.id!);
+    res.json({ habits: await loadHabits(req.userId!) });
+  }),
+);
+
+verticalsRouter.post(
+  "/:id/habits/learn",
+  asyncHandler(async (req, res) => {
+    vertical(req.params.id!);
+    const input = z.object({ fields: z.record(z.string().max(10000)), subjectId: z.string().uuid().optional() }).parse(req.body);
+    const patient = await ownedPatientRecord(req.userId!, input.subjectId);
+    await learnFromFields(req.userId!, input.fields, {
+      names: patient ? [patient.name] : [],
+      documents: patient?.document ? [patient.document] : [],
+      phones: patient?.phone ? [patient.phone] : [],
+    });
+    res.json({ habits: await loadHabits(req.userId!) });
+  }),
+);
+
+verticalsRouter.delete(
+  "/:id/habits/:key",
+  asyncHandler(async (req, res) => {
+    vertical(req.params.id!);
+    const habits = (await loadHabits(req.userId!)).filter((h) => h.key !== req.params.key);
+    await saveHabits(req.userId!, habits);
+    res.json({ habits });
   }),
 );

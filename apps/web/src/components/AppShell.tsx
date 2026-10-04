@@ -101,7 +101,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div
-      className={`nexus-app-shell mx-auto flex max-w-7xl gap-5 px-3 pt-4 sm:px-6 sm:pt-5 ${voiceDocked ? "pb-[22rem]" : "pb-24 sm:pb-6"}`}
+      className={`nexus-app-shell mx-auto flex max-w-7xl gap-5 px-3 pt-4 sm:px-6 sm:pt-5 ${voiceDocked ? "pb-[30rem] sm:pb-[22rem]" : "pb-24 sm:pb-6"}`}
     >
       <ThemeController mode={preferences?.theme_mode} />
       <Suspense fallback={null}>
@@ -123,7 +123,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         )}
         {children}
       </main>
-      {!voiceDocked && <BottomNav onOrbClick={openVoice} />}
+      {/* La navegación queda siempre a mano, también con la consola de voz abierta. */}
+      <BottomNav
+        onOrbClick={openVoice}
+        elevated={captureOpen && !clinical && !voiceDocked}
+      />
       {captureOpen && !clinical && (
         <VoiceSession onClose={closeVoice} onDockChange={setVoiceDocked} />
       )}

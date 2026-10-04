@@ -1,6 +1,6 @@
 import type { PublicUser } from "@nexus/shared";
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { api } from "./api";
+import { api, setApiSessionOwner } from "./api";
 import { clearTokens, getAccessToken, getRefreshToken, saveTokens } from "./tokenStore";
 
 interface AuthTokens {
@@ -19,7 +19,12 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<PublicUser | null>(null);
+  const [user, setSessionUser] = useState<PublicUser | null>(null);
+  // El id del usuario viaja como X-Nexus-Owner en las rutas clínicas.
+  function setUser(next: PublicUser | null) {
+    setApiSessionOwner(next?.id ?? null);
+    setSessionUser(next);
+  }
   const [loading, setLoading] = useState(true);
 
   async function loadFromStoredSession() {

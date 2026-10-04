@@ -11,6 +11,8 @@ export interface NativePermissions {
 /** Opciones extra por plugin que no dependen de la vertical. */
 const PLUGIN_DEFAULTS: Record<string, Record<string, unknown>> = {
   "expo-speech-recognition": { androidSpeechServicePackages: ["com.google.android.as", "com.google.android.googlequicksearchbox"] },
+  // El plugin de expo-calendar siempre declara Recordatorios en iOS; sin esto quedaría su texto en inglés.
+  "expo-calendar": { remindersPermission: "Nexus no lee ni modifica tus Recordatorios: solo usa el calendario para tus turnos." },
 };
 
 /**

@@ -114,3 +114,75 @@ Para subir de esa meseta hace falta un modelo de lenguaje con un proveedor que f
 6. **Codificación CIE-10 estructurada**: hoy el diagnóstico es texto marcado como presuntivo.
 7. **Revisión legal** de `docs/NEXUS_PRIVACY_POLICY.md` e inscripción de la base ante la AAIP.
 8. `CLINICAL_DATA_KEY` obligatoria en producción. Hoy cae a `AUTH_SECRET`; rotar esa clave volvería ilegibles los datos.
+
+## Secretario clínico (segunda etapa)
+
+### Qué se agregó
+
+**Entrada a la parte médica**
+- La consola de voz de inicio tapaba la navegación y solo ofrecía Calendario, Hoy y Proyectos. Ahora muestra Pacientes, Dictar paciente y Mi día médico, y la barra inferior queda siempre visible.
+- Por voz se entienden frases naturales: "abrí pacientes", "nuevo paciente", "dictar consulta", "mi día", "seguimientos", "correo".
+
+**Consulta dictada** (plantilla `visit`)
+- Secciones: motivo de consulta, enfermedad actual, examen, diagnóstico presuntivo, tratamiento y observaciones.
+- Si el médico dicta el rótulo de una sección, todo lo que sigue va entero a ese campo. Sin rótulos, el intérprete deduce el motivo y la enfermedad actual del relato.
+
+**Asistente clínico en vivo** (`POST /verticals/medicine/assist`)
+- Recordatorios de guías, cada uno con su fuente (ADA, ESH, GOLD, GINA, KDIGO, SADI, SAP, MSAL). Funcionan sin IA.
+- Prevención según edad y sexo.
+- "Tu conducta habitual", tomada de lo que el médico valida.
+- Sugerencias de IA (Gemini hoy; `AI_PROVIDER=anthropic` para Claude) sobre el caso **desidentificado**: sin nombre, DNI, teléfono, correo, fechas, direcciones ni otros nombres propios.
+- La pantalla muestra exactamente qué se envió.
+
+**Cerebro**
+- Cada consulta validada enseña "cuadro → conducta" (`clinical_habits`).
+- Se ve y se borra desde Memoria ("Lo que Nexus aprendió de vos").
+- Nunca guarda la identidad del paciente.
+
+**Secretario**
+- "Mandale un mail a…": redacta y deja el borrador en Gmail; solo se envía con tu confirmación.
+- "Poneme una alarma…": en Android abre el Reloj; en iPhone programa un aviso con sonido. Además queda como recordatorio en Nexus.
+- "Agendá…": crea el turno en Nexus, en Google Calendar (si se dio permiso de escritura) y en el calendario del teléfono.
+
+**Voz**
+- Nexus responde hablando ("Abriendo calendario"). Usa la voz más natural en español del dispositivo y se puede silenciar.
+- La voz neural queda lista: `VOICE_PROVIDER=google|elevenlabs|openai`, `VOICE_API_KEY` y `VOICE_NAME` opcional.
+
+**App nativa**
+- Pestañas: Inicio (secretario que escucha), Pacientes, Dictar, Mi día y Agenda.
+- Calendario y notificaciones del teléfono, alarmas, contactos y bloqueo biométrico.
+- Resumen diario de Mi día sin nombres de pacientes.
+
+### Simulación de consultorio (30 pacientes, 35 consultas por lote)
+
+`apps/api/src/tests/clinicSimulation.test.ts` recorre la API real como un médico: crea la ficha, dicta, confirma, pide sugerencias, valida y aprende. Los lotes los escribieron agentes que no vieron el código.
+
+| Métrica | Lote 1: ciego, 1.ª pasada | Lote 1: tras corregir | Lote 2: ciego, 1.ª pasada | Lote 2: tras corregir |
+|---|---|---|---|---|
+| Guardadas y validadas | 35/35 | 35/35 | 35/35 | 35/35 |
+| Motivo de consulta | 83 % | 100 % | 51 % | 97 % |
+| Enfermedad actual | 80 % | 97 % | 97 % | 97 % |
+| Tratamiento | 94 % | 100 % | 79 % | 97 % |
+| Observaciones | 81 % | 100 % | 79 % | 79 % |
+| Recordatorios de guías | 94 % | 98 % | 90 % | 98 % |
+| Señales de alarma | 100 % | 100 % | 100 % | 100 % |
+| Seguimientos | 74 % | 100 % | 84 % | 96 % |
+| Identidad enviada a la IA | 0 | 0 | 0 | 0 |
+
+**Las columnas de primera pasada son la medida honesta** de cómo le va con dictados nuevos. Las correcciones fueron siempre generales:
+
+- rótulos dictados;
+- "la traen por…";
+- "se solicita…";
+- "la veo en…";
+- muletillas como "eh", "bueno", "a ver".
+
+Las fallas que quedan son, sobre todo, desacuerdos de criterio: qué parte de un relato sin rótulos es "observación".
+
+Con IA configurada, las sugerencias son propuestas para el médico, marcadas "verificar". Su calidad clínica depende del modelo (Gemini gratis hoy) y no se midió en este entorno porque no hay una clave de IA disponible.
+
+### Pendiente para la próxima etapa
+
+- Probar la app nativa en un iPhone y un Android reales (development build con EAS).
+- Configurar en Render: `GEMINI_API_KEY` (o Claude), Google OAuth (Gmail y Calendar con permiso de escritura) y, cuando quieras, la voz neural.
+- Un set de casos para evaluar la calidad de las sugerencias de IA, cuando haya clave configurada.

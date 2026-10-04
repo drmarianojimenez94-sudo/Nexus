@@ -8,6 +8,7 @@ import { HttpError } from "../middleware/errorHandler.js";
 import { recordAudit } from "../lib/audit.js";
 import { env } from "../lib/env.js";
 import { looksSensitive, medicineVertical } from "@nexus/verticals";
+import { prepareEmail, pushGoogleEvent } from "../lib/secretary.js";
 
 export const assistantRouter = Router();
 assistantRouter.use(authenticate);
@@ -26,6 +27,12 @@ const NAVIGATE_PATHS: Record<NavigateTarget, string> = {
   projects: "/projects",
   areas: "/areas",
   memory: "/memory",
+  patients: "/patients",
+  patients_day: "/patients/day",
+  patient_capture: "/patients/capture",
+  followups: "/patients/followups",
+  settings: "/settings",
+  mail: "/settings#google",
 };
 
 /**
@@ -97,7 +104,14 @@ assistantRouter.post(
           data: { title: parsed.title, startAt: validWhen, userId: req.userId! },
         });
         await recordAudit({ userId: req.userId!, action: "event.create", entityType: "event", entityId: event.id });
-        res.json({ speak: parsed.spokenReply, navigateTo: "/calendar" });
+        // También en Google Calendar si está conectado con permiso de escritura;
+        // la app nativa lo copia además al calendario del teléfono.
+        const google = await pushGoogleEvent(req.userId!, { title: event.title, startAt: event.startAt, endAt: event.endAt });
+        res.json({
+          speak: parsed.spokenReply,
+          navigateTo: "/calendar",
+          event: { id: event.id, title: event.title, startAt: event.startAt.toISOString(), endAt: event.endAt?.toISOString() ?? null, google },
+        });
         return;
       }
       case "create_task": {
@@ -127,6 +141,35 @@ assistantRouter.post(
           entityId: reminder.id,
         });
         res.json({ speak: parsed.spokenReply, navigateTo: "/today" });
+        return;
+      }
+      case "set_alarm": {
+        if (!validWhen) {
+          res.json({ speak: "¿A qué hora querés la alarma?" });
+          return;
+        }
+        // Queda también como recordatorio en Nexus; la app nativa programa la alarma del teléfono.
+        const reminder = await prisma.reminder.create({
+          data: { title: parsed.title || "Alarma", remindAt: validWhen, userId: req.userId! },
+        });
+        await recordAudit({ userId: req.userId!, action: "reminder.create", entityType: "reminder", entityId: reminder.id, metadata: { alarm: true } });
+        res.json({ speak: parsed.spokenReply, alarm: { at: validWhen.toISOString(), title: reminder.title } });
+        return;
+      }
+      case "send_email": {
+        if (!parsed.emailTo || !parsed.emailBody) {
+          res.json({ speak: "¿A quién se lo mando y qué querés decirle?" });
+          return;
+        }
+        const draft = await prepareEmail(req.userId!, {
+          to: parsed.emailTo,
+          subject: parsed.emailSubject || parsed.title || "(sin asunto)",
+          body: parsed.emailBody,
+        });
+        res.json({
+          speak: draft.connected ? `${parsed.spokenReply}` : `Te redacté el mail. ${draft.note ?? ""}`.trim(),
+          emailDraft: draft,
+        });
         return;
       }
       case "remember": {

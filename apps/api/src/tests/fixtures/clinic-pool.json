@@ -1,0 +1,590 @@
+[
+  {
+    "id": "p01",
+    "patient": { "name": "Marta Gómez", "document": "11456789", "birthDate": "1958-03-14", "sex": "F", "phone": "11 4523 8871", "allergies": "", "medication": "Enalapril 10 mg cada 12 horas; atorvastatina 20 mg por día", "history": "Hipertensión arterial desde 2012. Dislipemia." },
+    "visits": [
+      {
+        "dictation": "Motivo de consulta: control de presión arterial y dislipemia. Enfermedad actual: paciente de 68 años hipertensa y dislipémica, refiere buena adherencia al tratamiento, trae registros domiciliarios con promedios de 138 sobre 84. Sin síntomas. Al examen: TA 136/82, FC 72, peso 71 kilos, IMC 27. Ruidos cardíacos normales, sin edemas. Diagnóstico presuntivo: hipertensión arterial controlada, dislipemia en tratamiento. Tratamiento: continúa enalapril 10 mg cada 12 horas y atorvastatina 20 mg por día. Se solicita perfil lipídico, glucemia y creatinina. Observaciones: se refuerza dieta hiposódica y caminata diaria. Control en 30 días con resultados.",
+        "expect": {
+          "reason": "control de presión arterial",
+          "present": "buena adherencia",
+          "treatment": "enalapril 10 mg",
+          "observations": "dieta hiposódica",
+          "guidelines": ["hypertension", "dyslipidemia"],
+          "redFlags": [],
+          "followups": [{ "kind": "RESULT", "inDays": 7 }, { "kind": "CONTROL", "inDays": 30 }]
+        }
+      }
+    ]
+  },
+  {
+    "id": "p02",
+    "patient": { "name": "Jorge Fernández", "document": "17234561", "birthDate": "1965-07-22", "sex": "M", "phone": "11 5678 2310", "allergies": "", "medication": "Metformina 850 mg cada 12 horas", "history": "Diabetes tipo 2 diagnosticada en 2019." },
+    "visits": [
+      {
+        "dictation": "Motivo de consulta: control de diabetes tipo 2. Enfermedad actual: paciente de 61 años con diabetes tipo 2 en tratamiento con metformina, refiere glucemias en ayunas entre 140 y 170, poliuria leve. No hizo laboratorio en el último año. Al examen: TA 128/80, peso 92 kilos, IMC 31, pies sin lesiones, pulsos pedios presentes. Diagnóstico presuntivo: diabetes tipo 2 con control subóptimo, obesidad. Tratamiento: continúa metformina 850 mg cada 12 horas. Se solicita hemoglobina glicosilada, perfil lipídico, creatinina y microalbuminuria. Observaciones: derivación a nutrición y a oftalmología para fondo de ojo. Control en 3 semanas con resultados.",
+        "expect": {
+          "reason": "control de diabetes",
+          "present": "glucemias en ayunas",
+          "treatment": "metformina 850 mg",
+          "observations": "nutrición",
+          "guidelines": ["diabetes2", "obesity"],
+          "redFlags": [],
+          "followups": [{ "kind": "RESULT", "inDays": 7 }, { "kind": "CONTROL", "inDays": 21 }]
+        }
+      },
+      {
+        "dictation": "Motivo de consulta: control de diabetes con resultados de laboratorio. Enfermedad actual: trae laboratorio con hemoglobina glicosilada 8,2 por ciento, LDL 118, creatinina 0,9, microalbuminuria negativa. Refiere que empezó a caminar y bajó dos kilos. Al examen: TA 126/78, peso 90 kilos. Diagnóstico presuntivo: diabetes tipo 2 no controlada. Tratamiento: se agrega empagliflozina 10 mg por día, continúa metformina 850 mg cada 12 horas. Observaciones: se explican signos de deshidratación e higiene genital. Control en 90 días con nueva hemoglobina glicosilada.",
+        "expect": {
+          "reason": "control de diabetes",
+          "present": "hemoglobina glicosilada 8,2",
+          "treatment": "empagliflozina 10 mg",
+          "observations": "higiene genital",
+          "guidelines": ["diabetes2", "obesity"],
+          "redFlags": [],
+          "followups": [{ "kind": "CONTROL", "inDays": 90 }]
+        }
+      }
+    ]
+  },
+  {
+    "id": "p03",
+    "patient": { "name": "Lucía Romero", "document": "58912345", "birthDate": "2021-05-10", "sex": "F", "phone": "11 6234 9087", "allergies": "", "medication": "", "history": "" },
+    "visits": [
+      {
+        "dictation": "Viene con la mamá por dolor de garganta y fiebre de 39 desde ayer. Sin tos ni rinorrea. Al examen tiene amígdalas eritematosas con exudado, adenopatías cervicales dolorosas, buen estado general, bien hidratada. Peso 18 kilos. Test rápido de estreptococo positivo. Es una faringitis estreptocócica. Le indico amoxicilina 50 mg/kg/día, o sea 450 mg cada 12 horas por 10 días, e ibuprofeno 180 mg cada 8 horas si tiene fiebre. Control en 7 días.",
+        "expect": {
+          "reason": "dolor de garganta",
+          "present": "fiebre de 39",
+          "treatment": "amoxicilina",
+          "guidelines": ["pharyngitis"],
+          "redFlags": [],
+          "followups": [{ "kind": "CONTROL", "inDays": 7 }]
+        }
+      }
+    ]
+  },
+  {
+    "id": "p04",
+    "patient": { "name": "Roberto Díaz", "document": "08345672", "birthDate": "1950-11-02", "sex": "M", "phone": "11 4789 1203", "allergies": "", "medication": "Budesonida/formoterol 160/4,5 dos inhalaciones cada 12 horas; salbutamol a demanda", "history": "EPOC moderado. Tabaquista activo, 45 paquetes/año." },
+    "visits": [
+      {
+        "dictation": "Motivo de consulta: control de EPOC. Enfermedad actual: paciente de 75 años con EPOC moderado, tabaquista activo de 10 cigarrillos por día. Refiere disnea de esfuerzo al subir un piso por escalera, tos con expectoración blanquecina matinal. Usa salbutamol dos veces por día. Sin exacerbaciones en el último año. Al examen: saturación 94 por ciento aire ambiente, FR 18, roncus aislados bilaterales, sin tiraje. Diagnóstico presuntivo: EPOC moderado sintomático, tabaquismo activo. Tratamiento: continúa budesonida/formoterol 160/4,5 dos inhalaciones cada 12 horas, se agrega tiotropio 18 mcg una inhalación por día. Vacuna antigripal y antineumocócica. Observaciones: se aconseja cesación tabáquica, acepta turno en consultorio de tabaquismo. Control en 30 días.",
+        "expect": {
+          "reason": "control de EPOC",
+          "present": "disnea de esfuerzo",
+          "treatment": "tiotropio",
+          "observations": "cesación tabáquica",
+          "guidelines": ["copd", "smoking", "older_adult"],
+          "redFlags": [],
+          "followups": [{ "kind": "CONTROL", "inDays": 30 }]
+        }
+      }
+    ]
+  },
+  {
+    "id": "p05",
+    "patient": { "name": "Valentina Sosa", "document": "41876543", "birthDate": "1999-02-18", "sex": "F", "phone": "11 3456 7812", "allergies": "Penicilina (urticaria)", "medication": "", "history": "G1P0. FUM 2026-07-27." },
+    "visits": [
+      {
+        "dictation": "Motivo de consulta: primer control de embarazo. Enfermedad actual: paciente de 27 años, primigesta, cursando embarazo de 10 semanas por fecha de última menstruación. Refiere náuseas matinales. Niega sangrado genital y dolor abdominal. Al examen: TA 110/70, peso 61 kilos, abdomen blando e indoloro. Diagnóstico presuntivo: embarazo de 10 semanas normoevolutivo. Tratamiento: ácido fólico 0,4 mg por día y sulfato ferroso 60 mg por día. Se solicita laboratorio de rutina del primer trimestre, grupo y factor, serologías y urocultivo, más ecografía obstétrica. Observaciones: alérgica a penicilina, consignado. Control en 4 semanas.",
+        "expect": {
+          "reason": "control de embarazo",
+          "present": "10 semanas",
+          "treatment": "ácido fólico",
+          "observations": "penicilina",
+          "guidelines": ["pregnancy"],
+          "redFlags": [],
+          "followups": [{ "kind": "RESULT", "inDays": 7 }, { "kind": "CONTROL", "inDays": 28 }]
+        }
+      }
+    ]
+  },
+  {
+    "id": "p06",
+    "patient": { "name": "Tomás Pereyra", "document": "72345118", "birthDate": "2024-03-21", "sex": "M", "phone": "11 2876 5409", "allergies": "", "medication": "", "history": "Recién nacido de término, peso al nacer 3,350 kg. Vacunas al día." },
+    "visits": [
+      {
+        "dictation": "Motivo de consulta: control de niño sano de 2 años y medio. Enfermedad actual: concurre con la madre, sin intercurrencias, alimentación variada, duerme bien, dice frases de dos palabras, camina y corre sin dificultad. Al examen: peso 13,2 kilos percentil 50, talla 92 centímetros percentil 50, examen físico normal. Diagnóstico presuntivo: niño sano con crecimiento y desarrollo adecuados. Tratamiento: no requiere. Calendario de vacunación completo. Observaciones: pautas de alarma, prevención de accidentes en el hogar y dejar los pañales. Control en 60 días.",
+        "expect": {
+          "reason": "control de niño sano",
+          "present": "sin intercurrencias",
+          "observations": "prevención de accidentes",
+          "guidelines": ["well_child"],
+          "redFlags": [],
+          "followups": [{ "kind": "CONTROL", "inDays": 60 }]
+        }
+      }
+    ]
+  },
+  {
+    "id": "p07",
+    "patient": { "name": "Ana Martínez", "document": "28123987", "birthDate": "1980-09-05", "sex": "F", "phone": "11 5123 4478", "allergies": "", "medication": "", "history": "" },
+    "visits": [
+      {
+        "dictation": "Viene por ardor al orinar y polaquiuria de dos días de evolución. Sin fiebre ni dolor lumbar. No está embarazada, usa anticonceptivos orales. Al examen está afebril, puño percusión negativa bilateral, leve dolor suprapúbico. Tira reactiva con leucocitos y nitritos positivos. Es una infección urinaria baja no complicada. Le indico nitrofurantoína 100 mg cada 6 horas por 5 días y abundante hidratación. Pido urocultivo con antibiograma.",
+        "expect": {
+          "reason": "ardor al orinar",
+          "present": "polaquiuria",
+          "treatment": "nitrofurantoína 100 mg",
+          "guidelines": ["uti"],
+          "redFlags": [],
+          "followups": [{ "kind": "RESULT", "inDays": 7 }]
+        }
+      }
+    ]
+  },
+  {
+    "id": "p08",
+    "patient": { "name": "Carlos Benítez", "document": "22987654", "birthDate": "1972-01-30", "sex": "M", "phone": "11 6789 0021", "allergies": "", "medication": "", "history": "Trabaja como albañil." },
+    "visits": [
+      {
+        "dictation": "Bueno, eh, motivo de consulta dolor de cintura, perdón, dolor lumbar de cuatro días, empezó levantando una bolsa de cemento en la obra. Eh, no irradia a las piernas, no tiene, eh, alteraciones para orinar ni pérdida de fuerza. Al examen, este, contractura paravertebral lumbar, Lasègue negativo bilateral, fuerza y reflejos conservados. Diagnóstico lumbalgia mecánica aguda. Tratamiento ibuprofeno 400, no, mejor 600 mg cada 8 horas con comida por 5 días, y ciclobenzaprina 10 mg a la noche. Bueno, que siga activo, sin reposo en cama. Certificado por 3 días. Control en 10 días.",
+        "expect": {
+          "reason": "dolor lumbar",
+          "present": "bolsa de cemento",
+          "treatment": "600 mg",
+          "guidelines": ["low_back_pain"],
+          "redFlags": [],
+          "followups": [{ "kind": "CONTROL", "inDays": 10 }]
+        }
+      }
+    ]
+  },
+  {
+    "id": "p09",
+    "patient": { "name": "Sofía Acosta", "document": "35678210", "birthDate": "1990-12-12", "sex": "F", "phone": "11 4321 9876", "allergies": "", "medication": "", "history": "Episodio depresivo en 2020, tratado con psicoterapia." },
+    "visits": [
+      {
+        "dictation": "Motivo de consulta: ánimo bajo. Enfermedad actual: paciente de 35 años que refiere desde hace dos meses tristeza la mayor parte del día, anhedonia, insomnio de conciliación y dificultad para concentrarse en el trabajo. Antecedente de episodio depresivo en 2020. Sin ideación suicida ni autolesiones. PHQ-9 de 16. Al examen: lúcida, orientada, afecto hipotímico, discurso coherente. Diagnóstico presuntivo: episodio depresivo moderado. Tratamiento: sertralina 50 mg por día a la mañana, se explica latencia de respuesta. Observaciones: derivación a psicología, pautas de alarma explicadas. Control en 15 días.",
+        "expect": {
+          "reason": "ánimo bajo",
+          "present": "anhedonia",
+          "treatment": "sertralina 50 mg",
+          "observations": "psicología",
+          "guidelines": ["depression"],
+          "redFlags": [],
+          "followups": [{ "kind": "CONTROL", "inDays": 15 }]
+        }
+      },
+      {
+        "dictation": "Motivo de consulta: control de depresión. Enfermedad actual: lleva cuatro semanas con sertralina, refiere mejoría del sueño y del ánimo, náuseas leves la primera semana que ya cedieron. Empezó psicoterapia semanal. PHQ-9 de 9. Al examen: afecto eutímico, buena interacción. Diagnóstico presuntivo: episodio depresivo moderado en respuesta parcial. Tratamiento: continúa sertralina 50 mg por día. Observaciones: continuar psicoterapia. Control en 30 días.",
+        "expect": {
+          "reason": "control de depresión",
+          "present": "mejoría del sueño",
+          "treatment": "sertralina 50 mg",
+          "observations": "psicoterapia",
+          "guidelines": ["depression"],
+          "redFlags": [],
+          "followups": [{ "kind": "CONTROL", "inDays": 30 }]
+        }
+      }
+    ]
+  },
+  {
+    "id": "p10",
+    "patient": { "name": "Martín Herrera", "document": "31456002", "birthDate": "1985-04-08", "sex": "M", "phone": "11 5987 3321", "allergies": "", "medication": "", "history": "" },
+    "visits": [
+      {
+        "dictation": "Consulta por nerviosismo y preocupación constante desde hace seis meses, con tensión muscular, palpitaciones ocasionales y dificultad para dormir. Lo relaciona con problemas laborales. No consume alcohol ni otras sustancias. Al examen TA 124/78, FC 84, sin hallazgos. Electrocardiograma normal. Impresiona trastorno de ansiedad generalizada. Le indico escitalopram 10 mg por día y lo derivo a psicología. Control en 21 días.",
+        "expect": {
+          "reason": "nerviosismo",
+          "present": "tensión muscular",
+          "treatment": "escitalopram 10 mg",
+          "guidelines": ["anxiety"],
+          "redFlags": [],
+          "followups": [{ "kind": "CONTROL", "inDays": 21 }]
+        }
+      }
+    ]
+  },
+  {
+    "id": "p11",
+    "patient": { "name": "Elena Castro", "document": "05234876", "birthDate": "1945-06-19", "sex": "F", "phone": "11 4765 2234", "allergies": "", "medication": "Apixabán 5 mg cada 12 horas; bisoprolol 5 mg por día; losartán 50 mg por día", "history": "Fibrilación auricular permanente. Hipertensión arterial." },
+    "visits": [
+      {
+        "dictation": "Motivo de consulta: control de fibrilación auricular anticoagulada. Enfermedad actual: paciente de 81 años con fibrilación auricular permanente e hipertensión, anticoagulada con apixabán, sin sangrados ni olvidos de dosis. Refiere palpitaciones ocasionales. Al examen: TA 132/78, FC 78 irregular, sin soplos, sin edemas, peso 58 kilos. Diagnóstico presuntivo: fibrilación auricular con frecuencia controlada, hipertensión arterial controlada. Tratamiento: continúa apixabán 5 mg cada 12 horas, bisoprolol 5 mg por día y losartán 50 mg por día. Se solicita hemograma y función renal. Observaciones: se recuerda no tomar antiinflamatorios. Control en 30 días.",
+        "expect": {
+          "reason": "fibrilación auricular",
+          "present": "sin sangrados",
+          "treatment": "apixabán 5 mg",
+          "observations": "antiinflamatorios",
+          "guidelines": ["atrial_fibrillation", "hypertension", "older_adult"],
+          "redFlags": [],
+          "followups": [{ "kind": "RESULT", "inDays": 7 }, { "kind": "CONTROL", "inDays": 30 }]
+        }
+      }
+    ]
+  },
+  {
+    "id": "p12",
+    "patient": { "name": "Héctor Molina", "document": "06789123", "birthDate": "1948-10-25", "sex": "M", "phone": "11 4890 6612", "allergies": "", "medication": "Furosemida 40 mg por día; enalapril 5 mg cada 12 horas; carvedilol 12,5 mg cada 12 horas; espironolactona 25 mg por día", "history": "Insuficiencia cardíaca con fracción de eyección reducida (FEy 35%). Hipertensión arterial." },
+    "visits": [
+      {
+        "dictation": "Motivo de consulta: aumento de edemas en piernas. Enfermedad actual: paciente de 77 años con insuficiencia cardíaca con fracción de eyección reducida, refiere aumento de 3 kilos en una semana, edemas maleolares y disnea al caminar una cuadra. Duerme con dos almohadas. Admite transgresión con la sal. Al examen: TA 138/84, FC 82, saturación 95 por ciento, crepitantes bibasales, edemas 2 cruces hasta tobillos, ingurgitación yugular leve. Diagnóstico presuntivo: insuficiencia cardíaca descompensada leve. Tratamiento: furosemida se aumenta a 40 mg cada 12 horas, continúa enalapril, carvedilol y espironolactona. Se pide ionograma y creatinina. Observaciones: control de peso diario, restricción de sal y líquidos. La enfermera lo llama en 3 días para ver el peso. Control en 7 días.",
+        "expect": {
+          "reason": "edemas",
+          "present": "aumento de 3 kilos",
+          "treatment": "furosemida",
+          "observations": "peso diario",
+          "guidelines": ["heart_failure", "hypertension", "older_adult"],
+          "redFlags": [],
+          "followups": [{ "kind": "RESULT", "inDays": 7 }, { "kind": "CALL", "inDays": 3 }, { "kind": "CONTROL", "inDays": 7 }]
+        }
+      },
+      {
+        "dictation": "Motivo de consulta: control de insuficiencia cardíaca. Enfermedad actual: bajó 3 kilos, mejoró la disnea, camina cuatro cuadras, sin ortopnea. Ionograma con potasio 4,6 y creatinina 1,2. Al examen: TA 124/76, FC 70, sin crepitantes, sin edemas. Diagnóstico presuntivo: insuficiencia cardíaca compensada. Tratamiento: furosemida vuelve a 40 mg por día, continúa el resto igual. Observaciones: sigue con control de peso diario. Control en 30 días.",
+        "expect": {
+          "reason": "control de insuficiencia cardíaca",
+          "present": "bajó 3 kilos",
+          "treatment": "furosemida",
+          "observations": "peso diario",
+          "guidelines": ["heart_failure", "hypertension", "older_adult"],
+          "redFlags": [],
+          "followups": [{ "kind": "CONTROL", "inDays": 30 }]
+        }
+      }
+    ]
+  },
+  {
+    "id": "p13",
+    "patient": { "name": "Rosa Villalba", "document": "03456712", "birthDate": "1936-02-11", "sex": "F", "phone": "11 4612 7745", "allergies": "AINE (broncoespasmo)", "medication": "Amlodipina 5 mg; hidroclorotiazida 25 mg; levotiroxina 50 mcg; alendronato 70 mg semanal; clonazepam 0,5 mg; omeprazol 20 mg; calcio + vitamina D", "history": "HTA, hipotiroidismo, osteoporosis con fractura de muñeca 2022. Vive con su hija." },
+    "visits": [
+      {
+        "dictation": "Motivo de consulta: control de adulta mayor polimedicada. Enfermedad actual: viene con la hija, la señora Rosa toma ocho medicamentos, refiere mareos al levantarse y somnolencia diurna. Una caída en el baño hace un mes sin lesiones. Toma clonazepam hace años. Al examen: TA sentada 128/70, de pie 108/64, FC 68, marcha lenta con base amplia, Timed Up and Go de 16 segundos. Diagnóstico presuntivo: hipotensión ortostática, riesgo de caídas, polifarmacia en paciente con hipertensión, hipotiroidismo y osteoporosis. Tratamiento: se suspende hidroclorotiazida, se indica descenso progresivo de clonazepam a 0,25 mg por dos semanas y luego suspender, continúa amlodipina 5 mg, levotiroxina 50 mcg y alendronato 70 mg semanal. Se solicita TSH y función renal. Observaciones: adecuación del hogar, barras en el baño, derivación a kinesiología. Control en 30 días.",
+        "expect": {
+          "reason": "polimedicada",
+          "present": "mareos al levantarse",
+          "treatment": "clonazepam",
+          "observations": "barras en el baño",
+          "guidelines": ["older_adult", "hypertension", "hypothyroidism", "osteoporosis"],
+          "redFlags": [],
+          "followups": [{ "kind": "RESULT", "inDays": 7 }, { "kind": "CONTROL", "inDays": 30 }]
+        }
+      }
+    ]
+  },
+  {
+    "id": "p14",
+    "patient": { "name": "Graciela Ríos", "document": "21345890", "birthDate": "1970-08-03", "sex": "F", "phone": "11 5234 0098", "allergies": "", "medication": "Levotiroxina 75 mcg por día", "history": "Hipotiroidismo por tiroiditis de Hashimoto." },
+    "visits": [
+      {
+        "dictation": "Motivo de consulta: control de hipotiroidismo. Enfermedad actual: paciente de 56 años con hipotiroidismo por Hashimoto, refiere cansancio, constipación y piel seca. Trae TSH de 7,8 con T4 libre 0,9. Toma la levotiroxina en ayunas pero a veces con el mate. Al examen: TA 120/76, FC 62, peso 68 kilos, tiroides no palpable. Diagnóstico presuntivo: hipotiroidismo subtratado. Tratamiento: levotiroxina se aumenta a 88 mcg por día en ayunas, 30 minutos antes del desayuno. Observaciones: no tomarla junto con mate ni café. Se pide nueva TSH en 6 semanas y control con el resultado.",
+        "expect": {
+          "reason": "control de hipotiroidismo",
+          "present": "cansancio",
+          "treatment": "levotiroxina",
+          "observations": "mate",
+          "guidelines": ["hypothyroidism"],
+          "redFlags": [],
+          "followups": [{ "kind": "RESULT", "inDays": 42 }, { "kind": "CONTROL", "inDays": 42 }]
+        }
+      }
+    ]
+  },
+  {
+    "id": "p15",
+    "patient": { "name": "Diego Luna", "document": "26789345", "birthDate": "1978-12-01", "sex": "M", "phone": "11 6345 8812", "allergies": "", "medication": "Losartán 50 mg por día", "history": "Hipertensión arterial. Tabaquista de 20 cigarrillos por día." },
+    "visits": [
+      {
+        "dictation": "Motivo de consulta: dolor en el pecho. Enfermedad actual: paciente de 47 años, hipertenso y tabaquista, refiere dolor opresivo retroesternal de 40 minutos de duración esta mañana al subir escaleras, irradiado a brazo izquierdo, con sudoración. Ahora con dolor leve persistente. Al examen: TA 158/96, FC 96, pálido, sudoroso, ruidos cardíacos normales, sin soplos. Electrocardiograma con infradesnivel del ST en cara lateral. Diagnóstico presuntivo: síndrome coronario agudo. Tratamiento: aspirina 300 mg masticable ahora. Observaciones: se activa traslado en ambulancia a guardia de hospital con unidad coronaria. Lo llamo mañana para saber cómo evolucionó.",
+        "expect": {
+          "reason": "dolor en el pecho",
+          "present": "dolor opresivo retroesternal",
+          "treatment": "aspirina 300 mg",
+          "observations": "ambulancia",
+          "guidelines": ["hypertension", "smoking"],
+          "redFlags": ["chest_pain"],
+          "followups": [{ "kind": "CALL", "inDays": 1 }]
+        }
+      }
+    ]
+  },
+  {
+    "id": "p16",
+    "patient": { "name": "Julieta Paz", "document": "43210987", "birthDate": "2001-05-27", "sex": "F", "phone": "11 3987 6654", "allergies": "Ácaros", "medication": "Salbutamol a demanda", "history": "Asma desde la infancia. Rinitis alérgica." },
+    "visits": [
+      {
+        "dictation": "Motivo de consulta: control de asma. Enfermedad actual: paciente de 25 años asmática, refiere en el último mes tos nocturna dos veces por semana y uso de salbutamol cuatro veces por semana, sobre todo con el cambio de estación. Sin internaciones. Al examen: saturación 98 por ciento, sibilancias espiratorias aisladas, sin tiraje. Diagnóstico presuntivo: asma parcialmente controlada. Tratamiento: se indica budesonida/formoterol 160/4,5 una inhalación cada 12 horas y a demanda, se revisa técnica inhalatoria con aerocámara. Observaciones: plan de acción escrito para crisis. Control en 30 días.",
+        "expect": {
+          "reason": "control de asma",
+          "present": "tos nocturna",
+          "treatment": "budesonida/formoterol",
+          "observations": "plan de acción",
+          "guidelines": ["asthma"],
+          "redFlags": [],
+          "followups": [{ "kind": "CONTROL", "inDays": 30 }]
+        }
+      }
+    ]
+  },
+  {
+    "id": "p17",
+    "patient": { "name": "Ramón Ortiz", "document": "14567234", "birthDate": "1960-01-17", "sex": "M", "phone": "11 4456 3390", "allergies": "", "medication": "", "history": "Obesidad. Padre con infarto a los 55 años." },
+    "visits": [
+      {
+        "dictation": "Motivo de consulta: chequeo general. Enfermedad actual: paciente de 66 años sin controles hace cinco años, sedentario, con antecedente de padre con infarto a los 55 años. Asintomático. Al examen: TA 132/84, peso 104 kilos, talla 1,74, IMC 34, perímetro de cintura 112 centímetros. Diagnóstico presuntivo: obesidad grado 1, riesgo cardiovascular a evaluar. Tratamiento: plan alimentario hipocalórico y actividad física 150 minutos por semana. Se solicita glucemia, hemoglobina glicosilada, perfil lipídico, hepatograma y creatinina. Observaciones: derivación a nutrición. Control en 15 días con resultados.",
+        "expect": {
+          "reason": "chequeo general",
+          "present": "sedentario",
+          "treatment": "plan alimentario",
+          "observations": "nutrición",
+          "guidelines": ["obesity"],
+          "redFlags": [],
+          "followups": [{ "kind": "RESULT", "inDays": 7 }, { "kind": "CONTROL", "inDays": 15 }]
+        }
+      },
+      {
+        "dictation": "Motivo de consulta: control con resultados de laboratorio. Enfermedad actual: trae laboratorio con colesterol total 248, LDL 162, HDL 38, triglicéridos 240, glucemia 108 y hemoglobina glicosilada 5,9. Bajó un kilo. Al examen: TA 130/82, peso 103 kilos. Diagnóstico presuntivo: dislipemia mixta, prediabetes, obesidad. Tratamiento: rosuvastatina 10 mg por día, continúa plan alimentario. Observaciones: se explica riesgo cardiovascular. Control en 12 semanas con perfil lipídico y hepatograma.",
+        "expect": {
+          "reason": "resultados de laboratorio",
+          "present": "LDL 162",
+          "treatment": "rosuvastatina 10 mg",
+          "observations": "riesgo cardiovascular",
+          "guidelines": ["dyslipidemia", "obesity"],
+          "redFlags": [],
+          "followups": [{ "kind": "CONTROL", "inDays": 84 }]
+        }
+      }
+    ]
+  },
+  {
+    "id": "p18",
+    "patient": { "name": "Camila Ferreyra", "document": "56789012", "birthDate": "2019-06-30", "sex": "F", "phone": "11 2765 4432", "allergies": "", "medication": "", "history": "Vacunas al día." },
+    "visits": [
+      {
+        "dictation": "Motivo de consulta: control de niña sana y apto físico escolar. Enfermedad actual: niña de 7 años, concurre con el padre, sin intercurrencias, buen rendimiento escolar, hace natación. Al examen: peso 24 kilos percentil 50, talla 122 centímetros percentil 50, TA 98/60, auscultación cardíaca normal, agudeza visual normal. Diagnóstico presuntivo: niña sana. Tratamiento: no requiere. Se otorga apto físico. Observaciones: se indica control odontológico y refuerzo de vacuna triple viral y triple bacteriana de los 5 años si falta.",
+        "expect": {
+          "reason": "apto físico",
+          "present": "sin intercurrencias",
+          "observations": "control odontológico",
+          "guidelines": ["well_child"],
+          "redFlags": [],
+          "followups": []
+        }
+      }
+    ]
+  },
+  {
+    "id": "p19",
+    "patient": { "name": "Patricia Medina", "document": "10987456", "birthDate": "1955-10-09", "sex": "F", "phone": "11 4598 1176", "allergies": "", "medication": "", "history": "Menopausia a los 47 años. Madre con fractura de cadera." },
+    "visits": [
+      {
+        "dictation": "Viene a traer la densitometría: T-score de columna lumbar menos 2,8 y de cuello femoral menos 2,3. Tiene 70 años, menopausia precoz y madre con fractura de cadera. No tuvo fracturas. Al examen talla 1,58, sin cifosis. Es una osteoporosis. Le indico alendronato 70 mg una vez por semana en ayunas con un vaso de agua, quedarse sentada 30 minutos, y calcio 500 mg con vitamina D 800 UI por día. Pido calcemia y 25-hidroxivitamina D. Control en 30 días.",
+        "expect": {
+          "reason": "densitometría",
+          "present": "menos 2,8",
+          "treatment": "alendronato 70 mg",
+          "guidelines": ["osteoporosis", "older_adult"],
+          "redFlags": [],
+          "followups": [{ "kind": "RESULT", "inDays": 7 }, { "kind": "CONTROL", "inDays": 30 }]
+        }
+      }
+    ]
+  },
+  {
+    "id": "p20",
+    "patient": { "name": "Luis Giménez", "document": "20456781", "birthDate": "1968-03-23", "sex": "M", "phone": "11 5345 2287", "allergies": "", "medication": "Enalapril 10 mg por día", "history": "Hipertensión arterial. Episodio de gota en 2024." },
+    "visits": [
+      {
+        "dictation": "Eh, bueno, motivo de consulta dolor en el dedo gordo del pie derecho, desde anoche, muy intenso, no puede ni apoyar la sábana. Eh, el sábado fue a un asado y tomó bastante vino. Ya tuvo un episodio igual en 2024. Al examen, a ver, primera metatarsofalángica derecha tumefacta, roja, caliente, muy dolorosa, afebril. TA 142/88. Diagnóstico gota aguda, eh, ataque de gota. Tratamiento colchicina 1 mg ahora y 0,5 mg una hora después, perdón, y después 0,5 mg cada 12 horas hasta que ceda. Hielo local. Pido ácido úrico y función renal. Observaciones evitar alcohol y carnes rojas. Control en 14 días para ver si arrancamos alopurinol.",
+        "expect": {
+          "reason": "dedo gordo",
+          "present": "asado",
+          "treatment": "colchicina",
+          "observations": "evitar alcohol",
+          "guidelines": ["gout", "hypertension"],
+          "redFlags": [],
+          "followups": [{ "kind": "RESULT", "inDays": 7 }, { "kind": "CONTROL", "inDays": 14 }]
+        }
+      }
+    ]
+  },
+  {
+    "id": "p21",
+    "patient": { "name": "Silvia Navarro", "document": "30123654", "birthDate": "1983-11-15", "sex": "F", "phone": "11 6123 7789", "allergies": "", "medication": "", "history": "Menstruaciones abundantes. Miomatosis uterina." },
+    "visits": [
+      {
+        "dictation": "Viene Silvia por cansancio y mareos de un mes de evolución. Tiene menstruaciones abundantes por miomas. Trae hemograma con hemoglobina 9,4, VCM 72 y ferritina 6. Al examen palidez cutáneo mucosa, FC 92, TA 110/70, soplo sistólico funcional. Es una anemia ferropénica por pérdidas ginecológicas. Le indico sulfato ferroso 200 mg por día en ayunas, día por medio si le cae mal, y la derivo a ginecología. Control en 30 días con hemograma.",
+        "expect": {
+          "reason": "cansancio",
+          "present": "menstruaciones abundantes",
+          "treatment": "sulfato ferroso 200 mg",
+          "guidelines": ["anemia"],
+          "redFlags": [],
+          "followups": [{ "kind": "CONTROL", "inDays": 30 }]
+        }
+      }
+    ]
+  },
+  {
+    "id": "p22",
+    "patient": { "name": "Oscar Aguirre", "document": "16234987", "birthDate": "1962-05-04", "sex": "M", "phone": "11 4876 5523", "allergies": "", "medication": "Enalapril 10 mg cada 12 horas", "history": "Hipertensión arterial. Enfermedad renal crónica estadio 3a (filtrado 52 ml/min)." },
+    "visits": [
+      {
+        "dictation": "Motivo de consulta: presión alta en los controles de la farmacia. Enfermedad actual: paciente de 64 años hipertenso con enfermedad renal crónica estadio 3a, refiere tomas de 160 sobre 100 en la farmacia en las últimas dos semanas. Asintomático. Toma enalapril 10 mg cada 12 horas. Al examen: TA 168/100 en ambos brazos, FC 76, fondo de ojo sin hemorragias, sin edemas. Diagnóstico presuntivo: hipertensión arterial no controlada, enfermedad renal crónica estadio 3a. Tratamiento: se agrega amlodipina 5 mg por día, continúa enalapril. Se solicita creatinina, ionograma y orina completa. Observaciones: dieta con menos de 5 gramos de sal, traer registro domiciliario. Control en 14 días.",
+        "expect": {
+          "reason": "presión alta",
+          "present": "160 sobre 100",
+          "treatment": "amlodipina 5 mg",
+          "observations": "registro domiciliario",
+          "guidelines": ["hypertension", "ckd"],
+          "redFlags": [],
+          "followups": [{ "kind": "RESULT", "inDays": 7 }, { "kind": "CONTROL", "inDays": 14 }]
+        }
+      },
+      {
+        "dictation": "Motivo de consulta: control de hipertensión. Enfermedad actual: trae registro domiciliario con promedio de 134 sobre 84, buena tolerancia a la amlodipina, leve edema maleolar vespertino. Laboratorio con creatinina 1,4, filtrado 53, potasio 4,9. Al examen: TA 134/84, edema maleolar leve. Diagnóstico presuntivo: hipertensión arterial controlada, enfermedad renal crónica estable. Tratamiento: continúa amlodipina 5 mg y enalapril 10 mg cada 12 horas. Observaciones: elevar las piernas a la tarde. Control en 60 días.",
+        "expect": {
+          "reason": "control de hipertensión",
+          "present": "134 sobre 84",
+          "treatment": "amlodipina 5 mg",
+          "observations": "elevar las piernas",
+          "guidelines": ["hypertension", "ckd"],
+          "redFlags": [],
+          "followups": [{ "kind": "CONTROL", "inDays": 60 }]
+        }
+      }
+    ]
+  },
+  {
+    "id": "p23",
+    "patient": { "name": "Natalia Suárez", "document": "39012876", "birthDate": "1995-07-07", "sex": "F", "phone": "11 3678 2201", "allergies": "", "medication": "", "history": "" },
+    "visits": [
+      {
+        "dictation": "Consulta por dolor de cabeza frecuente desde hace tres meses, tipo opresivo en vincha, al final del día, que relaciona con muchas horas frente a la computadora. Toma ibuprofeno casi todos los días. Sin vómitos, sin alteraciones visuales, examen neurológico normal, TA 112/72. Impresiona cefalea tensional con posible abuso de analgésicos. Le indico paracetamol 1 g hasta dos veces por semana como máximo, pausas activas y amitriptilina 10 mg a la noche. Que lleve un diario de cefaleas. Control en 30 días.",
+        "expect": {
+          "reason": "dolor de cabeza",
+          "present": "opresivo",
+          "treatment": "amitriptilina 10 mg",
+          "guidelines": ["headache"],
+          "redFlags": [],
+          "followups": [{ "kind": "CONTROL", "inDays": 30 }]
+        }
+      }
+    ]
+  },
+  {
+    "id": "p24",
+    "patient": { "name": "Federico Ramos", "document": "24678901", "birthDate": "1975-02-14", "sex": "M", "phone": "11 5890 3345", "allergies": "", "medication": "", "history": "Tabaquista de 25 cigarrillos por día desde los 16 años." },
+    "visits": [
+      {
+        "dictation": "Motivo de consulta: quiere dejar de fumar. Enfermedad actual: Federico fuma 25 cigarrillos por día desde los 16 años, primer cigarrillo a los 5 minutos de despertarse, dos intentos previos sin ayuda. Tos matinal. Sin antecedentes psiquiátricos ni convulsiones. Al examen: TA 128/82, saturación 97 por ciento, auscultación con roncus aislados. Diagnóstico presuntivo: tabaquismo con alta dependencia. Tratamiento: vareniclina 0,5 mg por día por 3 días, luego 0,5 mg cada 12 horas por 4 días y después 1 mg cada 12 horas, fecha de abandono en una semana. Se solicita espirometría. Observaciones: consejería breve, evitar el mate con el cigarrillo. Lo llamo en una semana para ver cómo va. Control en 30 días.",
+        "expect": {
+          "reason": "dejar de fumar",
+          "present": "25 cigarrillos",
+          "treatment": "vareniclina",
+          "observations": "consejería",
+          "guidelines": ["smoking"],
+          "redFlags": [],
+          "followups": [{ "kind": "RESULT", "inDays": 7 }, { "kind": "CALL", "inDays": 7 }, { "kind": "CONTROL", "inDays": 30 }]
+        }
+      }
+    ]
+  },
+  {
+    "id": "p25",
+    "patient": { "name": "Mirta Cabrera", "document": "04567321", "birthDate": "1940-09-28", "sex": "F", "phone": "11 4234 9901", "allergies": "", "medication": "Losartán 50 mg por día", "history": "Hipertensión arterial. Vive sola, independiente." },
+    "visits": [
+      {
+        "dictation": "Motivo de consulta: fiebre y tos. Enfermedad actual: paciente de 86 años con tres días de tos con expectoración amarillenta, fiebre de 38,5 y dolor en puntada de costado derecho. Lúcida, come y toma líquidos. Al examen: TA 124/72, FC 94, FR 20, saturación 94 por ciento, temperatura 38, crepitantes en base derecha con soplo tubario. CRB-65 de 1 por la edad. Diagnóstico presuntivo: neumonía adquirida en la comunidad. Tratamiento: amoxicilina-clavulánico 875/125 mg cada 12 horas por 7 días, paracetamol 1 g cada 8 horas si fiebre. Se solicita radiografía de tórax. Observaciones: la hija se queda con ella, pautas de alarma. Control en 48 horas.",
+        "expect": {
+          "reason": "fiebre y tos",
+          "present": "expectoración amarillenta",
+          "treatment": "amoxicilina-clavulánico",
+          "observations": "pautas de alarma",
+          "guidelines": ["pneumonia", "older_adult", "hypertension"],
+          "redFlags": [],
+          "followups": [{ "kind": "RESULT", "inDays": 7 }, { "kind": "CONTROL", "inDays": 2 }]
+        }
+      }
+    ]
+  },
+  {
+    "id": "p26",
+    "patient": { "name": "Bruno Vega", "document": "54321678", "birthDate": "2016-04-12", "sex": "M", "phone": "11 2987 1123", "allergies": "", "medication": "", "history": "Vacunas al día." },
+    "visits": [
+      {
+        "dictation": "Viene con la mamá al control de niño sano de los 10 años. Va a quinto grado, juega mucho a la play, poca actividad física, toma gaseosa todos los días. Al examen peso 48 kilos, talla 1,40, IMC 24,5 por encima del percentil 97, TA 110/68, acantosis en cuello. Niño sano con obesidad. Le indico plan de alimentación sin bebidas azucaradas, una hora de actividad física por día y menos de dos horas de pantallas. Pido glucemia, perfil lipídico y hepatograma. Control en 12 semanas.",
+        "expect": {
+          "reason": "control de niño sano",
+          "present": "gaseosa",
+          "treatment": "plan de alimentación",
+          "guidelines": ["well_child", "obesity"],
+          "redFlags": [],
+          "followups": [{ "kind": "RESULT", "inDays": 7 }, { "kind": "CONTROL", "inDays": 84 }]
+        }
+      }
+    ]
+  },
+  {
+    "id": "p27",
+    "patient": { "name": "Laura Ibáñez", "document": "33987210", "birthDate": "1988-01-21", "sex": "F", "phone": "11 6456 2290", "allergies": "", "medication": "Fluoxetina 20 mg por día", "history": "Depresión desde 2023. Separación reciente." },
+    "visits": [
+      {
+        "dictation": "Motivo de consulta: empeoramiento del ánimo. Enfermedad actual: paciente de 38 años con depresión en tratamiento con fluoxetina 20 mg, refiere desde la separación hace un mes tristeza intensa, desesperanza, insomnio y pensamientos de muerte. Refiere que pensó en tomar todas las pastillas y que tiene guardadas varias cajas de clonazepam. Al examen: llanto fácil, afecto hipotímico, ideación suicida con plan. Diagnóstico presuntivo: episodio depresivo grave con riesgo suicida. Tratamiento: no se modifica medicación hasta evaluación psiquiátrica. Observaciones: se deriva a guardia de salud mental acompañada por su hermana, se indica retirar los medicamentos de la casa. La llamo mañana.",
+        "expect": {
+          "reason": "empeoramiento del ánimo",
+          "present": "pensamientos de muerte",
+          "observations": "guardia de salud mental",
+          "guidelines": ["depression"],
+          "redFlags": ["suicide_risk"],
+          "followups": [{ "kind": "CALL", "inDays": 1 }]
+        }
+      }
+    ]
+  },
+  {
+    "id": "p28",
+    "patient": { "name": "Gustavo Paredes", "document": "13456098", "birthDate": "1957-08-16", "sex": "M", "phone": "11 4378 6654", "allergies": "", "medication": "Aspirina 100 mg; atorvastatina 80 mg; bisoprolol 5 mg; enalapril 5 mg cada 12 horas", "history": "Infarto agudo de miocardio con angioplastia y stent en 2023. Dislipemia. Hipertensión arterial." },
+    "visits": [
+      {
+        "dictation": "Motivo de consulta: control cardiovascular. Enfermedad actual: paciente de 69 años con enfermedad coronaria, infarto con stent en 2023, asintomático, camina 40 minutos por día sin angor ni disnea. Trae laboratorio con LDL 62. Al examen: TA 122/76, FC 60, ruidos cardíacos normales, sin edemas. Diagnóstico presuntivo: cardiopatía isquémica estable, dislipemia en metas, hipertensión controlada. Tratamiento: continúa aspirina 100 mg, atorvastatina 80 mg, bisoprolol 5 mg y enalapril 5 mg cada 12 horas. Observaciones: control anual con cardiología. Control en 90 días.",
+        "expect": {
+          "reason": "control cardiovascular",
+          "present": "sin angor",
+          "treatment": "atorvastatina 80 mg",
+          "observations": "cardiología",
+          "guidelines": ["coronary", "dyslipidemia", "hypertension"],
+          "redFlags": [],
+          "followups": [{ "kind": "CONTROL", "inDays": 90 }]
+        }
+      }
+    ]
+  },
+  {
+    "id": "p29",
+    "patient": { "name": "Carolina Blanco", "document": "37654123", "birthDate": "1992-10-30", "sex": "F", "phone": "11 3123 5567", "allergies": "", "medication": "", "history": "" },
+    "visits": [
+      {
+        "dictation": "Bueno, a ver, eh, motivo de consulta dolor de garganta de tres días, con fiebre de 38,5. Eh, no tiene tos. Al examen amígdalas con exudado, adenopatía submaxilar dolorosa, eh, Centor de 4. Bueno, faringitis aguda, probable estreptocócica, no, corrijo, el test rápido dio positivo, así que estreptocócica confirmada. Tratamiento amoxicilina 500 mg cada 8 horas por 10 días e ibuprofeno 400 cada 8 horas. Eh, si en 48 horas sigue con fiebre que vuelva.",
+        "expect": {
+          "reason": "dolor de garganta",
+          "present": "fiebre de 38,5",
+          "treatment": "amoxicilina 500 mg",
+          "guidelines": ["pharyngitis"],
+          "redFlags": [],
+          "followups": []
+        }
+      }
+    ]
+  },
+  {
+    "id": "p30",
+    "patient": { "name": "Ernesto Rojas", "document": "07654890", "birthDate": "1952-12-08", "sex": "M", "phone": "11 4456 7712", "allergies": "", "medication": "Metformina 500 mg cada 12 horas; losartán 50 mg cada 12 horas; atorvastatina 20 mg", "history": "Diabetes tipo 2 desde 2010. Hipertensión arterial. Enfermedad renal crónica estadio 3b." },
+    "visits": [
+      {
+        "dictation": "Motivo de consulta: control de diabetes y función renal. Enfermedad actual: paciente de 73 años con diabetes tipo 2, hipertensión y enfermedad renal crónica, trae laboratorio con filtrado glomerular de 38, hemoglobina glicosilada 7,6 y relación albúmina creatinina 120. Asintomático, sin hipoglucemias. Al examen: TA 138/80, peso 82 kilos, pies con hipoestesia en calcetín, sin úlceras. Diagnóstico presuntivo: diabetes tipo 2 con nefropatía, enfermedad renal crónica estadio 3b, neuropatía periférica. Tratamiento: se reduce metformina a 500 mg por día, se agrega linagliptina 5 mg por día y dapagliflozina 10 mg por día, continúa losartán 50 mg cada 12 horas. Se solicita ionograma y creatinina. Observaciones: cuidado de pies, derivación a nefrología. Control en 30 días.",
+        "expect": {
+          "reason": "función renal",
+          "present": "filtrado glomerular de 38",
+          "treatment": "linagliptina 5 mg",
+          "observations": "nefrología",
+          "guidelines": ["diabetes2", "ckd", "hypertension", "dyslipidemia", "older_adult"],
+          "redFlags": [],
+          "followups": [{ "kind": "RESULT", "inDays": 7 }, { "kind": "CONTROL", "inDays": 30 }]
+        }
+      }
+    ]
+  }
+]

@@ -23,6 +23,17 @@ const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? "";
 
 let refreshInFlight: Promise<boolean> | null = null;
 
+/**
+ * Igual que la web (apps/web/src/lib/api.ts): las rutas clínicas, de
+ * verticales y de Google Workspace exigen `X-Nexus-Owner` = id del usuario
+ * con sesión, para que una sesión cambiada nunca escriba en otra cuenta.
+ */
+const OWNER_PREFIXES = ["/clinical/", "/projects", "/tasks", "/google-workspace/", "/verticals/"];
+let sessionOwner: string | null = null;
+export function setApiSessionOwner(userId: string | null) {
+  sessionOwner = userId;
+}
+
 async function refreshSession(): Promise<boolean> {
   const refreshToken = await getRefreshToken();
   if (!refreshToken) return false;
@@ -45,7 +56,9 @@ async function refreshSession(): Promise<boolean> {
   }
 }
 
-async function request<T>(path: string, options: RequestInit = {}, isRetry = false): Promise<T> {
+async function send(path: string, options: RequestInit, isRetry: boolean): Promise<Response> {
+  const needsOwner = OWNER_PREFIXES.some((prefix) => path.startsWith(prefix));
+  if (needsOwner && !sessionOwner) throw new ApiError(401, "Volvé a ingresar antes de abrir el consultorio.");
   const accessToken = await getAccessToken();
   const res = await fetch(`${API_BASE_URL}/api${path}`, {
     ...options,
@@ -53,6 +66,7 @@ async function request<T>(path: string, options: RequestInit = {}, isRetry = fal
       "Content-Type": "application/json",
       "X-Nexus-Client": "mobile",
       ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      ...(needsOwner && sessionOwner ? { "X-Nexus-Owner": sessionOwner } : {}),
       ...options.headers,
     },
   });
@@ -66,7 +80,7 @@ async function request<T>(path: string, options: RequestInit = {}, isRetry = fal
       refreshInFlight = null;
     });
     const refreshed = await refreshInFlight;
-    if (refreshed) return request<T>(path, options, true);
+    if (refreshed) return send(path, options, true);
   }
 
   if (!res.ok) {
@@ -79,7 +93,11 @@ async function request<T>(path: string, options: RequestInit = {}, isRetry = fal
     }
     throw new ApiError(res.status, message);
   }
+  return res;
+}
 
+async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const res = await send(path, options, false);
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
 }
@@ -88,7 +106,14 @@ export const api = {
   get: <T>(path: string) => request<T>(path),
   post: <T>(path: string, body?: unknown) =>
     request<T>(path, { method: "POST", body: body ? JSON.stringify(body) : undefined }),
+  put: <T>(path: string, body?: unknown) =>
+    request<T>(path, { method: "PUT", body: body ? JSON.stringify(body) : undefined }),
   patch: <T>(path: string, body?: unknown) =>
     request<T>(path, { method: "PATCH", body: body ? JSON.stringify(body) : undefined }),
   delete: <T>(path: string) => request<T>(path, { method: "DELETE" }),
+  /** POST que devuelve bytes (p. ej. el audio de /voice/tts). */
+  postBinary: async (path: string, body?: unknown): Promise<ArrayBuffer> => {
+    const res = await send(path, { method: "POST", body: body ? JSON.stringify(body) : undefined }, false);
+    return res.arrayBuffer();
+  },
 };

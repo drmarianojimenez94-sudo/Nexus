@@ -14,6 +14,6 @@ export default function Index() {
     );
   }
 
-  // Con sesión, Nexus abre en "Mi día" de la vertical médica.
-  return <Redirect href={user ? "/day" : "/login"} />;
+  // Con sesión, Nexus abre en Inicio: la secretaria que ya te está escuchando.
+  return <Redirect href={user ? "/home" : "/login"} />;
 }

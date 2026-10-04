@@ -9,12 +9,19 @@ const LINKS: { href: string; label: string; icon: IconName }[] = [
   { href: "/patients", label: "Pacientes", icon: "patients" },
   { href: "/more", label: "Más", icon: "more" },
 ];
-export function BottomNav({ onOrbClick }: { onOrbClick: () => void }) {
+export function BottomNav({
+  onOrbClick,
+  elevated = false,
+}: {
+  onOrbClick: () => void;
+  /** Por encima de la consola de voz a pantalla completa. */
+  elevated?: boolean;
+}) {
   const pathname = usePathname();
   return (
     <nav
       aria-label="Navegación principal"
-      className="glass-panel nexus-bottom-nav fixed inset-x-3 bottom-3 z-40 grid grid-cols-5 items-center px-1 py-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] sm:hidden"
+      className={`glass-panel nexus-bottom-nav fixed inset-x-3 bottom-3 ${elevated ? "z-[55]" : "z-40"} grid grid-cols-5 items-center px-1 py-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] sm:hidden`}
     >
       {LINKS.map((link, index) => (
         <Link

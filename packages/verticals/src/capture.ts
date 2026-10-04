@@ -10,6 +10,8 @@ export interface CaptureContext {
   subjectName?: string;
   knownAllergies?: string[];
   appointmentMinutes?: number;
+  /** Plantilla elegida por el profesional (por ejemplo "visit"); si no, se infiere. */
+  templateId?: string;
   /** Para pruebas reproducibles. */
   random?: () => number;
 }
@@ -36,6 +38,8 @@ export interface CapturePlan {
 }
 
 const re = (p: string, flags = "") => new RegExp(p, flags);
+/** Muletillas frecuentes en el dictado. */
+const FILLER = "bueno|eh+|em+|este|a ver|o sea|digamos|perdon|mmm+";
 const firstMatch = (folded: string, patterns: string[]) => {
   for (const p of patterns) {
     const m = re(p).exec(folded);
@@ -136,7 +140,7 @@ export function interpretCapture(source: string, manifest: VerticalManifest, ada
   const subject = extractSubject(text, folded, manifest, ctx);
   const consumed: Span[] = [...subject.consumed];
   const safety = analyzeSafety(text, manifest, ctx.knownAllergies);
-  const templateId = pickTemplate(folded, manifest, subject.mode === "new");
+  const templateId = ctx.templateId && manifest.templates.some((t) => t.id === ctx.templateId) ? ctx.templateId : pickTemplate(folded, manifest, subject.mode === "new");
   const template = manifest.templates.find((t) => t.id === templateId)!;
   const templateKeys = new Set(template.sections.map((s) => s.key));
   const target = (targets: string[]) => targets.find((t) => templateKeys.has(t));
@@ -199,7 +203,35 @@ export function interpretCapture(source: string, manifest: VerticalManifest, ada
     return { ...step, request: { ...step.request, path, body }, bind, dependsOn: subjectStep && !ctx.subjectId ? [subjectStep] : [] };
   };
 
-  // 2. Clause-level mapping.
+  // 2a. Secciones rotuladas: "Enfermedad actual: …" va entero a su campo.
+  const labelHits: Array<{ start: number; contentStart: number; targets: string[] }> = [];
+  for (const label of manifest.capture.sectionLabels) {
+    // Al comienzo de una oración el rótulo vale con o sin dos puntos
+    // ("Tratamiento ibuprofeno…"); después de una coma, solo si es inequívoco.
+    const patterns = [
+      `(?:^|[.;\\n]\\s*)((?:${FILLER}[\\s,]+)*)(${label.pattern})\\b\\s*${label.requiresColon && !label.sentenceStart ? ":" : ":?"}\\s*`,
+      `,\\s*()(${label.pattern})\\b\\s*${label.requiresColon ? ":" : ":?"}\\s*`,
+    ];
+    for (const p of patterns) {
+      const lre = new RegExp(p, "g");
+      let lm: RegExpExecArray | null;
+      while ((lm = lre.exec(folded))) {
+        const start = lm.index + lm[0].indexOf(lm[2]!, lm[0].indexOf(lm[1]!) + lm[1]!.length);
+        if (!labelHits.some((h) => h.start === start)) labelHits.push({ start, contentStart: lm.index + lm[0].length, targets: label.targets });
+      }
+    }
+  }
+  labelHits.sort((a, b) => a.start - b.start);
+  const regions = labelHits.map((h, i) => ({ start: h.start, end: labelHits[i + 1]?.start ?? text.length, contentStart: h.contentStart, targets: h.targets }));
+  for (const r of regions) {
+    const raw = text.slice(r.contentStart, r.end);
+    const value = raw.trim().replace(/[.;,\s]+$/, "");
+    const lead = raw.length - raw.trimStart().length;
+    if (value.length >= 2) put(target(r.targets), value, span(text, r.contentStart + lead, r.contentStart + lead + value.length));
+  }
+  const inRegion = (s: Span) => regions.some((r) => s.start >= r.start && s.start < r.end);
+
+  // 2b. Clause-level mapping.
   const followupSpans: Array<{ kind: string; title: string; clause: Span; when: ReturnType<typeof resolveWhen> }> = [];
   const unmapped: Span[] = [];
   for (const clause of segments(text, folded, manifest)) {
@@ -231,19 +263,26 @@ export function interpretCapture(source: string, manifest: VerticalManifest, ada
 
     // Follow-ups.
     // "no la cito", "no hace falta control": un pendiente negado no se propone.
-    const rule = manifest.capture.followupRules.find((r) => {
-      const hit = firstMatch(f, r.patterns);
-      return hit && !/\b(?:no|sin|ni)\s+(?:[a-z]+\s+)?$/.test(f.slice(Math.max(0, hit.index - 14), hit.index));
-    });
+    // Si la cláusula tiene varias señales, manda la que aparece primero
+    // ("control en 30 días con resultados" es un control).
+    const rule = manifest.capture.followupRules
+      .map((r, order) => {
+        const hits = r.patterns.map((p) => re(p).exec(f)).filter((m): m is RegExpExecArray => !!m && !/\b(?:no|sin|ni)\s+(?:[a-z]+\s+)?$/.test(f.slice(Math.max(0, m.index - 14), m.index)));
+        return hits.length ? { r, order, at: Math.min(...hits.map((m) => m.index)) } : null;
+      })
+      .filter((x): x is NonNullable<typeof x> => x !== null)
+      .sort((a, b) => a.at - b.at || a.order - b.order)[0]?.r;
     if (rule) {
       // "en 10 días, no, perdón, mejor en una semana": vale lo último que se dijo.
       const fix = /^(.*)\b(?:perdon|corrijo|mejor dicho|mejor|o sea)\b/.exec(f);
       const offset = fix ? fix[0].length : 0;
       const when = (fix && resolveWhen(clause.text.slice(offset), f.slice(offset), ctx.now, manifest.timezone)) || resolveWhen(clause.text, f, ctx.now, manifest.timezone);
       followupSpans.push({ kind: rule.kind, title: rule.title, clause, when });
-      put(target(manifest.capture.followupTargets), clause.text, clause);
+      if (!inRegion(clause)) put(target(manifest.capture.followupTargets), clause.text, clause);
       used = true;
     }
+    // Dentro de una sección rotulada el texto ya está en su campo.
+    if (inRegion(clause)) continue;
 
     // Measurements (se quitan del texto antes de buscar secciones).
     let masked = f;
@@ -265,7 +304,9 @@ export function interpretCapture(source: string, manifest: VerticalManifest, ada
         if (!cm) continue;
         const startInClause = cm.index + cm[0].length;
         const tail = masked.slice(startInClause);
-        const lead = tail.length - tail.replace(/^[\s:,-]+/, "").length;
+        // El valor sale del texto original: lo enmascarado (mediciones) también es parte del relato.
+        const original = f.slice(startInClause);
+        const lead = original.length - original.replace(/^[\s:,-]+/, "").length;
         const absStart = clause.start + startInClause + lead;
         const value = text.slice(absStart, clause.end).trim();
         if (value.length < 2 || !tail.trim()) continue;
@@ -276,10 +317,37 @@ export function interpretCapture(source: string, manifest: VerticalManifest, ada
     if (!used) {
       const rest = text.slice(remainderStart, clause.end).replace(/^[\s,:-]+/, "");
       const restStart = clause.end - rest.length;
-      if (rest.length >= 3 && /[a-z]/i.test(rest)) {
+      // Muletillas del dictado ("bueno, eh, a ver") no son contenido.
+      if (rest.replace(new RegExp(`\\b(?:${FILLER})\\b`, "gi"), "").replace(/[\s,.;:]+/g, "").length >= 3) {
         // Relato libre (incluidas negaciones pertinentes): va a la sección subjetiva/motivo.
         if (!put(target(manifest.capture.fallbackTargets), rest, span(text, restStart, clause.end))) unmapped.push(span(text, restStart, clause.end));
       }
+    }
+  }
+
+  // Sin señal de motivo, la primera oración con contenido es el motivo.
+  if (templateKeys.has("reason") && !fields.has("reason")) {
+    const first = segments(text, folded, manifest).find((s) => !subject.evidence.some((e) => e.start >= s.start && e.end <= s.end) && s.text.replace(new RegExp(`\\b(?:${FILLER})\\b`, "gi"), "").replace(/[\s,.;:]+/g, "").length >= 6);
+    if (first) {
+      const sentence = sentences(text).find((s) => first.start >= s.start && first.start < s.end) ?? first;
+      const value = sentence.text.replace(new RegExp(`^(?:(?:${FILLER})[\\s,]*)+`, "i"), "");
+      put("reason", value, span(text, sentence.end - value.length, sentence.end));
+    }
+  }
+
+  // Sin rótulos, el relato que trae el motivo es también el comienzo de la
+  // enfermedad actual ("Viene por ardor al orinar y polaquiuria de 2 días").
+  const reason = fields.get("reason");
+  const presentLabeled = fields.get("present")?.evidence.some(inRegion) ?? false;
+  if (reason && templateKeys.has("present") && !presentLabeled) {
+    const first = reason.evidence[0]!;
+    const sentence = sentences(text).find((s) => first.start >= s.start && first.start < s.end);
+    const present = fields.get("present");
+    if (sentence && !present?.value.includes(sentence.text)) {
+      if (present) {
+        present.value = `${sentence.text}. ${present.value}`;
+        present.evidence.unshift(sentence);
+      } else put("present", sentence.text, sentence);
     }
   }
 
@@ -315,10 +383,18 @@ export function interpretCapture(source: string, manifest: VerticalManifest, ada
   for (const fu of followupSpans) {
     const prev = merged[merged.length - 1];
     const sameSentence = prev && !/[.;\n]/.test(text.slice(prev.clause.end, fu.clause.start));
-    const weak = /\b(?:la|lo|los|las) (?:vemos|veo)\b|^\s*(?:vemos\s+(?:los\s+)?)?resultados?\b/.test(fold(fu.clause.text));
+    // "los vemos", "vemos los resultados": hablan de los estudios pedidos.
+    // "la/lo veo" en otra oración es un control de la persona, no del estudio.
+    const ff = fold(fu.clause.text);
+    const weak = /\b(?:los|las) (?:vemos|veo)\b|^\s*(?:vemos\s+(?:los\s+)?)?resultados?\b/.test(ff) || (sameSentence && /\b(?:la|lo) (?:vemos|veo)\b/.test(ff));
     if (prev && !prev.when && fu.when && ((sameSentence && prev.kind === fu.kind) || (weak && prev.kind === "RESULT"))) {
       prev.when = fu.when;
       prev.clause = span(text, prev.clause.start, fu.clause.end);
+      continue;
+    }
+    // "Se pide TSH en 6 semanas y control con el resultado": misma fecha.
+    if (prev && sameSentence && prev.when && !fu.when) {
+      merged.push({ ...fu, when: prev.when });
       continue;
     }
     merged.push({ ...fu });

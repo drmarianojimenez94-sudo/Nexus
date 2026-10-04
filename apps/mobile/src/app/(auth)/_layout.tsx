@@ -14,7 +14,7 @@ export default function AuthLayout() {
     );
   }
 
-  if (user) return <Redirect href="/today" />;
+  if (user) return <Redirect href="/home" />;
 
   return (
     <Stack

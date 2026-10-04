@@ -17,6 +17,8 @@ export const patientInputSchema = z.object({
     )
     .default(""),
   phone: z.string().trim().max(80).default(""),
+  /** Sexo registrado, para recordatorios de prevención por edad y sexo. */
+  sex: z.enum(["", "F", "M", "X"]).default(""),
   /** Núcleo familiar / contacto (Ley 26.529, art. 15 inc. b). */
   familyContact: z.string().trim().max(300).default(""),
   allergies: text,
@@ -52,6 +54,20 @@ export interface ClinicalTemplate {
 const fields = (pairs: string[][]): ClinicalField[] =>
   pairs.map(([key, label]) => ({ key: key!, label: label! }));
 export const CLINICAL_TEMPLATES: ClinicalTemplate[] = [
+  {
+    id: "visit",
+    name: "Consulta dictada",
+    description: "Motivo, enfermedad actual, examen, diagnóstico, tratamiento y observaciones",
+    version: 1,
+    fields: fields([
+      ["reason", "Motivo de consulta"],
+      ["present", "Enfermedad actual"],
+      ["exam", "Examen físico y signos vitales"],
+      ["assessment", "Diagnóstico presuntivo"],
+      ["treatment", "Tratamiento"],
+      ["observations", "Observaciones"],
+    ]),
+  },
   {
     id: "first",
     name: "Primera consulta",

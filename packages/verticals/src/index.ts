@@ -11,3 +11,6 @@ export * from "./native";
 export * from "./recordStore";
 export * from "./registry";
 export { medicineVertical } from "./verticals/medicine/manifest";
+export * from "./deidentify";
+export * from "./guidelines";
+export * from "./habits";

@@ -78,6 +78,15 @@ export default function TodayPage() {
         </div>}
       </header>
 
+      <section aria-label="Consultorio" className="glass-panel flex flex-col gap-3 p-4">
+        <h2 className="text-xs font-medium tracking-widest text-nexus-cyan">CONSULTORIO</h2>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+          <Link href="/patients" className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-nexus-cyan px-4 py-3 text-base font-medium text-nexus-bg"><UiIcon name="patients"/>Pacientes</Link>
+          <Link href="/patients/capture" className="flex min-h-12 items-center justify-center gap-2 rounded-xl border border-nexus-cyan/50 px-4 py-3 text-base text-nexus-cyan"><UiIcon name="voice"/>Dictar paciente</Link>
+          <Link href="/patients/day" className="flex min-h-12 items-center justify-center gap-2 rounded-xl border border-nexus-cyan/50 px-4 py-3 text-base text-nexus-cyan"><UiIcon name="today"/>Mi día médico</Link>
+        </div>
+      </section>
+
       {loading && <p className="text-center text-nexus-muted">Cargando…</p>}
       {error && <p className="text-center text-nexus-danger">{error}</p>}
 

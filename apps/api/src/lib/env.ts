@@ -47,4 +47,9 @@ export const env = {
   // when RESEND_API_KEY is also set, since that's the only thing this
   // guards. Never guessable via a default value.
   internalDispatchSecret: process.env.INTERNAL_DISPATCH_SECRET,
+  // Optional: neural text-to-speech. Without it, clients speak with the
+  // device's own voice. google | elevenlabs | openai.
+  voiceProvider: process.env.VOICE_PROVIDER ?? "device",
+  voiceApiKey: process.env.VOICE_API_KEY,
+  voiceName: process.env.VOICE_NAME,
 };
