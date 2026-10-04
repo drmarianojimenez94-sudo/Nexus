@@ -1,0 +1,645 @@
+[
+  {
+    "id": "h3-01",
+    "utterance": "Paciente Juan Pablo Ferreyra Ruiz, DNI 30.456.789, consulta por rinofaringitis de dos días. Afebril, buen estado general. Indico paracetamol 500 mg cada 8 horas. Control en 7 días.",
+    "expect": {
+      "subjectName": "Juan Pablo Ferreyra Ruiz",
+      "document": "30456789",
+      "followups": [
+        {
+          "kind": "CONTROL",
+          "inDays": 7
+        }
+      ],
+      "redFlags": [],
+      "medications": [
+        {
+          "name": "paracetamol",
+          "flagged": false
+        }
+      ]
+    }
+  },
+  {
+    "id": "h3-02",
+    "utterance": "Pte masc 58a, HTA conocida, TA 135/85, sin cambios. Cont. enalapril 10 mg c/12h. Ctrl 30 días.",
+    "expect": {
+      "followups": [
+        {
+          "kind": "CONTROL",
+          "inDays": 30
+        }
+      ],
+      "redFlags": [],
+      "medications": [
+        {
+          "name": "enalapril",
+          "flagged": false
+        }
+      ]
+    }
+  },
+  {
+    "id": "h3-03",
+    "utterance": "Viene Sofía, de 4 años, con la mamá. Otitis media aguda derecha, tímpano abombado. Le indico amoxicilina 250 mg cada 8 horas por 7 días. Que me la traiga en 72 horas para ver el oído.",
+    "expect": {
+      "followups": [
+        {
+          "kind": "CONTROL",
+          "inDays": 3
+        }
+      ],
+      "redFlags": [],
+      "medications": [
+        {
+          "name": "amoxicilina",
+          "flagged": false
+        }
+      ]
+    }
+  },
+  {
+    "id": "h3-04",
+    "utterance": "La señora Elba Rosa Quiroga de Martínez, 87 años, viene acompañada por la hija. Deterioro cognitivo leve, estable. Sin caídas en el último trimestre. Niega mareos. La cito en 60 días.",
+    "expect": {
+      "subjectName": "Elba Rosa Quiroga de Martínez",
+      "followups": [
+        {
+          "kind": "CONTROL",
+          "inDays": 60
+        }
+      ],
+      "redFlags": [],
+      "negated": [
+        "mareos"
+      ]
+    }
+  },
+  {
+    "id": "h3-05",
+    "utterance": "Esguince de tobillo izquierdo grado uno jugando al fútbol. Bota walker, hielo y pierna en alto. Le tiré diclofenac 50 mg cada 12 horas por 5 días. Nos vemos en 10 días.",
+    "expect": {
+      "followups": [
+        {
+          "kind": "CONTROL",
+          "inDays": 10
+        }
+      ],
+      "redFlags": [],
+      "medications": [
+        {
+          "name": "diclofenac",
+          "flagged": false
+        }
+      ]
+    }
+  },
+  {
+    "id": "h3-06",
+    "utterance": "Paciente Lucía Benítez Aráoz, 17 años, acné vulgar moderado en cara y espalda. Adapaleno gel al 0,1% a la noche, lavado con jabón neutro, nada de manipular las lesiones. Control en 45 días.",
+    "expect": {
+      "subjectName": "Lucía Benítez Aráoz",
+      "followups": [
+        {
+          "kind": "CONTROL",
+          "inDays": 45
+        }
+      ],
+      "redFlags": []
+    }
+  },
+  {
+    "id": "h3-07",
+    "utterance": "Paciente Martín Echeverría, trastorno de ansiedad generalizada en seguimiento. Está mejor, duerme bien, volvió a trabajar. Sigue con sertralina 50 mg por día. Niega ideación suicida. Nos vemos en 30 días.",
+    "expect": {
+      "subjectName": "Martín Echeverría",
+      "followups": [
+        {
+          "kind": "CONTROL",
+          "inDays": 30
+        }
+      ],
+      "redFlags": [],
+      "negated": [
+        "ideacion suicida"
+      ],
+      "medications": [
+        {
+          "name": "sertralina",
+          "flagged": false
+        }
+      ]
+    }
+  },
+  {
+    "id": "h3-08",
+    "utterance": "Señor de 66 años, angioplastia con stent hace un año, asintomático cardiovascular. Sigue con atorvastatina 40 mg y bisoprolol 5 mg por día. Pido ecocardiograma y perfil lipídico. Control en 90 días.",
+    "expect": {
+      "followups": [
+        {
+          "kind": "RESULT",
+          "inDays": 7
+        },
+        {
+          "kind": "CONTROL",
+          "inDays": 90
+        }
+      ],
+      "redFlags": [],
+      "medications": [
+        {
+          "name": "atorvastatina",
+          "flagged": false
+        },
+        {
+          "name": "bisoprolol",
+          "flagged": false
+        }
+      ]
+    }
+  },
+  {
+    "id": "h3-09",
+    "utterance": "Guardia. Masculino de 25 años, corte en palma de mano derecha con un vidrio, sin compromiso tendinoso. Sutura con cuatro puntos, antitetánica al día. Que vuelva a guardia en 10 días para retiro de puntos.",
+    "expect": {
+      "followups": [
+        {
+          "kind": "CONTROL",
+          "inDays": 10
+        }
+      ],
+      "redFlags": []
+    }
+  },
+  {
+    "id": "h3-10",
+    "utterance": "Bueno Ramón, lo que tenés es una lumbalgia mecánica, nada grave. Te doy ibuprofeno 400 mg cada 8 horas con comida por cinco días y reposo relativo. Te espero el viernes para ver cómo seguís.",
+    "expect": {
+      "followups": [
+        {
+          "kind": "CONTROL",
+          "inDays": 4
+        }
+      ],
+      "redFlags": [],
+      "medications": [
+        {
+          "name": "ibuprofeno",
+          "flagged": false
+        }
+      ]
+    }
+  },
+  {
+    "id": "h3-11",
+    "utterance": "Control de niño sano, Benjamín de 18 meses, viene con el papá. Peso y talla en percentilo 50, desarrollo acorde. Vacunas completas. Próximo control el 5 de abril.",
+    "expect": {
+      "followups": [
+        {
+          "kind": "CONTROL",
+          "inDays": 182
+        }
+      ],
+      "redFlags": []
+    }
+  },
+  {
+    "id": "h3-12",
+    "utterance": "Paciente Ana María González Etchepare, DNI 22.333.444, diabetes tipo 2. Glucemia en ayunas de 128. Continúa metformina 850 mg dos veces por día. Pido hemoglobina glicosilada. Control en 3 semanas.",
+    "expect": {
+      "subjectName": "Ana María González Etchepare",
+      "document": "22333444",
+      "followups": [
+        {
+          "kind": "RESULT",
+          "inDays": 7
+        },
+        {
+          "kind": "CONTROL",
+          "inDays": 21
+        }
+      ],
+      "redFlags": [],
+      "medications": [
+        {
+          "name": "metformina",
+          "flagged": false
+        }
+      ]
+    }
+  },
+  {
+    "id": "h3-13",
+    "utterance": "Paciente Tomás Ibarra Lynch, dermatitis seborreica en cuero cabelludo y surcos nasogenianos. Ketoconazol champú al 2% dos veces por semana. No lo cito, que consulte si empeora.",
+    "expect": {
+      "subjectName": "Tomás Ibarra Lynch",
+      "followups": [],
+      "redFlags": []
+    }
+  },
+  {
+    "id": "h3-14",
+    "utterance": "Don Alberto, 92 años, viene con el nieto. Hipotiroidismo compensado, sigue con levotiroxina 75 mcg en ayunas. Lo veo bien, camina con bastón. Nos vemos el 26 de octubre.",
+    "expect": {
+      "followups": [
+        {
+          "kind": "CONTROL",
+          "inDays": 21
+        }
+      ],
+      "redFlags": [],
+      "medications": [
+        {
+          "name": "levotiroxina",
+          "flagged": false
+        }
+      ]
+    }
+  },
+  {
+    "id": "h3-15",
+    "utterance": "Guardia, masculino de 61 años, dolor precordial opresivo de 40 minutos irradiado a brazo izquierdo, sudoroso y pálido. ECG con supradesnivel del ST en cara inferior. Activo código infarto y aviso a hemodinamia.",
+    "expect": {
+      "redFlags": [
+        "chest_pain"
+      ],
+      "followups": []
+    }
+  },
+  {
+    "id": "h3-16",
+    "utterance": "Señora de 74, la trae el marido. Hace una hora se le torció la boca, no puede mover el brazo derecho y habla trabado. Activo código ACV, aviso a neurología.",
+    "expect": {
+      "redFlags": [
+        "stroke"
+      ],
+      "followups": []
+    }
+  },
+  {
+    "id": "h3-17",
+    "utterance": "Paciente Valentina Sosa Rinaldi, 19 años. Refiere que desde hace una semana piensa en matarse y tiene un plan con las pastillas de la madre. Se indica internación con acompañamiento permanente.",
+    "expect": {
+      "subjectName": "Valentina Sosa Rinaldi",
+      "redFlags": [
+        "suicide_risk"
+      ]
+    }
+  },
+  {
+    "id": "h3-18",
+    "utterance": "Mujer de 45 años, cefalea súbita, la peor de su vida, que arrancó de golpe en segundos mientras hacía fuerza en el gimnasio. Rigidez de nuca. Pido TAC de cerebro ya.",
+    "expect": {
+      "redFlags": [
+        "thunderclap_headache"
+      ]
+    }
+  },
+  {
+    "id": "h3-19",
+    "utterance": "Paciente Hugo Domínguez, 70 años, cefalea occipital, TA 200/125. Le bajé la presión con captopril 25 mg, a la hora 160/95. Lo llamo mañana para ver cómo sigue.",
+    "expect": {
+      "subjectName": "Hugo Domínguez",
+      "redFlags": [
+        "hypertensive_crisis"
+      ],
+      "followups": [
+        {
+          "kind": "CALL",
+          "inDays": 1
+        }
+      ],
+      "medications": [
+        {
+          "name": "captopril",
+          "flagged": false
+        }
+      ]
+    }
+  },
+  {
+    "id": "h3-20",
+    "utterance": "Diabético insulinizado de 68 años, lo trae la esposa porque estaba confuso y transpirado. Glucemia capilar 48. Se pasa dextrosa endovenosa y recupera la conciencia.",
+    "expect": {
+      "redFlags": [
+        "hypoglycemia"
+      ],
+      "followups": []
+    }
+  },
+  {
+    "id": "h3-21",
+    "utterance": "Paciente Rodolfo Pérez García, 52 años, palpitaciones ocasionales. Niega dolor de pecho, niega disnea. Electro normal. Pido Holter de 24 horas.",
+    "expect": {
+      "subjectName": "Rodolfo Pérez García",
+      "redFlags": [],
+      "negated": [
+        "dolor de pecho",
+        "disnea"
+      ],
+      "followups": [
+        {
+          "kind": "RESULT",
+          "inDays": 7
+        }
+      ]
+    }
+  },
+  {
+    "id": "h3-22",
+    "utterance": "Nena de 7 años, viene con la mamá, cefalea frontal de tres días con congestión nasal. Sin fiebre, no tiene rigidez de nuca. Probable sinusitis. Paracetamol 250 mg cada 6 horas.",
+    "expect": {
+      "redFlags": [],
+      "negated": [
+        "fiebre",
+        "rigidez de nuca"
+      ],
+      "medications": [
+        {
+          "name": "paracetamol",
+          "flagged": false
+        }
+      ]
+    }
+  },
+  {
+    "id": "h3-23",
+    "utterance": "Urticaria generalizada después de comer mariscos. Sin edema de glotis, sin dificultad respiratoria, TA 120/80. Loratadina 10 mg por día y control en 48 horas.",
+    "expect": {
+      "redFlags": [],
+      "negated": [
+        "edema de glotis",
+        "dificultad respiratoria"
+      ],
+      "followups": [
+        {
+          "kind": "CONTROL",
+          "inDays": 2
+        }
+      ],
+      "medications": [
+        {
+          "name": "loratadina",
+          "flagged": false
+        }
+      ]
+    }
+  },
+  {
+    "id": "h3-24",
+    "utterance": "Embarazada de 32 semanas, control prenatal. TA 115/70. Niega sangrado vaginal, movimientos fetales presentes, altura uterina acorde. Próximo control en 15 días.",
+    "expect": {
+      "redFlags": [],
+      "negated": [
+        "sangrado vaginal"
+      ],
+      "followups": [
+        {
+          "kind": "CONTROL",
+          "inDays": 15
+        }
+      ]
+    }
+  },
+  {
+    "id": "h3-25",
+    "utterance": "Paciente Carlos Alberto Medina Paz, faringoamigdalitis con placas. Amoxicilina 500 g cada 8 horas por 10 días.",
+    "expect": {
+      "subjectName": "Carlos Alberto Medina Paz",
+      "medications": [
+        {
+          "name": "amoxicilina",
+          "flagged": true
+        }
+      ],
+      "followups": []
+    }
+  },
+  {
+    "id": "h3-26",
+    "utterance": "Lumbalgia aguda tras levantar una caja. Le doy ibuprofeno 2400 mg cada 8 horas y calor local.",
+    "expect": {
+      "medications": [
+        {
+          "name": "ibuprofeno",
+          "flagged": true
+        }
+      ],
+      "redFlags": []
+    }
+  },
+  {
+    "id": "h3-27",
+    "utterance": "Insomnio de conciliación hace dos meses. Le indico clonazepam a la noche y higiene del sueño. Control en 15 días.",
+    "expect": {
+      "medications": [
+        {
+          "name": "clonazepam",
+          "flagged": true
+        }
+      ],
+      "followups": [
+        {
+          "kind": "CONTROL",
+          "inDays": 15
+        }
+      ]
+    }
+  },
+  {
+    "id": "h3-28",
+    "utterance": "Paciente Mirta Susana Olmos, alérgica a la penicilina. Amigdalitis bacteriana. Amoxicilina 875 mg cada 12 horas por 7 días.",
+    "expect": {
+      "subjectName": "Mirta Susana Olmos",
+      "medications": [
+        {
+          "name": "amoxicilina",
+          "flagged": false
+        }
+      ],
+      "allergyConflicts": [
+        "amoxicilina"
+      ]
+    }
+  },
+  {
+    "id": "h3-29",
+    "utterance": "Alérgico a los AINEs, hizo broncoespasmo con aspirina. Dolor post extracción dental. Naproxeno 500 mg cada 12 horas y paracetamol 1 g cada 8 horas.",
+    "expect": {
+      "medications": [
+        {
+          "name": "naproxeno",
+          "flagged": false
+        },
+        {
+          "name": "paracetamol",
+          "flagged": false
+        }
+      ],
+      "allergyConflicts": [
+        "naproxeno"
+      ]
+    }
+  },
+  {
+    "id": "h3-30",
+    "utterance": "Cuadro febril, 38,5. Paracetamol 5 gramos cada 6 horas. Sigue con su enalapril 10 mg por día.",
+    "expect": {
+      "medications": [
+        {
+          "name": "paracetamol",
+          "flagged": true
+        },
+        {
+          "name": "enalapril",
+          "flagged": false
+        }
+      ]
+    }
+  },
+  {
+    "id": "h3-31",
+    "utterance": "Dar turno para la paciente Graciela Inés Romero Sáenz el jueves 15 de octubre a las 10:30 para control de presión.",
+    "expect": {
+      "subjectName": "Graciela Inés Romero Sáenz",
+      "appointmentAt": "2026-10-15T10:30",
+      "followups": []
+    }
+  },
+  {
+    "id": "h3-32",
+    "utterance": "Turno con el señor Néstor Fabián Quintana el martes 13 a las 16 horas, para ver la evolución de la herida.",
+    "expect": {
+      "subjectName": "Néstor Fabián Quintana",
+      "appointmentAt": "2026-10-13T16:00",
+      "followups": []
+    }
+  },
+  {
+    "id": "h3-33",
+    "utterance": "Dispepsia con transaminasas algo elevadas. Pido ecografía abdominal y hepatograma. La llamo el miércoles para ver cómo va con el omeprazol, y control presencial el 3 de noviembre.",
+    "expect": {
+      "followups": [
+        {
+          "kind": "RESULT",
+          "inDays": 7
+        },
+        {
+          "kind": "CALL",
+          "inDays": 2
+        },
+        {
+          "kind": "CONTROL",
+          "inDays": 29
+        }
+      ]
+    }
+  },
+  {
+    "id": "h3-34",
+    "utterance": "Gonalgia derecha post torsión, sospecha de lesión meniscal. Pido resonancia de rodilla, los resultados los vemos en 10 días.",
+    "expect": {
+      "followups": [
+        {
+          "kind": "RESULT",
+          "inDays": 10
+        }
+      ],
+      "redFlags": []
+    }
+  },
+  {
+    "id": "h3-35",
+    "utterance": "Abuelo de 84 con fibrilación auricular, ajusto bisoprolol a 2,5 mg por día. Llamar a la hija mañana para avisarle el cambio de dosis, y control en dos semanas.",
+    "expect": {
+      "followups": [
+        {
+          "kind": "CALL",
+          "inDays": 1
+        },
+        {
+          "kind": "CONTROL",
+          "inDays": 14
+        }
+      ],
+      "medications": [
+        {
+          "name": "bisoprolol",
+          "flagged": false
+        }
+      ]
+    }
+  },
+  {
+    "id": "h3-36",
+    "utterance": "Turno para Lautaro Giménez Ocampo mañana a las 8 y cuarto, control post yeso.",
+    "expect": {
+      "subjectName": "Lautaro Giménez Ocampo",
+      "appointmentAt": "2026-10-06T08:15",
+      "followups": []
+    }
+  },
+  {
+    "id": "h3-37",
+    "utterance": "La mamá cuenta que el hermanito tuvo convulsiones el año pasado, pero el nene nunca tuvo nada de eso. Hoy consulta por dolor de garganta, faringitis viral. Nada de antibióticos, solo líquidos y reposo.",
+    "expect": {
+      "redFlags": [],
+      "followups": [],
+      "mustNotContain": [
+        "amoxicilina"
+      ]
+    }
+  },
+  {
+    "id": "h3-38",
+    "utterance": "Paciente Héctor Ruiz Díaz, infarto en 2019, hoy viene a control, sin dolor precordial desde entonces. TA en consultorio 190/100, repito a los 10 minutos 182/98, sin síntomas. Le subo la amlodipina a 10 mg y lo llamo el viernes.",
+    "expect": {
+      "subjectName": "Héctor Ruiz Díaz",
+      "redFlags": [
+        "hypertensive_crisis"
+      ],
+      "negated": [
+        "dolor precordial"
+      ],
+      "followups": [
+        {
+          "kind": "CALL",
+          "inDays": 4
+        }
+      ],
+      "medications": [
+        {
+          "name": "amlodipina",
+          "flagged": false
+        }
+      ]
+    }
+  },
+  {
+    "id": "h3-39",
+    "utterance": "Mujer de 34 años, refiere que la pareja le pegó anoche, hematoma en antebrazo izquierdo. Tiene miedo de volver a la casa. Doy intervención a servicio social. La llamo mañana.",
+    "expect": {
+      "redFlags": [
+        "violence"
+      ],
+      "followups": [
+        {
+          "kind": "CALL",
+          "inDays": 1
+        }
+      ]
+    }
+  },
+  {
+    "id": "h3-40",
+    "utterance": "La señora Nélida Fernández Castro, DNI 5.123.456, 80 años, melena desde ayer, toma aspirina y clopidogrel. Hemoglobina 8. Queda internada, no la cito.",
+    "expect": {
+      "subjectName": "Nélida Fernández Castro",
+      "document": "5123456",
+      "redFlags": [
+        "gi_bleeding"
+      ],
+      "followups": []
+    }
+  }
+]

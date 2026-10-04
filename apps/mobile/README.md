@@ -44,16 +44,22 @@ Escaneá el QR con la app **Expo Go** (gratis, App Store/Play Store) desde
 tu teléfono — no hace falta cuenta de Apple Developer para esto, ni para
 probar en tu propio dispositivo durante desarrollo.
 
+## Vertical médica nativa (development build)
+
+- **Abre en "Mi día"** (`src/app/(app)/day.tsx`): turnos, vencidos, resultados, borradores sin validar y sugerencias, leído en voz alta al entrar.
+- **Asistente clínico** (`src/app/(app)/assistant.tsx`): al entrar ya escucha (modo "Dicto yo") con `expo-speech-recognition`, en el dispositivo cuando el sistema lo soporta, sin guardar audio. Modo "Con el paciente" exige confirmar el consentimiento antes de grabar. Propone ficha, borrador de consulta, seguimientos y turnos con la evidencia de cada dato; nada se guarda hasta confirmar.
+- **Contactos**: selector del sistema (`Contact.presentPicker`) para completar el teléfono de un paciente nuevo; no lee la agenda completa.
+- **Bloqueo biométrico** (`expo-local-authentication`): Face ID / huella / código antes de mostrar datos de pacientes, y otra vez tras 1 minuto en segundo plano.
+- **Permisos**: `app.json` se genera desde el manifiesto de la vertical (`pnpm --filter @nexus/verticals native medicine`). Una prueba falla si se desincroniza. Cámara, fotos, calendario y notificaciones están declarados como *planificados* y no se piden todavía.
+
+Necesita un development build (`npx eas-cli@latest build --profile development`), porque Expo Go no incluye estos módulos nativos. Verificado en este entorno: typecheck, lint, `expo export --platform ios` y `expo config --type introspect` (Info.plist con los cuatro textos de permiso). No se probó en un dispositivo físico.
+
 ## Pendiente (en orden)
 
-1. **Speech-to-text real** — el paso que de verdad resuelve "hablale y te
-   escucha" en iPhone. Expo Go no trae un módulo nativo de reconocimiento
-   de voz; hace falta un *development build* (`eas build --profile
-   development`, gratis en el tier free de EAS) con
-   `expo-speech-recognition` o similar. Sigue sin requerir una cuenta de
-   Apple Developer para probar en tu propio teléfono — esa cuenta
-   ($99/año) recién hace falta para publicar en la App Store o distribuir
-   a otros dispositivos vía TestFlight.
+1. **Probar el development build en un iPhone y un Android reales** — el
+   dictado ya está integrado (`expo-speech-recognition`), pero falta
+   validarlo en dispositivo. La cuenta de Apple Developer ($99/año) recién
+   hace falta para TestFlight o App Store.
 2. **Face 3D real** — hoy es un círculo plano con ojos; el shell de
    cristal rotando de la web (`apps/web/.../NexusFace.tsx`, CSS
    `preserve-3d`) no tiene equivalente directo en React Native sin una

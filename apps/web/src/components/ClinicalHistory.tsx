@@ -118,7 +118,10 @@ export function ClinicalHistory({ patientId }: { patientId: string }) {
           className="rounded-xl border border-nexus-border p-3"
           href={`/patients/${patientId}/consultations/${c.id}`}
         >
-          <p className="font-medium">{c.template.name}</p>
+          <p className="font-medium">
+            {c.folio ? `Folio ${c.folio} · ` : ""}
+            {c.template.name}
+          </p>
           <p className="mt-1 text-xs text-nexus-muted">
             {new Date(c.occurredAt).toLocaleString("es-AR")} ·{" "}
             {c.status === "FINAL" ? "Validada" : "Borrador"}

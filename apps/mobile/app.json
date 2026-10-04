@@ -8,7 +8,32 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
-    "plugins": ["expo-router"],
+    "plugins": [
+      "expo-router",
+      [
+        "expo-speech-recognition",
+        {
+          "androidSpeechServicePackages": [
+            "com.google.android.as",
+            "com.google.android.googlequicksearchbox"
+          ],
+          "microphonePermission": "Nexus usa el micrófono solo mientras tocás Dictar, para transcribir lo que decís sobre tus consultas y pendientes. No escucha en segundo plano ni guarda el audio.",
+          "speechRecognitionPermission": "El reconocimiento de voz convierte tu dictado en texto, en el dispositivo cuando está disponible, para preparar borradores que siempre revisás antes de guardar."
+        }
+      ],
+      [
+        "expo-contacts",
+        {
+          "contactsPermission": "Nexus abre tus contactos solo cuando elegís uno, para completar el teléfono de un paciente o de un colega. No sube ni copia tu agenda."
+        }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Face ID o la huella protegen el acceso a las fichas de tus pacientes cuando abrís Nexus en este teléfono."
+        }
+      ]
+    ],
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.nexus.app"
@@ -21,7 +46,12 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.nexus.app"
+      "package": "com.nexus.app",
+      "permissions": [
+        "android.permission.READ_CONTACTS",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.USE_BIOMETRIC"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"

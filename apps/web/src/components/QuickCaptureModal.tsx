@@ -4,6 +4,8 @@ import { useState } from "react";
 import { api, ApiError } from "@/lib/api";
 import { queueCapture } from "@/lib/offlineQueue";
 import { useAuth } from "@/lib/auth-context";
+import { CLINICAL_HANDOFF_KEY } from "@/lib/clinicalCapture";
+import { looksSensitive, medicineVertical } from "@nexus/verticals";
 
 interface QuickCaptureModalProps {
   onClose: () => void;
@@ -29,6 +31,16 @@ export function QuickCaptureModal({
     e.preventDefault();
     const rawText = text.trim();
     if (!rawText) return;
+    // Datos de pacientes: nunca al inbox sin cifrar ni a la cola local.
+    if (looksSensitive(rawText, medicineVertical)) {
+      try {
+        sessionStorage.setItem(CLINICAL_HANDOFF_KEY, rawText);
+      } catch {
+        // sin sessionStorage: el texto se vuelve a escribir en el asistente
+      }
+      window.location.assign(medicineVertical.routes.capture);
+      return;
+    }
     setSubmitting(true);
     setError(null);
 

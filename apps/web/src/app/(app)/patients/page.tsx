@@ -49,6 +49,14 @@ export default function PatientsPage() {
         detail="Tu consultorio, con una ficha para cada persona."
       />
       <ClinicalNotice />
+      <div className="flex flex-wrap gap-3">
+        <Link className={clinicalSecondary} href="/patients/day">
+          Mi día
+        </Link>
+        <Link className={clinicalSecondary} href="/patients/capture">
+          Asistente clínico
+        </Link>
+      </div>
       <section className="glass-panel flex flex-col gap-3 p-4 sm:flex-row">
         <input
           aria-label="Buscar paciente"

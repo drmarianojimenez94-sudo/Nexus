@@ -14,5 +14,6 @@ export default function Index() {
     );
   }
 
-  return <Redirect href={user ? "/today" : "/login"} />;
+  // Con sesión, Nexus abre en "Mi día" de la vertical médica.
+  return <Redirect href={user ? "/day" : "/login"} />;
 }

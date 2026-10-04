@@ -3,6 +3,8 @@ import { Router, type Request } from "express";
 import { Prisma, type Patient, type ClinicalEncounter } from "@prisma/client";
 import {
   patientInputSchema,
+  clinicalProfileSchema,
+  PREFERENCE_KEYS,
   encounterInputSchema,
   followupInputSchema,
   type PatientInput,
@@ -219,11 +221,15 @@ clinicalRouter.get(
   "/patients/:id",
   asyncHandler(async (req, res) => {
     const row = await ownedPatient(req.params.id!, req.userId!);
-    const encounters = await prisma.clinicalEncounter.findMany({
-      where: { userId: req.userId!, patientId: row.id },
-      orderBy: { occurredAt: "desc" },
-      take: 100,
-    });
+    const where = { userId: req.userId!, patientId: row.id };
+    const [encounters, total] = await Promise.all([
+      prisma.clinicalEncounter.findMany({
+        where,
+        orderBy: [{ occurredAt: "desc" }, { createdAt: "desc" }],
+        take: 100,
+      }),
+      prisma.clinicalEncounter.count({ where }),
+    ]);
     await recordAudit({
       userId: req.userId!,
       action: "clinical.patient.read",
@@ -231,7 +237,10 @@ clinicalRouter.get(
     });
     res.json({
       patient: patientView(row),
-      encounters: encounters.map(encounterView),
+      encounters: encounters.map((e, i) => ({
+        ...encounterView(e),
+        folio: total - i,
+      })),
     });
   }),
 );
@@ -242,7 +251,7 @@ clinicalRouter.get(
     const [encounters, followups] = await Promise.all([
       prisma.clinicalEncounter.findMany({
         where: { userId: patient.userId, patientId: patient.id },
-        orderBy: { occurredAt: "asc" },
+        orderBy: [{ occurredAt: "asc" }, { createdAt: "asc" }],
       }),
       prisma.clinicalFollowup.findMany({
         where: { userId: patient.userId, patientId: patient.id },
@@ -256,7 +265,10 @@ clinicalRouter.get(
     res.json({
       exportedAt: new Date(),
       patient: patientView(patient),
-      encounters: encounters.map(encounterView),
+      encounters: encounters.map((e, i) => ({
+        ...encounterView(e),
+        folio: i + 1,
+      })),
       followups: followups.map((row) => ({
         ...decryptClinical<{ title: string; kind: string }>(
           row.recordEncrypted,
@@ -473,10 +485,22 @@ clinicalRouter.post(
         "Revisá la transcripción: incorporala a los campos o descartala antes de validar",
       );
     const patient = await ownedPatient(row.patientId, row.userId, tx);
-    const clinician = await tx.user.findUniqueOrThrow({
-      where: { id: row.userId },
-      select: { id: true, name: true, email: true },
-    });
+    const [user, profile] = await Promise.all([
+      tx.user.findUniqueOrThrow({
+        where: { id: row.userId },
+        select: { id: true, name: true, email: true },
+      }),
+      tx.preference.findUnique({
+        where: {
+          userId_key: { userId: row.userId, key: PREFERENCE_KEYS.CLINICAL_PROFILE },
+        },
+      }),
+    ]);
+    const parsedProfile = clinicalProfileSchema.safeParse(profile?.value ?? {});
+    const clinician = {
+      ...user,
+      ...(parsedProfile.success ? parsedProfile.data : { specialty: "", license: "" }),
+    };
     const finalRecord: EncounterRecord = {
       ...record,
       patientSnapshot: {

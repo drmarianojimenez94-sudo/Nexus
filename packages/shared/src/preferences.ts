@@ -24,4 +24,5 @@ export type SetPreferenceInput = z.infer<typeof setPreferenceSchema>;
 export const PREFERENCE_KEYS = {
   ONBOARDING_COMPLETED: "onboarding_completed",
   VOICE_AUTO_START: "voice_auto_start",
+  CLINICAL_PROFILE: "clinical_profile",
 } as const;

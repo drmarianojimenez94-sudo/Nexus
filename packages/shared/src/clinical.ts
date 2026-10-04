@@ -17,6 +17,8 @@ export const patientInputSchema = z.object({
     )
     .default(""),
   phone: z.string().trim().max(80).default(""),
+  /** Núcleo familiar / contacto (Ley 26.529, art. 15 inc. b). */
+  familyContact: z.string().trim().max(300).default(""),
   allergies: text,
   medication: text,
   history: text,
@@ -139,6 +141,34 @@ export const CLINICAL_TEMPLATES: ClinicalTemplate[] = [
       ["followup", "Controles y estudios"],
     ]),
   },
+  {
+    id: "soap",
+    name: "Nota SOAP",
+    description: "Subjetivo, objetivo, evaluación y plan",
+    version: 1,
+    fields: fields([
+      ["subjective", "S — Subjetivo (motivo, síntomas, antecedentes referidos)"],
+      ["objective", "O — Objetivo (signos vitales, examen, estudios)"],
+      ["assessment", "A — Evaluación / diagnóstico presuntivo (CIE-10)"],
+      ["plan", "P — Plan, indicaciones y seguimiento"],
+    ]),
+  },
+  {
+    id: "consent",
+    name: "Consentimiento informado",
+    description: "Constancia revisada y firmada fuera de Nexus (Ley 26.529, art. 5)",
+    version: 1,
+    fields: fields([
+      ["diagnosis", "Estado de salud / diagnóstico"],
+      ["procedure", "Procedimiento propuesto"],
+      ["objective", "Objetivo perseguido"],
+      ["benefits", "Beneficios esperados"],
+      ["risks", "Riesgos, molestias y efectos adversos"],
+      ["alternatives", "Alternativas y sus riesgos/beneficios"],
+      ["refusal", "Consecuencias previsibles de no realizarlo"],
+      ["decision", "Decisión del paciente y forma (verbal / escrita)"],
+    ]),
+  },
 ];
 export const templateInputSchema = z.object({
   name: z.string().trim().min(2).max(120),
@@ -194,8 +224,16 @@ export type ClinicalEncounter = EncounterInput & {
   updatedAt: string;
   finalizedAt: string | null;
   patientSnapshot?: PatientInput & { id: string };
-  clinicianSnapshot?: { id: string; name: string; email: string };
+  clinicianSnapshot?: { id: string; name: string; email: string; specialty?: string; license?: string };
+  /** Número de folio: orden cronológico dentro de la historia del paciente. */
+  folio?: number;
 };
+/** Datos del profesional que se copian en cada consulta validada (art. 15 inc. c). */
+export const clinicalProfileSchema = z.object({
+  specialty: z.string().trim().max(120).default(""),
+  license: z.string().trim().max(60).default(""),
+});
+export type ClinicalProfile = z.infer<typeof clinicalProfileSchema>;
 export const followupInputSchema = z.object({
   patientId: z.string().uuid(),
   title: z.string().trim().min(1).max(300),
