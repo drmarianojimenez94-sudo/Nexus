@@ -282,3 +282,20 @@ describe("permisos nativos", () => {
     for (const c of medicineVertical.capabilities.filter((x) => x.status === "implemented")) expect(pkg.dependencies[c.expoPlugin!.name]).toBeDefined();
   });
 });
+
+describe("paciente dictado que todavía no tiene ficha", () => {
+  it("la crea con el nombre y DNI dictados en vez de frenar el guardado", async () => {
+    const plan = interpretCapture("Paciente Laura Fernández DNI 28.456.789. Motivo de consulta: fiebre.", medicineVertical, recordStoreAdapter, { now: new Date("2026-10-05T12:00:00Z") });
+    const find = plan.steps.find((s) => s.kind === "find_subject")!;
+    expect(find.createIfMissing?.request.body).toMatchObject({ name: "Laura Fernández" });
+    const calls: string[] = [];
+    const done = await executePlan(plan.steps, async (req) => {
+      calls.push(`${req.method} ${req.path}`);
+      if (req.method === "GET") return { patients: [] };
+      if (req.path === "/clinical/patients") return { patient: { id: "p-nueva" } };
+      return { encounter: { id: "e1" }, followup: { id: "f1" } };
+    });
+    expect(done[find.id]).toBe("p-nueva");
+    expect(calls.filter((c) => c === "POST /clinical/patients")).toHaveLength(1);
+  });
+});

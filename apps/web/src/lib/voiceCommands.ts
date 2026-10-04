@@ -435,7 +435,7 @@ export async function handleVoiceCommand(
 
 const TZ = "America/Argentina/Buenos_Aires";
 const fmt = (at: Date) =>
-  new Intl.DateTimeFormat("es-AR", { timeZone: TZ, weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" }).format(at);
+  new Intl.DateTimeFormat("es-AR", { timeZone: TZ, weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(at);
 
 /** "a las 6:30" sin día: hoy si todavía no pasó, si no mañana. */
 export function resolveSpokenTime(text: string, now = new Date()): { at: Date; hasTime: boolean } | null {

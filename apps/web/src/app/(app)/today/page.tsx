@@ -51,6 +51,13 @@ function buildSpokenSummary(data: TodayResponse): string {
   return parts.join(" ");
 }
 
+/** «Dr. Mariano Jiménez» → «Dr. Mariano»; «Ana López» → «Ana». */
+function greetName(name: string): string {
+  const [first = "", second] = name.trim().split(/\s+/);
+  const titled = /^(?:dra?|lic|prof)\.?$/i.test(first) && second;
+  return (titled ? `${first.replace(/\.?$/, ".")} ${second}` : first).replace(/\.+$/, "");
+}
+
 export default function TodayPage() {
   const { user } = useAuth();
   const { data, loading, error } = useApiData<TodayResponse>("/today");
@@ -64,7 +71,7 @@ export default function TodayPage() {
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <p className="hud-label mb-3 text-nexus-cyan">Tu día, en foco</p>
-            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{`${greeting()}${user ? `, ${user.name.split(" ")[0]}` : ""}`.replace(/\.+$/, "")}.</h1>
+            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">{greeting()}{user ? `, ${greetName(user.name)}` : ""}.</h1>
             <p className="mt-2 max-w-md text-sm leading-relaxed text-nexus-muted">{data?.now ? `Próximo: ${formatTime(data.now.startAt)} · ${data.now.title}` : "Un espacio para ordenar tus ideas y avanzar con lo que importa."}</p>
           </div>
           <NexusCore state={faceState} size={80}/>

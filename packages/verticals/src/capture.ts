@@ -177,9 +177,16 @@ export function interpretCapture(source: string, manifest: VerticalManifest, ada
     steps.push({
       id: subjectStep,
       kind: "find_subject",
-      summary: `Buscar la ficha de ${subject.name}`,
-      permissionLevel: 1,
+      summary: `Buscar la ficha de ${subject.name}; si no existe, crearla`,
+      permissionLevel: 4,
       ...adapter.findSubject(subject.document ?? subject.name),
+      createIfMissing: adapter.createSubject({
+        name: subject.name,
+        document: subject.document,
+        phone: subject.phone,
+        allergies: safety.allergies.join(", "),
+        clientId: id(),
+      }),
       evidence: subject.evidence,
       warnings: [],
       dependsOn: [],
