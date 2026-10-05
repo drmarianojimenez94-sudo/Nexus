@@ -59,6 +59,10 @@ export function useDictation() {
   const [finalText, setFinalText] = useState("");
   const [interim, setInterim] = useState("");
   const [error, setError] = useState<string | null>(null);
+  /** El micrófono se cortó solo (no lo detuvo la persona): lo dictado se conserva. */
+  const [interrupted, setInterrupted] = useState(false);
+  /** Lo dictado ya se entregó (Listo/pausa larga) o se descartó: el próximo dictado empieza vacío. */
+  const consumed = useRef(true);
   const recognition = useRef<SpeechRecognition | null>(null);
   const wanted = useRef(false);
   const parts = useRef<string[]>([]);
@@ -88,6 +92,8 @@ export function useDictation() {
     }
     setListening(false);
     setInterim("");
+    setInterrupted(false);
+    consumed.current = true;
     return joinTranscript(parts.current);
   }, []);
 
@@ -95,6 +101,8 @@ export function useDictation() {
   const stop = useCallback(() => halt(), [halt]);
 
   const reset = useCallback((text = "") => {
+    consumed.current = true;
+    setInterrupted(false);
     parts.current = text ? [text] : [];
     setFinalText(text);
     setInterim("");
@@ -111,7 +119,10 @@ export function useDictation() {
         setError("El micrófono necesita una conexión segura (https).");
         return false;
       }
-      if (!options.keep) reset();
+      // Si el micrófono se había cortado solo, se sigue sumando a lo ya dictado.
+      if (!options.keep && consumed.current) reset();
+      consumed.current = false;
+      setInterrupted(false);
       onAutoStop.current = options.onAutoStop ?? null;
       wanted.current = true;
       lastSpeech.current = Date.now();
@@ -154,7 +165,8 @@ export function useDictation() {
           wanted.current = false;
           clearTimers();
           setListening(false);
-          setError(ERRORS[event.error] ?? "El micrófono se interrumpió. Tocá el micrófono para seguir.");
+          setInterrupted(true);
+          setError(ERRORS[event.error] ?? "El micrófono se cortó. Lo que dijiste está guardado: tocá «Seguir dictando» o «Listo».");
         };
         r.onend = () => {
           if (recognition.current === r) recognition.current = null;
@@ -166,9 +178,12 @@ export function useDictation() {
         try {
           r.start();
         } catch {
+          // iPhone a veces no deja reanudar solo: lo dicho queda guardado.
           wanted.current = false;
+          clearTimers();
           setListening(false);
-          setError("Tocá el micrófono otra vez para habilitarlo.");
+          setInterrupted(true);
+          setError("El micrófono se cortó. Lo que dijiste está guardado: tocá «Seguir dictando» o «Listo».");
         }
       };
       run();
@@ -186,6 +201,7 @@ export function useDictation() {
     text: joinTranscript([finalText, interim]),
     finalText,
     error,
+    interrupted,
     start,
     stop,
     reset,

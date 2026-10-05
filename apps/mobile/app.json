@@ -1,9 +1,9 @@
 {
   "expo": {
-    "name": "NEXUS",
+    "name": "Nexus",
     "slug": "nexus",
     "scheme": "nexus",
-    "version": "0.1.0",
+    "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -34,6 +34,15 @@
         }
       ],
       [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": false,
+          "locationAlwaysPermission": false,
+          "motionUsagePermission": false,
+          "locationWhenInUsePermission": "Nexus usa tu ubicación aproximada (la ciudad) solo mientras usás la app, para decirte el clima de donde estás y responder búsquedas cercanas. No la guarda ni la comparte."
+        }
+      ],
+      [
         "expo-calendar",
         {
           "remindersPermission": "Nexus no lee ni modifica tus Recordatorios: solo usa el calendario para tus turnos.",
@@ -44,7 +53,10 @@
     ],
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.nexus.app"
+      "bundleIdentifier": "ar.drmarianojimenez.nexus",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -54,8 +66,10 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.nexus.app",
+      "package": "ar.drmarianojimenez.nexus",
       "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.POST_NOTIFICATIONS",
         "android.permission.READ_CALENDAR",
         "android.permission.READ_CONTACTS",

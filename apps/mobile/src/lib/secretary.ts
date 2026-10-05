@@ -4,6 +4,7 @@ import { useSyncExternalStore } from "react";
 import { Platform } from "react-native";
 import { setPhoneAlarm } from "./alarm";
 import { api, ApiError } from "./api";
+import { currentLocation } from "./location";
 import { addToPhoneCalendar } from "./phoneCalendar";
 import { speak } from "./voice";
 
@@ -16,6 +17,8 @@ export interface InterpretResult {
   event?: { id: string; title: string; startAt: string; endAt: string | null; google: boolean };
   emailDraft?: { to: string; subject: string; body: string; id?: string; confirmationToken?: string; connected: boolean; note?: string };
   handoff?: { vertical: string; text: string };
+  /** Respuestas con datos de internet (clima, búsquedas): de dónde salió. */
+  sources?: { title: string; url: string }[];
 }
 
 export interface ChatTurn {
@@ -62,7 +65,8 @@ export const NO_AI_REPLY =
 /** Interpreta una frase. `null` cuando el servidor no tiene IA (501): usar `fallbackRoute`. */
 export async function interpretUtterance(text: string, history: ChatTurn[]): Promise<InterpretResult | null> {
   try {
-    return await api.post<InterpretResult>("/assistant/interpret", { text, history: history.slice(-12) });
+    const location = await currentLocation();
+    return await api.post<InterpretResult>("/assistant/interpret", { text, history: history.slice(-12), ...(location ? { location } : {}) });
   } catch (err) {
     if (err instanceof ApiError && err.status === 501) return null;
     throw err;
@@ -146,6 +150,8 @@ export interface SecretaryOutcome {
   spoken: string;
   route: NativeRoute | null;
   draft: EmailDraft | null;
+  /** Fuentes de una respuesta con datos de internet. */
+  sources: { title: string; url: string }[];
 }
 
 /**
@@ -164,6 +170,7 @@ export async function handleUtterance(text: string): Promise<SecretaryOutcome | 
   const extras: string[] = [];
   let route: NativeRoute | null = null;
   let draft: EmailDraft | null = null;
+  let sources: { title: string; url: string }[] = [];
   try {
     const result = await interpretUtterance(utterance, history);
     if (!result) {
@@ -171,6 +178,7 @@ export async function handleUtterance(text: string): Promise<SecretaryOutcome | 
       reply = route ? route.spoken : NO_AI_REPLY;
     } else {
       reply = result.speak;
+      sources = result.sources ?? [];
       if (result.alarm) {
         const at = new Date(result.alarm.at);
         const how = await setPhoneAlarm(at, result.alarm.title);
@@ -205,5 +213,5 @@ export async function handleUtterance(text: string): Promise<SecretaryOutcome | 
   push("assistant", spoken);
   if (route) router.navigate({ pathname: route.pathname, params: route.params });
   void speak(spoken);
-  return { spoken, route, draft };
+  return { spoken, route, draft, sources };
 }

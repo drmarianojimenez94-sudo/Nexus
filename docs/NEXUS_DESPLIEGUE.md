@@ -93,8 +93,9 @@ npx eas-cli@latest login            # tu usuario de expo.dev
 npx eas-cli@latest init             # vincula el proyecto a tu cuenta
 ```
 
-1. En `apps/mobile/eas.json`, reemplazá **las dos** apariciones de `https://REEMPLAZAR-POR-TU-NEXUS.onrender.com` por tu dirección de Render.
-2. En `apps/mobile/app.json`, cambiá `ios.bundleIdentifier` y `android.package` (hoy `com.nexus.app`, que seguramente ya existe) por uno propio, por ejemplo `com.tuapellido.nexus`. Usá solo minúsculas, números y puntos.
+No hay que editar archivos:
+- La dirección de tu Nexus se escribe en la app, en la pantalla de ingreso, y queda guardada.
+- El identificador ya es propio: `ar.drmarianojimenez.nexus`.
 
 ### 2.3 Android: generar e instalar
 
@@ -105,6 +106,8 @@ npx eas-cli@latest build --profile preview --platform android
 Cuando termina (10 a 20 minutos), EAS muestra un enlace y un código QR. Abrilo desde el celular, descargá el `.apk` e instalalo. Android te va a pedir permitir *instalar apps de origen desconocido* para el navegador. Listo: aparece el ícono de Nexus.
 
 ### 2.4 iPhone: generar e instalar
+
+> **Guía completa y recomendada:** [`docs/NEXUS_IPHONE.md`](NEXUS_IPHONE.md). Usa TestFlight, que no requiere registrar el iPhone, y suma un botón en GitHub para compilar versiones nuevas sin computadora. Lo que sigue es la alternativa de instalación directa.
 
 ```bash
 npx eas-cli@latest device:create      # registra tu iPhone: abrí el enlace en el iPhone y seguí los pasos

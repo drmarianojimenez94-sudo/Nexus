@@ -106,6 +106,10 @@ export function useDictation({ contextualStrings = [] }: DictationOptions = {}) 
   const [partial, setPartial] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [onDevice, setOnDevice] = useState(false);
+  /** El micrófono se cortó solo (no lo detuvo la persona): lo dictado se conserva. */
+  const [interrupted, setInterrupted] = useState(false);
+  /** Lo dictado ya se entregó o descartó: el próximo dictado empieza vacío. */
+  const consumed = useRef(true);
 
   const parts = useRef<string[]>([]);
   const pending = useRef("");
@@ -174,7 +178,8 @@ export function useDictation({ contextualStrings = [] }: DictationOptions = {}) 
           wanted.current = false;
           clearTimers();
           release();
-          setError("El micrófono se interrumpió varias veces. Tocá el botón para seguir dictando.");
+          setInterrupted(true);
+          setError("El micrófono se cortó. Lo que dijiste está guardado: tocá «Seguir dictando» o «Listo».");
           return;
         }
         launch();
@@ -231,7 +236,8 @@ export function useDictation({ contextualStrings = [] }: DictationOptions = {}) 
     clearTimers();
     commitPending();
     release();
-    setError(ERRORS[event.error] ?? (event.message || "El micrófono se interrumpió. Tocá el botón para seguir."));
+    setInterrupted(true);
+    setError(ERRORS[event.error] ?? (event.message || "El micrófono se cortó. Lo que dijiste está guardado: tocá «Seguir dictando» o «Listo»."));
   });
 
   const available = (() => {
@@ -243,6 +249,8 @@ export function useDictation({ contextualStrings = [] }: DictationOptions = {}) 
   })();
 
   const reset = useCallback((text = "") => {
+    consumed.current = true;
+    setInterrupted(false);
     parts.current = text ? [text] : [];
     pending.current = "";
     setFinalText(text);
@@ -287,7 +295,10 @@ export function useDictation({ contextualStrings = [] }: DictationOptions = {}) 
         await new Promise((resolve) => setTimeout(resolve, 300));
       }
       activeOwner = { id: owner, preempt };
-      if (!options.keep) reset();
+      // Si el micrófono se había cortado solo, se sigue sumando a lo ya dictado.
+      if (!options.keep && consumed.current) reset();
+      consumed.current = false;
+      setInterrupted(false);
       onAutoStop.current = options.onAutoStop ?? null;
       wanted.current = true;
       running.current = false;
@@ -331,6 +342,8 @@ export function useDictation({ contextualStrings = [] }: DictationOptions = {}) 
     }
     commitPending();
     release();
+    consumed.current = true;
+    setInterrupted(false);
     return joinTranscript(parts.current);
   }, [owner]);
   const stopRef = useRef(stop);
@@ -365,6 +378,7 @@ export function useDictation({ contextualStrings = [] }: DictationOptions = {}) 
     text: joinTranscript([finalText, partial]),
     finalText,
     error,
+    interrupted,
     onDevice,
     start,
     stop,

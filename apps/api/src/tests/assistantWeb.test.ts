@@ -19,7 +19,7 @@ const intent = (p: Partial<ParsedIntent>): ParsedIntent => ({ intent: "conversat
 function fakeInternet(handler: (url: string, init?: RequestInit) => unknown) {
   globalThis.fetch = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
     const url = String(input instanceof Request ? input.url : input);
-    if (!/open-meteo|googleapis/.test(url)) return realFetch(input, init);
+    if (!/open-meteo|googleapis|nominatim/.test(url)) return realFetch(input, init);
     return new Response(JSON.stringify(handler(url, init)), { status: 200, headers: { "Content-Type": "application/json" } });
   }) as typeof fetch;
 }
@@ -57,6 +57,31 @@ describe("Nexus conectado a internet", () => {
     const res = await agent.post("/assistant/interpret").send({ text: "cómo está el clima en Nueva York" });
     expect(res.body.speak).toMatch(/^En Nueva York.*18 grados/);
     expect(res.body.sources[0].title).toBe("Open-Meteo");
+  });
+
+  it("usa la ubicación del teléfono para «¿cómo está el clima?» sin decir dónde", async () => {
+    const urls: string[] = [];
+    fakeInternet((url) => {
+      urls.push(url);
+      if (url.includes("nominatim")) return { address: { city: "Rosario", state: "Santa Fe", country: "Argentina" } };
+      return meteo(url);
+    });
+    interpretUtterance.mockResolvedValue(intent({ intent: "weather", title: "" }));
+    const res = await agent.post("/assistant/interpret").send({ text: "cómo está el clima", location: { lat: -32.95, lon: -60.65 } });
+    expect(res.body.speak).toMatch(/^En Rosario hay 18 grados/);
+    // Pronóstico por coordenadas, sin buscar ciudad por nombre; al modelo solo le llega la ciudad.
+    expect(urls.some((u) => u.includes("geocoding-api"))).toBe(false);
+    expect(urls.some((u) => u.includes("latitude=-32.95"))).toBe(true);
+    expect(interpretUtterance.mock.calls[0]![1]).toMatchObject({ location: "Rosario, Santa Fe, Argentina" });
+    expect(JSON.stringify(interpretUtterance.mock.calls[0]![1])).not.toContain("-32.95");
+  });
+
+  it("sin permiso de ubicación avisa que puede usarla", async () => {
+    fakeInternet(meteo);
+    interpretUtterance.mockResolvedValue(intent({ intent: "weather", title: "" }));
+    const res = await agent.post("/assistant/interpret").send({ text: "cómo está el clima" });
+    expect(res.body.needsLocation).toBe(true);
+    expect(res.body.speak).toMatch(/No tengo tu ubicación/);
   });
 
   it("busca en internet con Google y devuelve las fuentes", async () => {

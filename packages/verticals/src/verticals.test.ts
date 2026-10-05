@@ -255,6 +255,8 @@ describe("permisos nativos", () => {
   it("se derivan del manifiesto: solo capacidades implementadas, con justificación", () => {
     const native = nativePermissions(medicineVertical);
     expect(native.androidPermissions).toEqual([
+      "android.permission.ACCESS_COARSE_LOCATION",
+      "android.permission.ACCESS_FINE_LOCATION",
       "android.permission.POST_NOTIFICATIONS",
       "android.permission.READ_CALENDAR",
       "android.permission.READ_CONTACTS",
@@ -270,6 +272,10 @@ describe("permisos nativos", () => {
     expect(calendar[1].remindersPermission).toMatch(/Recordatorios/);
     const speech = native.plugins.find((p) => Array.isArray(p) && p[0] === "expo-speech-recognition") as [string, Record<string, string>];
     expect(speech[1].microphonePermission).toMatch(/micrófono/);
+    // Ubicación solo mientras se usa la app: nada en segundo plano.
+    const location = native.plugins.find((p) => Array.isArray(p) && p[0] === "expo-location") as [string, Record<string, unknown>];
+    expect(location[1].locationWhenInUsePermission).toMatch(/ubicación aproximada/);
+    expect(location[1].locationAlwaysPermission).toBe(false);
   });
 
   it("apps/mobile/app.json está sincronizado con el manifiesto", () => {

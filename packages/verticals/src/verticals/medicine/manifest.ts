@@ -444,6 +444,16 @@ export const medicineVertical = defineVertical({
       status: "planned",
     },
     {
+      id: "location",
+      purpose: "Decirte el clima de donde estás y responder búsquedas cercanas",
+      ios: { infoPlistKeys: ["NSLocationWhenInUseUsageDescription"] },
+      android: { permissions: ["android.permission.ACCESS_COARSE_LOCATION", "android.permission.ACCESS_FINE_LOCATION"] },
+      expoPlugin: { name: "expo-location", option: "locationWhenInUsePermission" },
+      rationale: "Nexus usa tu ubicación aproximada (la ciudad) solo mientras usás la app, para decirte el clima de donde estás y responder búsquedas cercanas. No la guarda ni la comparte.",
+      fallback: "Decir la ciudad en la pregunta («el clima en Rosario»).",
+      status: "implemented",
+    },
+    {
       id: "calendar",
       purpose: "Copiar turnos de Nexus al calendario del teléfono y mostrar tus próximos eventos en la Agenda",
       ios: { infoPlistKeys: ["NSCalendarsFullAccessUsageDescription", "NSCalendarsUsageDescription"] },

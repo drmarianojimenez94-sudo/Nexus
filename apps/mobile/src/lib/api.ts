@@ -1,3 +1,4 @@
+import { getPref, setPref } from "./prefs";
 import { clearTokens, getAccessToken, getRefreshToken, saveTokens } from "./tokenStore";
 
 export class ApiError extends Error {
@@ -19,7 +20,47 @@ export class ApiError extends Error {
 // EXPO_PUBLIC_-prefixed vars are inlined into the JS bundle by Metro at
 // build time (from a .env file at the project root) — Expo's standard
 // mechanism for client-exposed config, no app.config indirection needed.
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? "";
+/** «nexus.onrender.com/» → «https://nexus.onrender.com». Vacío si no hay dirección real. */
+export function normalizeServerUrl(raw: string): string {
+  let url = raw.trim();
+  if (!url || /REEMPLAZAR/i.test(url)) return "";
+  if (!/^https?:\/\//i.test(url)) url = `https://${url}`;
+  return url.replace(/\/+$/, "").replace(/\/api$/i, "");
+}
+
+/**
+ * Dirección de tu Nexus (la misma de la web en Render). Viene del build
+ * (EXPO_PUBLIC_API_URL) y se puede cambiar desde la pantalla de ingreso sin
+ * volver a compilar: queda guardada en el teléfono.
+ */
+let apiBaseUrl = normalizeServerUrl(process.env.EXPO_PUBLIC_API_URL ?? "");
+const SERVER_KEY = "server_url";
+export const serverReady: Promise<void> = getPref(SERVER_KEY).then((saved) => {
+  const url = saved ? normalizeServerUrl(saved) : "";
+  if (url) apiBaseUrl = url;
+});
+export const getServerUrl = () => apiBaseUrl;
+
+/** Prueba la dirección (que responda Nexus) y la guarda. Devuelve el error a mostrar, o null. */
+export async function setServerUrl(raw: string): Promise<string | null> {
+  const url = normalizeServerUrl(raw);
+  if (!url) return "Escribí la dirección de tu Nexus, por ejemplo nexus-xxxx.onrender.com.";
+  // Render gratis tarda hasta un minuto en despertar.
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 70_000);
+  try {
+    const res = await fetch(`${url}/api/health`, { signal: controller.signal });
+    const body = (await res.json().catch(() => null)) as { status?: string } | null;
+    if (!res.ok || body?.status !== "ok") return "Esa dirección no parece ser un Nexus. Revisala (es la misma que usás en el navegador).";
+  } catch {
+    return "No pude conectarme. Revisá la dirección y la conexión. Si Render estaba dormido, esperá un minuto y probá de nuevo.";
+  } finally {
+    clearTimeout(timer);
+  }
+  apiBaseUrl = url;
+  await setPref(SERVER_KEY, url);
+  return null;
+}
 
 let refreshInFlight: Promise<boolean> | null = null;
 
@@ -39,7 +80,8 @@ async function refreshSession(): Promise<boolean> {
   if (!refreshToken) return false;
 
   try {
-    const res = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
+    await serverReady;
+    const res = await fetch(`${apiBaseUrl}/api/auth/refresh`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-Nexus-Client": "mobile" },
       body: JSON.stringify({ refreshToken }),
@@ -60,7 +102,9 @@ async function send(path: string, options: RequestInit, isRetry: boolean): Promi
   const needsOwner = OWNER_PREFIXES.some((prefix) => path.startsWith(prefix));
   if (needsOwner && !sessionOwner) throw new ApiError(401, "Volvé a ingresar antes de abrir el consultorio.");
   const accessToken = await getAccessToken();
-  const res = await fetch(`${API_BASE_URL}/api${path}`, {
+  await serverReady;
+  if (!apiBaseUrl) throw new ApiError(0, "Falta la dirección de tu Nexus: escribila en la pantalla de ingreso.");
+  const res = await fetch(`${apiBaseUrl}/api${path}`, {
     ...options,
     headers: {
       "Content-Type": "application/json",

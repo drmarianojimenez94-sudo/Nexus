@@ -1,5 +1,6 @@
 import type { Event, Memory, Task } from "@nexus/shared";
 import { api, ApiError } from "./api";
+import { currentLocation } from "./location";
 import { queueCapture } from "./offlineQueue";
 import { fold, interpretCapture, looksSensitive, medicineVertical, recordStoreAdapter, resolveWhen, zonedParts, zonedToUtc } from "@nexus/verticals";
 import { CLINICAL_HANDOFF_KEY } from "./clinicalCapture";
@@ -243,9 +244,11 @@ async function tryBrain(
   history: ConversationTurn[],
 ): Promise<VoiceCommandResult | null> {
   try {
+    const location = await currentLocation();
     const result = await api.post<InterpretResponse>("/assistant/interpret", {
       text,
       history,
+      ...(location ? { location } : {}),
     });
     if (result.target === "today") {
       // The brain's spokenReply is a generic transition line; Today has a

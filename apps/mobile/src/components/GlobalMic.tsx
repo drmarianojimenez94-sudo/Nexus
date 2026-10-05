@@ -2,7 +2,7 @@ import Ionicons from "@expo/vector-icons/Ionicons";
 import { looksSensitive, medicineVertical } from "@nexus/verticals";
 import { router, usePathname } from "expo-router";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { ActivityIndicator, Keyboard, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Keyboard, Linking, Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { clinicalParams, handleUtterance } from "../lib/secretary";
 import { colors } from "../lib/theme";
@@ -10,7 +10,7 @@ import { useDictation } from "../lib/useDictation";
 import { speak, stopSpeaking } from "../lib/voice";
 import { EmailDraftCard } from "./EmailDraftCard";
 
-type Phase = "idle" | "listening" | "working" | "done";
+type Phase = "idle" | "listening" | "cut" | "working" | "done" | "cancelled";
 
 const TERMS = medicineVertical.vocabulary.domainTerms;
 const PATIENT = /^\/patients\/([^/]+)$/;
@@ -44,10 +44,16 @@ export function GlobalMicProvider({ children }: { children: ReactNode }) {
   const [phase, setPhase] = useState<Phase>("idle");
   const [heard, setHeard] = useState("");
   const [reply, setReply] = useState<string | null>(null);
+  const [sources, setSources] = useState<{ title: string; url: string }[]>([]);
   const [keyboard, setKeyboard] = useState(false);
   const startDictation = dictation.start;
   const pathRef = useRef(path);
   pathRef.current = path;
+
+  // El sistema cortó el micrófono y no se pudo reanudar: lo dicho queda guardado.
+  useEffect(() => {
+    if (phase === "listening" && !dictation.listening && dictation.interrupted) setPhase("cut");
+  }, [phase, dictation.listening, dictation.interrupted]);
 
   useEffect(() => {
     const show = Keyboard.addListener("keyboardDidShow", () => setKeyboard(true));
@@ -79,18 +85,23 @@ export function GlobalMicProvider({ children }: { children: ReactNode }) {
       setPhase("idle");
       return;
     }
-    setReply(outcome?.spoken ?? null);
+    setReply(outcome?.spoken ? `✓ ${outcome.spoken}` : null);
+    setSources(outcome?.sources ?? []);
     setPhase("done");
   }, []);
 
-  const startListening = useCallback(async () => {
-    stopSpeaking();
-    setReply(null);
-    setHeard("");
-    setPhase("listening");
-    const ok = await startDictation({ onAutoStop: (text) => void process(text) });
-    if (!ok) setPhase("done");
-  }, [startDictation, process]);
+  const startListening = useCallback(
+    async (keep = false) => {
+      stopSpeaking();
+      setReply(null);
+      setSources([]);
+      setHeard("");
+      setPhase("listening");
+      const ok = await startDictation({ keep, onAutoStop: (text) => void process(text) });
+      if (!ok) setPhase("done");
+    },
+    [startDictation, process],
+  );
 
   async function onDone() {
     setPhase("working");
@@ -99,9 +110,18 @@ export function GlobalMicProvider({ children }: { children: ReactNode }) {
   }
 
   function onCancel() {
+    const discarding = phase === "listening" || phase === "cut";
+    const hadText = Boolean(dictation.text.trim());
     dictation.cancel();
-    setPhase("idle");
     setReply(null);
+    if (!discarding) {
+      setPhase("idle");
+      return;
+    }
+    // Que quede claro que se descartó a pedido.
+    setReply(hadText ? "✕ Cancelado: no se guardó nada de lo que dictaste." : "✕ Cancelado.");
+    setPhase("cancelled");
+    setTimeout(() => setPhase((p) => (p === "cancelled" ? "idle" : p)), 2000);
   }
 
   const api = useMemo<GlobalMicApi>(() => ({ open: () => void startListening(), phase }), [startListening, phase]);
@@ -143,11 +163,37 @@ export function GlobalMicProvider({ children }: { children: ReactNode }) {
                 <Pressable onPress={() => void onDone()} style={styles.done} accessibilityRole="button" accessibilityLabel="Listo: terminar de dictar">
                   <Text style={styles.doneText}>■ Listo</Text>
                 </Pressable>
-                <Pressable onPress={onCancel} style={styles.cancel} accessibilityRole="button" accessibilityLabel="Cancelar el dictado">
-                  <Text style={styles.cancelText}>Cancelar</Text>
+                <Pressable onPress={onCancel} style={styles.cancel} accessibilityRole="button" accessibilityLabel="Cancelar y borrar lo dictado">
+                  <Text style={styles.cancelText}>Cancelar y borrar</Text>
                 </Pressable>
               </>
             )}
+            {phase === "cut" && (
+              <>
+                <Text style={styles.cutHead} accessibilityRole="alert">⏸ El micrófono se cortó, pero no perdiste nada</Text>
+                <ScrollView style={styles.live} contentContainerStyle={styles.liveContent}>
+                  <Text style={styles.liveText}>{dictation.text ? `Guardado: «${dictation.text}»` : "Todavía no había escuchado nada."}</Text>
+                </ScrollView>
+                {dictation.error && !dictation.error.startsWith("El micrófono se cortó") && <Text style={styles.warn}>{dictation.error}</Text>}
+                <Pressable onPress={() => void startListening(true)} style={styles.again} accessibilityRole="button" accessibilityLabel="Seguir dictando">
+                  <Ionicons name="mic" size={26} color={colors.bg} />
+                  <Text style={styles.againText}>Seguir dictando</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => void onDone()}
+                  disabled={!dictation.text.trim()}
+                  style={[styles.done, !dictation.text.trim() && styles.disabled]}
+                  accessibilityRole="button"
+                  accessibilityLabel="Listo: procesar lo dictado"
+                >
+                  <Text style={styles.doneText}>■ Listo, procesar</Text>
+                </Pressable>
+                <Pressable onPress={onCancel} style={styles.cancel} accessibilityRole="button">
+                  <Text style={styles.cancelText}>Cancelar y borrar</Text>
+                </Pressable>
+              </>
+            )}
+            {phase === "cancelled" && <Text style={styles.reply} accessibilityLiveRegion="polite">{reply}</Text>}
             {phase === "working" && (
               <View style={styles.working} accessibilityLiveRegion="polite">
                 <ActivityIndicator color={colors.cyan} size="large" />
@@ -159,6 +205,17 @@ export function GlobalMicProvider({ children }: { children: ReactNode }) {
                 {dictation.error && <Text style={styles.warn} accessibilityRole="alert">{dictation.error}</Text>}
                 {heard ? <Text style={styles.small}>Dijiste: «{heard}»</Text> : null}
                 {reply && <Text style={styles.reply} accessibilityLiveRegion="polite">{reply}</Text>}
+                {sources.length > 0 && (
+                  <Text style={styles.small}>
+                    🌐 Fuentes:{" "}
+                    {sources.map((src, i) => (
+                      <Text key={src.url} style={styles.link} onPress={() => void Linking.openURL(src.url)} accessibilityRole="link">
+                        {i > 0 ? " · " : ""}
+                        {src.title}
+                      </Text>
+                    ))}
+                  </Text>
+                )}
                 <EmailDraftCard />
                 <Pressable onPress={() => void startListening()} style={styles.again} accessibilityRole="button" accessibilityLabel="Hablar de nuevo">
                   <Ionicons name="mic" size={26} color={colors.bg} />
@@ -217,4 +274,7 @@ const styles = StyleSheet.create({
   warn: { color: colors.amber, fontSize: 15 },
   again: { flexDirection: "row", gap: 10, backgroundColor: colors.cyan, borderRadius: 18, minHeight: 72, alignItems: "center", justifyContent: "center" },
   againText: { color: colors.bg, fontSize: 20, fontWeight: "800" },
+  cutHead: { color: colors.amber, fontSize: 20, fontWeight: "700" },
+  disabled: { opacity: 0.4 },
+  link: { color: colors.cyan, textDecorationLine: "underline" },
 });

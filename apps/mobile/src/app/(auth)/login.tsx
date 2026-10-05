@@ -10,6 +10,7 @@ import {
   View,
 } from "react-native";
 import { NexusFace } from "../../components/NexusFace";
+import { ServerField } from "../../components/ServerField";
 import { ApiError } from "../../lib/api";
 import { useAuth } from "../../lib/auth-context";
 import { colors } from "../../lib/theme";
@@ -46,6 +47,7 @@ export default function LoginScreen() {
       </View>
 
       <View style={styles.form}>
+        <ServerField />
         <TextInput
           value={email}
           onChangeText={setEmail}
