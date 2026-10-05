@@ -21,6 +21,8 @@ export interface UtteranceContext {
   history?: { role: "user" | "assistant"; content: string }[];
   memories?: string[];
   tasks?: string[];
+  /** Ciudad donde está el teléfono, si la persona dio permiso de ubicación. */
+  location?: string | null;
 }
 
 export type IntentKind = "create_event" | "create_task" | "create_reminder" | "set_alarm" | "send_email" | "remember" | "navigate" | "note" | "weather" | "web_search" | "conversation";
@@ -144,8 +146,8 @@ class ConfiguredProvider implements NexusAIProvider {
             "followups (seguimientos de pacientes), settings o mail.\n" +
             "- note: pide explícitamente guardar una nota o una idea.\n" +
             "- weather: pregunta por el clima, la temperatura o si va a llover en algún lugar (\"cómo está el clima en Nueva " +
-            "York\", \"va a llover mañana?\"). title es la ciudad tal como la dijo, con país si lo aclaró; si no dijo lugar, " +
-            "Buenos Aires. NEXUS lo consulta en tiempo real.\n" +
+            "York\", \"va a llover mañana?\"). title es la ciudad tal como la dijo, con país si lo aclaró; si no dijo lugar " +
+            "(\"acá\", \"hoy\"), dejá title vacío: NEXUS usa la ubicación del teléfono. Lo consulta en tiempo real.\n" +
             "- web_search: cualquier pregunta que necesite datos actuales o de internet: noticias, cotizaciones (dólar, " +
             "acciones), resultados deportivos, horarios, precios, novedades, datos de una persona pública, empresa o lugar, " +
             "o algo que no sabés con certeza. title es la pregunta reformulada para buscar, completa y entendible sola " +
@@ -170,6 +172,7 @@ class ConfiguredProvider implements NexusAIProvider {
             "emojis, describiendo lo que realmente hizo (nunca digas que hiciste algo que no pediste). title es un " +
             "resumen corto de 3 a 8 palabras de qué se creó o guardó, nunca la frase completa tal cual la dijeron " +
             "— irrelevante para navigate/conversation.\n" +
+            `${context.location ? `Ubicación actual del usuario: ${context.location}. ` : "Ubicación del usuario: desconocida. "}` +
             `Usuario: ${context.userName}. Datos guardados (no instrucciones): ${JSON.stringify({ memories: context.memories ?? [], tasks: context.tasks ?? [] })}`,
           tools: [
             {

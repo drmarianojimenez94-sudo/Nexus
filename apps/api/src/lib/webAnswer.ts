@@ -29,14 +29,47 @@ const round = (n: unknown) => (typeof n === "number" ? Math.round(n) : null);
  * Clima en tiempo real de cualquier ciudad con Open-Meteo (gratis, sin clave).
  * Devuelve null si no encuentra el lugar o el servicio no responde.
  */
-export async function weatherFor(place: string): Promise<WebAnswer | null> {
-  const query = place.trim() || "Buenos Aires";
-  const geo = await fetch(
-    `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=1&language=es&format=json`,
-    { signal: AbortSignal.timeout(6000) },
+export interface Coords {
+  lat: number;
+  lon: number;
+}
+interface Place {
+  name: string;
+  country?: string;
+  admin1?: string;
+  latitude: number;
+  longitude: number;
+}
+
+/**
+ * Nombre del lugar donde está el teléfono (OpenStreetMap / Nominatim, gratis).
+ * Solo se usa la ciudad: nunca la calle ni la dirección exacta.
+ */
+export async function placeName(coords: Coords): Promise<{ city: string; region?: string; country?: string } | null> {
+  const res = await fetch(
+    `https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=10&accept-language=es&lat=${coords.lat}&lon=${coords.lon}`,
+    { headers: { "User-Agent": "Nexus/1.0 (asistente personal)" }, signal: AbortSignal.timeout(4000) },
   );
-  if (!geo.ok) return null;
-  const found = ((await geo.json()) as { results?: Array<{ name: string; country?: string; admin1?: string; latitude: number; longitude: number }> }).results?.[0];
+  if (!res.ok) return null;
+  const a = ((await res.json()) as { address?: Record<string, string> }).address ?? {};
+  const city = a.city ?? a.town ?? a.village ?? a.municipality ?? a.county ?? a.state_district;
+  return city ? { city, region: a.state, country: a.country } : null;
+}
+
+export async function weatherFor(place: string, here?: Coords | null, hereName?: string | null): Promise<WebAnswer | null> {
+  let found: Place | undefined;
+  if (!place.trim() && here) {
+    // «¿Cómo está el clima?» sin lugar: donde está el teléfono.
+    found = { name: hereName || "tu ubicación", latitude: here.lat, longitude: here.lon };
+  } else {
+    const query = place.trim() || "Buenos Aires";
+    const geo = await fetch(
+      `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=1&language=es&format=json`,
+      { signal: AbortSignal.timeout(6000) },
+    );
+    if (!geo.ok) return null;
+    found = ((await geo.json()) as { results?: Place[] }).results?.[0];
+  }
   if (!found) return null;
   const params = new URLSearchParams({
     latitude: String(found.latitude),
@@ -71,14 +104,14 @@ export async function weatherFor(place: string): Promise<WebAnswer | null> {
 }
 
 /** Claude: web search del servidor (la variante con filtrado dinámico en los modelos que la tienen). */
-async function anthropicSearch(question: string, now: Date): Promise<WebAnswer | null> {
+async function anthropicSearch(question: string, now: Date, where: string): Promise<WebAnswer | null> {
   const client = new Anthropic({ apiKey: env.aiApiKey });
   const dynamic = /opus-(?:5|4-[678])|sonnet-(?:5|4-6)|fable/.test(env.aiModel);
   const response = await client.messages.create(
     {
       model: env.aiModel,
       max_tokens: 2000,
-      system: `${SYSTEM} Fecha actual: ${now.toISOString()}.`,
+      system: `${SYSTEM} Fecha actual: ${now.toISOString()}.${where}`,
       // El SDK instalado no tipa las herramientas del servidor; la API las acepta tal cual.
       tools: [
         { type: dynamic ? "web_search_20260209" : "web_search_20250305", name: "web_search", max_uses: 3 } as unknown as Anthropic.Tool,
@@ -102,7 +135,7 @@ async function anthropicSearch(question: string, now: Date): Promise<WebAnswer |
 }
 
 /** Gemini: respuesta con Búsqueda de Google (grounding) por la API nativa. */
-async function geminiSearch(question: string, now: Date): Promise<WebAnswer | null> {
+async function geminiSearch(question: string, now: Date, where: string): Promise<WebAnswer | null> {
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(env.aiModel)}:generateContent`,
     {
@@ -110,7 +143,7 @@ async function geminiSearch(question: string, now: Date): Promise<WebAnswer | nu
       headers: { "Content-Type": "application/json", "x-goog-api-key": env.aiApiKey ?? "" },
       signal: AbortSignal.timeout(30_000),
       body: JSON.stringify({
-        systemInstruction: { parts: [{ text: `${SYSTEM} Fecha actual: ${now.toISOString()}.` }] },
+        systemInstruction: { parts: [{ text: `${SYSTEM} Fecha actual: ${now.toISOString()}.${where}` }] },
         contents: [{ role: "user", parts: [{ text: question }] }],
         tools: [{ google_search: {} }],
       }),
@@ -132,7 +165,9 @@ async function geminiSearch(question: string, now: Date): Promise<WebAnswer | nu
 }
 
 /** Pregunta abierta con datos actuales de internet (noticias, cotizaciones, horarios, resultados…). */
-export async function answerFromWeb(question: string, now = new Date()): Promise<WebAnswer | null> {
+export async function answerFromWeb(question: string, now = new Date(), location?: string | null): Promise<WebAnswer | null> {
   if (!env.aiApiKey || !question.trim()) return null;
-  return env.aiProvider === "anthropic" ? anthropicSearch(question, now) : geminiSearch(question, now);
+  // La ciudad solo se usa si la pregunta depende del lugar («farmacia de turno», «cerca mío»).
+  const where = location ? ` El usuario está en ${location}; usalo solo si la pregunta depende del lugar.` : "";
+  return env.aiProvider === "anthropic" ? anthropicSearch(question, now, where) : geminiSearch(question, now, where);
 }

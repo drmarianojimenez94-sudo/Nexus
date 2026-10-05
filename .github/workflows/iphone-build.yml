@@ -1,0 +1,51 @@
+name: App iPhone (EAS)
+
+# Botón manual en GitHub → Actions → «App iPhone (EAS)» → Run workflow.
+# Compila la app en los servidores de Expo y, si elegís «testflight», la sube
+# a TestFlight para instalarla en el iPhone. Requiere haber hecho una vez el
+# primer build desde una computadora (crea los certificados de Apple) y el
+# secreto EXPO_TOKEN en Settings → Secrets and variables → Actions.
+on:
+  workflow_dispatch:
+    inputs:
+      destino:
+        description: "testflight (sube a TestFlight) o solo-build"
+        required: true
+        default: testflight
+        type: choice
+        options: [testflight, solo-build]
+
+jobs:
+  ios:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Verificar que hay token de Expo
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "::error::Falta el secreto EXPO_TOKEN (expo.dev → Account settings → Access tokens). Ver docs/NEXUS_IPHONE.md"
+            exit 1
+          fi
+
+      - name: Compilar en EAS
+        working-directory: apps/mobile
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          if [ "${{ inputs.destino }}" = "testflight" ]; then
+            npx eas-cli@latest build --platform ios --profile production --non-interactive --no-wait --auto-submit
+          else
+            npx eas-cli@latest build --platform ios --profile production --non-interactive --no-wait
+          fi

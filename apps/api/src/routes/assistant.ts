@@ -9,7 +9,7 @@ import { recordAudit } from "../lib/audit.js";
 import { env } from "../lib/env.js";
 import { looksSensitive, medicineVertical } from "@nexus/verticals";
 import { prepareEmail, pushGoogleEvent } from "../lib/secretary.js";
-import { answerFromWeb, weatherFor } from "../lib/webAnswer.js";
+import { answerFromWeb, placeName, weatherFor } from "../lib/webAnswer.js";
 
 export const assistantRouter = Router();
 assistantRouter.use(authenticate);
@@ -19,6 +19,8 @@ assistantRouter.get("/status", (_req, res) => res.json({ aiConfigured: isAiConfi
 const interpretSchema = z.object({
   text: z.string().trim().min(1).max(2000),
   history: z.array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().min(1).max(2000) })).max(12).default([]),
+  /** Ubicación del teléfono (con permiso del usuario): clima «acá», búsquedas cercanas. */
+  location: z.object({ lat: z.number().min(-90).max(90), lon: z.number().min(-180).max(180) }).optional(),
 });
 
 const NAVIGATE_PATHS: Record<NavigateTarget, string> = {
@@ -52,7 +54,7 @@ const NAVIGATE_PATHS: Record<NavigateTarget, string> = {
 assistantRouter.post(
   "/interpret",
   asyncHandler(async (req, res) => {
-    const { text, history } = interpretSchema.parse(req.body);
+    const { text, history, location } = interpretSchema.parse(req.body);
     // Datos de pacientes: nunca a un proveedor externo ni al inbox sin cifrar.
     // Se derivan al asistente clínico, que interpreta sin IA externa.
     if (!medicineVertical.ai.sensitiveToExternalAI && looksSensitive(text, medicineVertical)) {
@@ -73,8 +75,11 @@ assistantRouter.post(
       prisma.memory.findMany({ where: { userId: req.userId! }, orderBy: { updatedAt: "desc" }, take: 10, select: { content: true } }),
       prisma.task.findMany({ where: { userId: req.userId!, status: { in: ["TODO", "IN_PROGRESS"] } }, orderBy: { updatedAt: "desc" }, take: 10, select: { title: true } }),
     ]);
+    // Solo la ciudad: ni la dirección ni las coordenadas van al modelo.
+    const place = location ? await placeName(location).catch(() => null) : null;
+    const where = place ? [place.city, place.region, place.country].filter(Boolean).join(", ") : null;
     const parsed = await aiProvider.interpretUtterance(text, {
-      userName: user.name, now: new Date(), history,
+      userName: user.name, now: new Date(), history, location: where,
       memories: memories.map((m) => m.content.slice(0, 1000)),
       tasks: tasks.map((t) => t.title.slice(0, 500)),
     });
@@ -97,15 +102,18 @@ assistantRouter.post(
         try {
           answer =
             parsed.intent === "weather"
-              ? ((await weatherFor(parsed.title)) ?? (await answerFromWeb(`Clima actual y pronóstico de hoy en ${parsed.title || "Buenos Aires"}`)))
-              : await answerFromWeb(parsed.title || text);
+              ? ((await weatherFor(parsed.title, location, place?.city)) ??
+                (await answerFromWeb(`Clima actual y pronóstico de hoy en ${parsed.title || place?.city || "Buenos Aires"}`)))
+              : await answerFromWeb(parsed.title || text, new Date(), where);
         } catch {
           answer = null;
         }
         await recordAudit({ userId: req.userId!, action: `assistant.${parsed.intent}`, entityType: "assistant", entityId: parsed.intent, metadata: { ok: Boolean(answer) } });
+        if (answer && parsed.intent === "weather" && !parsed.title.trim() && !location)
+          answer = { ...answer, speak: `${answer.speak} No tengo tu ubicación: si me das permiso, te digo el clima de donde estés.` };
         res.json(
           answer
-            ? { speak: answer.speak, sources: answer.sources }
+            ? { speak: answer.speak, sources: answer.sources, ...(parsed.intent === "weather" && !location && !parsed.title.trim() ? { needsLocation: true } : {}) }
             : { speak: "No pude consultar internet ahora. Probá de nuevo en un momento." },
         );
         return;

@@ -13,6 +13,8 @@ const PLUGIN_DEFAULTS: Record<string, Record<string, unknown>> = {
   "expo-speech-recognition": { androidSpeechServicePackages: ["com.google.android.as", "com.google.android.googlequicksearchbox"] },
   // El plugin de expo-calendar siempre declara Recordatorios en iOS; sin esto quedaría su texto en inglés.
   "expo-calendar": { remindersPermission: "Nexus no lee ni modifica tus Recordatorios: solo usa el calendario para tus turnos." },
+  // Solo «mientras se usa la app»: sin ubicación en segundo plano ni sensores de movimiento.
+  "expo-location": { locationAlwaysAndWhenInUsePermission: false, locationAlwaysPermission: false, motionUsagePermission: false },
 };
 
 /**
